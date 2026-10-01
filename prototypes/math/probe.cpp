@@ -55,7 +55,14 @@ static void tests() {
         check(std::any_of(std::begin(bitmap),std::end(bitmap),[](uint8_t b){return b!=0;}),
               "minus vanished (font hinting regression)");
     }
-    std::cerr<<"preflight/recovery/glyph tests passed (16 cases)\n";
+    for(const char *source:{"\\lim_{n\\to\\infty}", "\\min_{x}"}) {
+        ink_math_result in, display;
+        check(ink_math_render(source,0,24,bitmap,&in)==0,"inline operator failed");
+        check(ink_math_render(source,1,24,bitmap,&display)==0,"display operator failed");
+        check(display.height>in.height && display.width<in.width,
+              "operator limits must move below in display and stay beside inline");
+    }
+    std::cerr<<"preflight/recovery/glyph/operator tests passed (18 cases)\n";
 }
 int main(int argc,char **argv) {
     try {
@@ -115,3 +122,4 @@ int main(int argc,char **argv) {
         return 0;
     } catch(const std::exception& e) { std::cerr<<e.what()<<'\n'; return 1; }
 }
+

@@ -1,0 +1,152 @@
+[
+  {
+    "path": "fonts/base/cmex10.ttf",
+    "bytes": 19240,
+    "sha256": "7b2b08616ff6c98ab58c1db654e22f24af17b47fbdd2d99443228d2bc66c3502"
+  },
+  {
+    "path": "fonts/base/cmmi10.ttf",
+    "bytes": 26576,
+    "sha256": "429148cd695008b52a2981e1e2fd94b62794c42fa007096b69299083ee0a2063"
+  },
+  {
+    "path": "fonts/base/cmmib10.ttf",
+    "bytes": 24348,
+    "sha256": "71f6917c54829ddf7abf34741d7d6d67598166692ce8560f29574336e972cb53"
+  },
+  {
+    "path": "fonts/latin/bi10.ttf",
+    "bytes": 3080,
+    "sha256": "aeb76088f5b7ca779a33871909f0732775365827320cfd95e868ac47ae214b0b"
+  },
+  {
+    "path": "fonts/latin/bx10.ttf",
+    "bytes": 2948,
+    "sha256": "170a94f0c00fe322ced684bcae3c0651595b1634cc8087dab14c5ce41ce9101a"
+  },
+  {
+    "path": "fonts/latin/cmr10.ttf",
+    "bytes": 25236,
+    "sha256": "303ba1ef9f3485a60201cb16cc263566820e872d8c982825accc0df53d3796d8"
+  },
+  {
+    "path": "fonts/latin/i10.ttf",
+    "bytes": 3080,
+    "sha256": "87b2cfbfc8ce21aee68673240ba61f440f2699b3b83b962144d1c935d5a869cd"
+  },
+  {
+    "path": "fonts/latin/optional/cmbx10.ttf",
+    "bytes": 18004,
+    "sha256": "83911bd4d1d40ff8cb0d21b774ce9a58046b7eb7950ddaf658edc18cb1bf8269"
+  },
+  {
+    "path": "fonts/latin/optional/cmbxti10.ttf",
+    "bytes": 24324,
+    "sha256": "b1ea9eb622cc7169cfee11af84b53c2f2a85b0b95261577f70034f97528e3469"
+  },
+  {
+    "path": "fonts/latin/optional/cmss10.ttf",
+    "bytes": 12956,
+    "sha256": "de04c3410627816a1414f577fcfcf2be19da92017b6bbba52931256e8bd66d2c"
+  },
+  {
+    "path": "fonts/latin/optional/cmssbx10.ttf",
+    "bytes": 25600,
+    "sha256": "945ee3d582cf5d8334f16bc4b647f4166e461c38173060e6b1a8013d79a9f558"
+  },
+  {
+    "path": "fonts/latin/optional/cmssi10.ttf",
+    "bytes": 13920,
+    "sha256": "7cd4403d0c1e77bac0592fd7f63b876a272429b5c3ea452179f7261d146b725b"
+  },
+  {
+    "path": "fonts/latin/optional/cmti10.ttf",
+    "bytes": 32524,
+    "sha256": "6b89f04bd485bc43a4ab0be4a78ae70b0a09f165f9ce5a7baf7ca04179587c94"
+  },
+  {
+    "path": "fonts/latin/optional/cmtt10.ttf",
+    "bytes": 28160,
+    "sha256": "04dc44c52573e1580c5bf9550b2a03fccfb02b848e568ec7e24210ece06c9933"
+  },
+  {
+    "path": "fonts/latin/r10.ttf",
+    "bytes": 3944,
+    "sha256": "fd414c01ad9266f39d68196f95397c127d1e38b3751fcadb65fb6aeff5f5995a"
+  },
+  {
+    "path": "fonts/latin/sb10.ttf",
+    "bytes": 2968,
+    "sha256": "fa664e667c2972e298d6597547a519d9522ce7e4f8d31fa0d4c48d1de33ebcec"
+  },
+  {
+    "path": "fonts/latin/sbi10.ttf",
+    "bytes": 2968,
+    "sha256": "90d7d516a74d938940fd78b061c90328ebc4064275a087866ef3d9d5e18fe081"
+  },
+  {
+    "path": "fonts/latin/si10.ttf",
+    "bytes": 2716,
+    "sha256": "65307d12b16ae89a17354b88c8f71e97eb4c8b6af7f66a1f5f9e6fbb98760d77"
+  },
+  {
+    "path": "fonts/latin/ss10.ttf",
+    "bytes": 2536,
+    "sha256": "b21fbc77551f79fd906c6ea091979e840108b301d41677becf4bf669fa7f1241"
+  },
+  {
+    "path": "fonts/latin/tt10.ttf",
+    "bytes": 2652,
+    "sha256": "d408234bf41f51f98d109d41900b02b5cfff0e38b624bfbabeed0867f5888b44"
+  },
+  {
+    "path": "fonts/licences/Knuth_License.txt",
+    "bytes": 395,
+    "sha256": "8dfa2050f50d341636748e7ab0ed175dde130e33d722678cfa99351c6aded331"
+  },
+  {
+    "path": "fonts/licences/License_for_dsrom.txt",
+    "bytes": 260,
+    "sha256": "6c4321c24c91ce63ce7f77286207eddf59066b1daa9e393f3e697d578ce4789e"
+  },
+  {
+    "path": "fonts/licences/OFL.txt",
+    "bytes": 4630,
+    "sha256": "c5f826ca32b56a30e0f22467be9f51068b747a6e461314b7650238c3b90ee819"
+  },
+  {
+    "path": "fonts/maths/cmbsy10.ttf",
+    "bytes": 19804,
+    "sha256": "4187e269273d0f0c261e05a839c27496e60a69e8bd573ebe9970c29daed62395"
+  },
+  {
+    "path": "fonts/maths/cmsy10.ttf",
+    "bytes": 22076,
+    "sha256": "fbec0615cc79ac80a439b71e44fb486b0b80fc82a3a370343dcb9a83190d3bf3"
+  },
+  {
+    "path": "fonts/maths/msam10.ttf",
+    "bytes": 21684,
+    "sha256": "896a21b5d61124cdd6a390ac76af6b13f5748a6b4a4cea2fb63c7ad412837ff4"
+  },
+  {
+    "path": "fonts/maths/msbm10.ttf",
+    "bytes": 29728,
+    "sha256": "8ed7494575a25da918de700334b68fc4a6c608f734d5ecec5295acc86e303192"
+  },
+  {
+    "path": "fonts/maths/rsfs10.ttf",
+    "bytes": 10592,
+    "sha256": "a32ac550c63959794542959b5e31de7b5a9b10d45fcbf4d204f0fb4fa68c24ff"
+  },
+  {
+    "path": "fonts/maths/special.ttf",
+    "bytes": 2760,
+    "sha256": "affff5b681d69ffee7bd219500656fc83a5e462d1111dade37a388cef19b9ce2"
+  },
+  {
+    "path": "fonts/maths/stmary10.ttf",
+    "bytes": 17416,
+    "sha256": "6fbb2fa122c5b14b1e8aa818657a3a31a7f22144aac22e21e57288defa6b66ea"
+  }
+]

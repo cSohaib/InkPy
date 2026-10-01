@@ -1,6 +1,7 @@
 # Stage 2 hardware diagnostic
 
-This build verifies board primitives. It is not yet the InkPy file-browser UI.
+This default build verifies board primitives. For the optional math build and
+latest build measurements, see MATH-DEVICE.md. It is not yet the InkPy file-browser UI.
 There is no Markdown, text editor, font selector, dictionary or Python runtime.
 
 ## Build
@@ -65,7 +66,8 @@ No automatic flash action or raw flash command is supplied in this stage.
 | Home hold | Print diagnostic report |
 | Power short press | Print diagnostic report (power menu comes in a later stage) |
 | Power double press | Toggle frontlight |
-| Power hold | Sleep; same gesture wakes |
+| Power hold while awake | Sleep |
+| Power short press while asleep | Wake; consume the click |
 | Five minutes without input | Sleep (no Python exists in this diagnostic) |
 
 Debounce is 30 ms, double-click window 300 ms, hold 800 ms. Single Power action
@@ -91,8 +93,8 @@ verified installation route exists. A build or host test does not pass these che
 - [ ] RTC either reports a valid time or explicitly reports unset/untrusted data.
       Gauge readings are plausible; percentage/profile validation is deferred.
 - [ ] Sleep leaves the exact pixels in place, turns light off, disables touch and
-      ignores side buttons. A short Power press does not enable interaction.
-- [ ] Long Power wake restores touch/light without refreshing the display; page
+      ignores side buttons.
+- [ ] One short Power click restores touch/light without refreshing the display; page
       index survives, subsequent drawing works, and the wake press is consumed.
 - [ ] Repeat sleep/wake, including with SD mounted. Measure battery sleep current
       (USB/logging can change the result); record it rather than assuming deep-sleep draw.
@@ -134,3 +136,4 @@ Local setup issues resolved: CMake/Ninja were initially absent; the extracted
 toolchain's cc1plus lacked its executable bit and was corrected. The optional
 Component Manager failed process discovery in this container and was disabled
 for this dependency-free project. No SDK source or hardware checks were patched out.
+

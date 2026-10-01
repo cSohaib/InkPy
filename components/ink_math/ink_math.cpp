@@ -29,7 +29,8 @@ FT_Face face_for(const std::string& path) {
         [](const FaceEntry& a, const FaceEntry& b) { return a.age < b.age; });
     if (e->face) FT_Done_Face(e->face);
     e->face = nullptr; e->age = 0;
-    require(!FT_New_Face(library, path.c_str(), 0, &e->face), "font cannot be opened");
+    if (FT_New_Face(library, path.c_str(), 0, &e->face))
+        throw std::runtime_error("font cannot be opened: " + path);
     e->path = path; e->age = ++clock_age;
     return e->face;
 }
@@ -231,3 +232,4 @@ extern "C" void ink_math_shutdown(void) {
     for(auto& e:faces) if(e.face) { FT_Done_Face(e.face); e.face=nullptr; }
     if(library) { FT_Done_FreeType(library); library=nullptr; }
 }
+

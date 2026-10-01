@@ -1,8 +1,7 @@
 # InkPy
 
-Minimal firmware exclusively for the Xteink X4 Pro. Stage 2 provides a compiled
-hardware diagnostic; Stage 3 adds an isolated host math/font prototype. Device
-validation is pending. The file browser, full Markdown reader, editor and
+Minimal firmware exclusively for the Xteink X4 Pro. The hardware diagnostic and shared host/ESP32 math
+diagnostic are implemented. Device validation is pending. The file browser, full Markdown reader, editor and
 MicroPython runtime are not implemented yet.
 
 ## Confirmed scope
@@ -26,6 +25,7 @@ Keep layout separate from document parsing so a later restricted EPUB importer c
 “ChatGPT-style math” describes the intended use, not a fixed compatibility specification. The proposed acceptance corpus defines representative notation; actual supported coverage must be established by the rendering prototype. Delimiters alone do not make mathematical layout trivial.
 
 ## Interaction and implementation references
+- [ESP32 math diagnostic](docs/MATH-DEVICE.md): Stage 4 build, SD resources, memory instrumentation and revised UI requirements.
 - [Math/font prototype](docs/MATH-PROTOTYPE.md): measured host results, preview and remaining gates.
 - [Hardware diagnostic](docs/BRINGUP.md): build instructions, diagnostic controls and device checklist.
 - [Port provenance](docs/PORTING.md): reused code, deliberate reductions and licences.
@@ -35,3 +35,4 @@ Keep layout separate from document parsing so a later restricted EPUB importer c
 
 ## Working agreement
 Work in bounded stages; save research, decisions, and progress in GitHub, then pause for continuation. See [AGENTS.md](AGENTS.md) for execution rules and [the current checkpoint](docs/CHECKPOINT.md) for the next task.
+

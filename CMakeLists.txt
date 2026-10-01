@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
+option(INKPY_MATH_DIAGNOSTIC "Build the isolated math diagnostic" OFF)
 set(COMPONENTS main)
 set(IDF_TARGET esp32s3 CACHE STRING "InkPy supports only X4 Pro")
 if(NOT IDF_TARGET STREQUAL "esp32s3")
     message(FATAL_ERROR "InkPy requires ESP32-S3")
 endif()
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+idf_build_set_property(INKPY_MATH_DIAGNOSTIC "${INKPY_MATH_DIAGNOSTIC}")
 project(inkpy)
+

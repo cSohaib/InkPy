@@ -11,6 +11,16 @@
 
 static const char *TAG = "sleep";
 
+/* Consume a held press and release bounce. A wake click has no awake action. */
+static void wait_power_released(void)
+{
+    int64_t released_at = esp_timer_get_time();
+    while (esp_timer_get_time() - released_at < INK_DEBOUNCE_MS * 1000) {
+        if (!gpio_get_level(PIN_POWER)) released_at = esp_timer_get_time();
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
 esp_err_t ink_sleep(void)
 {
     /* The diagnostic has no VM, open files, Wi-Fi or other worker tasks. When
@@ -21,7 +31,7 @@ esp_err_t ink_sleep(void)
     esp_err_t e = ink_touch_enable(false);
     if (e != ESP_OK) goto restore;
     /* Finish the entering press before arming an active-low wake source. */
-    while (!gpio_get_level(PIN_POWER)) vTaskDelay(pdMS_TO_TICKS(10));
+    wait_power_released();
     e = esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
     if (e != ESP_OK) goto restore;
     e = gpio_wakeup_enable(PIN_POWER, GPIO_INTR_LOW_LEVEL);
@@ -31,20 +41,10 @@ esp_err_t ink_sleep(void)
     /* Keep flash/PSRAM supply: light sleep must preserve the in-memory state. */
     e = esp_sleep_pd_config(ESP_PD_DOMAIN_VDDSDIO, ESP_PD_OPTION_ON);
     if (e != ESP_OK) goto restore;
-    ESP_LOGI(TAG, "light sleep; long Power hold wakes, pixels remain untouched");
-    for (;;) {
-        e = esp_light_sleep_start();
-        if (e != ESP_OK) break;
-        int64_t start = esp_timer_get_time();
-        while (!gpio_get_level(PIN_POWER) && esp_timer_get_time() - start < INK_HOLD_MS * 1000)
-            vTaskDelay(pdMS_TO_TICKS(10));
-        if (!gpio_get_level(PIN_POWER)) {
-            /* Consume the waking press so it cannot immediately sleep again. */
-            while (!gpio_get_level(PIN_POWER)) vTaskDelay(pdMS_TO_TICKS(10));
-            break;
-        }
-        /* Short press: do not restore input or light, simply re-enter sleep. */
-    }
+    ESP_LOGI(TAG, "light sleep; one Power press wakes, pixels remain untouched");
+    e = esp_light_sleep_start();
+    if (e == ESP_OK) wait_power_released();
+
 restore:
     gpio_wakeup_disable(PIN_POWER);
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
@@ -57,3 +57,4 @@ restore:
     ESP_LOGI(TAG, "resumed without display refresh");
     return e;
 }
+

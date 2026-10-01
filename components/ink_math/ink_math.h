@@ -4,7 +4,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-/* Host experiment only. One owner, initialize once per process. All storage owned
+/* Experimental shared host/ESP32 renderer. One owner, initialize once per process. All storage owned
  * by caller except library internals. 480x800 portrait, row-major, 1=black.
  * Firmware's existing diagnostic uses landscape, 1=white: not interchangeable. */
 enum { INK_MATH_WIDTH = 480, INK_MATH_HEIGHT = 800, INK_MATH_BYTES = 48000 };
@@ -19,3 +19,4 @@ void ink_math_shutdown(void);
 #ifdef __cplusplus
 }
 #endif
+

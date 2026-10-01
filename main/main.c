@@ -13,9 +13,14 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#ifdef INKPY_MATH_DIAGNOSTIC
+#include "math_diagnostic.h"
+#endif
+
 static const char *TAG = "inkpy";
 static uint8_t *frame;
 
+#ifndef INKPY_MATH_DIAGNOSTIC
 static void pixel(int x, int y)
 {
     if (x >= 0 && x < PANEL_WIDTH && y >= 0 && y < PANEL_HEIGHT)
@@ -40,9 +45,23 @@ static void pattern(unsigned page, int touch_x, int touch_y)
     for (int i = -15; i <= 15; ++i) { pixel(touch_x + i, touch_y); pixel(touch_x, touch_y + i); }
 }
 
+#else
+static void pattern(unsigned page, int touch_x, int touch_y)
+{
+    (void)touch_x; (void)touch_y;
+    ink_math_diagnostic_draw(page, frame);
+}
+#endif
+
 void app_main(void)
 {
-    ESP_LOGI(TAG, "InkPy STAGE 2 HARDWARE DIAGNOSTIC; no reader/editor/Python yet");
+#ifdef INKPY_MATH_DIAGNOSTIC
+    ESP_LOGI(TAG, "InkPy STAGE 4 MATH DIAGNOSTIC; no product reader/editor/Python");
+    const unsigned pages = ink_math_diagnostic_count();
+#else
+    ESP_LOGI(TAG, "InkPy HARDWARE DIAGNOSTIC; no reader/editor/Python yet");
+    const unsigned pages = 5;
+#endif
     const esp_partition_t *running = esp_ota_get_running_partition();
     if (running) ESP_LOGI(TAG, "running partition %s @0x%lx size=0x%lx", running->label,
                          (unsigned long)running->address, (unsigned long)running->size);
@@ -57,6 +76,13 @@ void app_main(void)
     ink_board_report();
     frame = heap_caps_malloc(PANEL_BYTES, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     if (!frame) { ESP_LOGE(TAG, "PSRAM framebuffer allocation failed"); return; }
+#ifdef INKPY_MATH_DIAGNOSTIC
+    if (e != ESP_OK || ink_math_diagnostic_init() != ESP_OK) {
+        ESP_LOGE(TAG, "math diagnostic requires mounted SD and valid resources");
+        heap_caps_free(frame); frame = NULL;
+        return;
+    }
+#endif
     unsigned page = 0, warmth = 50;
     bool light_on = false;
     pattern(page, -100, -100);
@@ -90,7 +116,7 @@ void app_main(void)
         ink_press_t he = ink_button_update(&home, touch.home, now, false);
         ink_press_t te = ink_button_update(&contact, touch.contacts != 0, now, false);
         if (ae == INK_PRESS_SHORT || be == INK_PRESS_SHORT) {
-            page = (page + (be == INK_PRESS_SHORT ? 1 : 4)) % 5;
+            page = (page + (be == INK_PRESS_SHORT ? 1 : pages - 1)) % pages;
             pattern(page, -100, -100); changed = true;
         }
         if ((te == INK_PRESS_SHORT || te == INK_PRESS_LONG) && !moved) {
@@ -122,3 +148,4 @@ void app_main(void)
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
+

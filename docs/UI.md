@@ -3,7 +3,7 @@ Updated 2026-10-01. User-confirmed requirements unless explicitly marked propose
 
 ## General
 No swipe, slide, drag-to-scroll or touchpad navigation gestures anywhere. Side buttons page through content. One fixed UI with hardcoded text and one keyboard layout. The power menu below is the complete requested settings surface; night mode and orientation are now explicitly in scope.
-Proposed: sliders are tap-to-set tracks with + and - buttons, not draggable controls. Press durations, debounce and double-click timing are fixed implementation constants, not user settings. A long press must suppress its short-press action; a double power press must suppress the single-press menu.
+Brightness and warmth use only + and - buttons; no sliders. Press durations, debounce and double-click timing are fixed implementation constants, not user settings. A long press must suppress its short-press action; a double power press must suppress the single-press menu.
 
 ## Home: file browser
 - Filename list, no thumbnails.
@@ -44,24 +44,28 @@ Console history needs SD-backed paging or an explicit retention policy, not unli
 - Tap a word to display its StarDict translation/definition.
 - The translation popup includes Change dictionary, opening a dictionary chooser.
 - This is the only place to change dictionary; do not add it to the power menu or another settings page.
-- Home menu: Go to page / Select chapter / Close book.
-Proposed: chapters come from Markdown headings; page numbers belong to the current font/orientation layout. Keep reading position by source offset when reflowing. If no dictionary is selected or found, still show the lookup popup and Change dictionary control. Modal Home/back behaviour should dismiss the topmost popup first.
+- Home menu: Go to chapter / Go to page / Close.
+- This menu also shows the current page number and current chapter.
+- Markdown chapters are level-two headings (`##`, equivalent to `<h2>`), not all heading levels. H1 and H3–H6 do not create chapter entries. Use parsed heading levels, including Setext H2; headings inside code are not chapters.
+Proposed: page numbers are one-based and belong to the current font/orientation layout. Before the first H2, or in documents without H2, show "No chapter". The current chapter is the last H2 at or before the page's reading-position source offset; retain duplicate titles as separate entries. Keep reading position by source offset when reflowing. If no dictionary is selected or found, still show the lookup popup and Change dictionary control. Modal Home/back behaviour should dismiss the topmost popup first.
 
 ## Sleep and power
 - Auto-sleep after five minutes of inactivity, except while a Python script is running.
 - Sleep preserves whatever is currently visible. No sleep screen, clearing, clock overlay, or page replacement.
-- Long-press Power while awake sleeps; long-press Power while asleep wakes. From the user's perspective, waking re-enables touch and restores interaction.
+- Long-press Power while awake sleeps; a single short Power press while asleep wakes (subject to hardware verification). From the user's perspective, waking re-enables touch and restores interaction.
 - Double-press Power toggles the light on/off.
 - Short-press Power opens exactly:
-  - Light brightness: slider, +, -
-  - Light warmth: slider, +, -
+  - Light brightness: + and - buttons only
+  - Light warmth: + and - buttons only
   - Light on/off
   - Night mode
   - Orientation: portrait/landscape
   - Time settings
   - Font selector
+- Only while the power menu is open, its header shows time, date and battery level. Do not show these in the reader, browser, editor, console or any other screen. No persistent status bar.
 
-Proposed: disable touch and side-button interaction while asleep; ignore short/double Power actions until an intentional long wake. Turn the frontlight off for sleep and restore its prior state on wake; this changes illumination, not screen content. Night mode means inverted rendering within the fixed theme. Time is set locally, without a network time service.
+Proposed: disable touch and side-button interaction while asleep; consume the waking Power press so it does not also open the power menu, toggle light or put the device back to sleep. Turn the frontlight off for sleep and restore its prior state on wake; this changes illumination, not screen content. Night mode means inverted rendering within the fixed theme. Time is set locally, without a network time service.
 Sleep suspends Python execution and waking resumes it; it must not kill or restart the script. The existing automatic-sleep exception while a script runs remains in effect. Manual Power sleep can suspend a running script.
 Implementation note: preserve the VM, stack and local variables, but wall-clock time still passes. Network connections and external I/O may time out across a long sleep; suspension does not freeze the outside world.
 Implementation must distinguish idle power saving, state-preserving sleep and deep sleep. An unchanged e-ink image does not imply that the processor is already sleeping.
+

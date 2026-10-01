@@ -55,3 +55,11 @@ stage is entirely IDF-provided; no external managed components are fetched by
 the project. IDF and its bundled components retain their upstream licences.
 InkPy's own project licence remains unselected; the FreeInk notice is not a
 blanket licence assignment for all new project code.
+
+
+## Stage 4 addition
+
+The optional math diagnostic adds the shared C++ MicroTeX/FreeType renderer.
+See MATH-DEVICE.md for pins, the targeted operator-limit overlay, resource
+reductions and build/measurement boundaries. Hardware code remains C. Wake now
+accepts one Power click, consumes release bounce, and leaves pixels unchanged.

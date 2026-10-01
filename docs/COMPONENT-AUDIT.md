@@ -82,7 +82,7 @@ Font selection is now confirmed UI scope. Propose SD font discovery plus fixed f
 ## Sleep and event semantics
 Inspected IDF docs/en/api-reference/system/sleep_modes.rst at the pinned version: light sleep preserves execution state; deep sleep powers off most RAM and resumes through startup. Retaining the e-ink image alone does not preserve an editor or Python VM.
 Initial proposal: state-preserving light sleep after inactivity, with touch/input disabled and retained display image. Reserve deep sleep for a later measured policy with explicit restoration; never silently lose unsaved text or console variables. Even idle firmware must wake to process input; the e-ink panel being static is not CPU sleep.
-Power GPIO wake is level-triggered, not a hardware long-press detector. Wake internally on press, validate hold duration before enabling interaction, and return to sleep for short presses. Suppress the wake press's normal action and avoid immediate re-wake after entering sleep. Measure actual rail/PSRAM/light-sleep current; no battery-life estimate is justified yet.
+**Historical Stage 1 wake proposal, superseded in Stage 4 by single-click wake:** Power GPIO wake is level-triggered, not a hardware long-press detector. Wake internally on press, validate hold duration before enabling interaction, and return to sleep for short presses. Suppress the wake press's normal action and avoid immediate re-wake after entering sleep. Measure actual rail/PSRAM/light-sleep current; no battery-life estimate is justified yet.
 
 ## Memory and build gates
 | Consumer | Known quantity or measurement needed |
@@ -101,3 +101,4 @@ CrossPoint, FreeInk, MicroPython core, MD4C and MicroTeX core have MIT notices. 
 ## Next implementation boundary
 Stage 2 is repeatable minimal board bring-up only: pinned IDF build, X4 Pro hardware adapter, diagnostic display/input/SD/light/RTC and sleep probes, plus a clear hardware checklist. No full browser/editor/reader/Python implementation. Preserve existing boot/recovery capability; establish actual partition/boot state before supplying flash instructions. Stop after a reproducible build and documented device-test handoff (or a reproducible blocker).
 Subsequent separate gates: math/font prototype; bounded Markdown parsing; Python lifecycle/coexistence; then feature stages. Hardware evidence determines readiness, not this audit.
+

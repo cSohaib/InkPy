@@ -1,0 +1,30 @@
+id	style	status	width	height	baseline	microseconds	error
+1	inline	rendered	35	29	18	116	
+2	inline	rendered	31	26	18	66	
+3	inline	rendered	33	32	24	44	
+4	inline	rendered	137	37	27	124	
+5	inline	rendered	52	50	33	89	
+6	inline	rendered	97	41	26	119	
+7	inline	rendered	103	47	31	95	
+8	inline	rendered	120	37	24	181	
+9	inline	rendered	89	33	24	100	
+10	inline	rendered	80	40	26	82	
+11	inline	rendered	40	26	18	24	
+12	inline	rendered	81	40	26	74	
+13	inline	rendered	54	51	28	49	
+14	inline	rendered	114	45	30	94	
+15	inline	rendered	49	40	29	40	
+16	inline	rendered	120	37	24	73	
+17	inline	rendered	40	37	24	51	
+18	inline	rendered	30	26	18	72	
+19	inline	rendered	32	32	24	23	
+20	inline	rendered	33	32	24	35	
+21	display	rendered	230	70	46	208	
+22	display	rendered	197	77	47	224	
+23	display	rendered	149	73	42	194	
+24	display	rendered	230	125	68	332	
+25	display	rendered	228	78	45	235	
+26	display	rendered	340	86	50	402	
+27	display	fallback	0	0	0	22	unsupported command; show source
+28	display	fallback	0	0	0	3	unbalanced braces
+29	display	fallback	0	0	0	51	formula too large; show source

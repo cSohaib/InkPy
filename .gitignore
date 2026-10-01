@@ -6,3 +6,6 @@ __pycache__/
 
 prototypes/math/.deps/
 prototypes/math/build/
+
+
+build-math/

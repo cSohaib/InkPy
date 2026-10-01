@@ -1,0 +1,10 @@
+{
+  "math": {
+    "binary_bytes": 1503584,
+    "sha256": "1eb1d33dc349f0bd51be0fd5834c04e7a1dd58d0ca140e8fa8403867301013bb"
+  },
+  "hardware": {
+    "binary_bytes": 332048,
+    "sha256": "6d7cd62f451361282502582db1f15ba5458a5354ca095085ebe6418f856b5b5e"
+  }
+}

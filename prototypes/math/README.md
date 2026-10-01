@@ -1,4 +1,4 @@
-# Stage 3: host math/font experiment
+# Host math/font experiment (Stages 3–4)
 
 Run from the repository root:
 
@@ -15,11 +15,12 @@ It never builds or flashes firmware. Outputs live under `build/`:
 Set `PYTHON=/path/to/python3` if Pillow is installed in another environment.
 Pillow only assembles the contact sheet; it does not render the formulas.
 
-`ink_math.h` is the small C-facing boundary. The C++ adapter implements only the
-interfaces MicroTeX requires. Library internals are unmodified, not translated
-into C. Global initialization happens once, one owner renders one formula at a
+`../../components/ink_math/ink_math.h` is the shared C-facing boundary. The C++ adapter implements only the
+interfaces MicroTeX requires. Two context-checked build overlays fix MicroTeX operator limits and initialize
+an upstream UTF conversion accumulator; vendor
+source caches stay unmodified. No translation into C. Global initialization happens once, one owner renders one formula at a
 time, and shutdown ends the session. Caller must provide valid pointers and a
-NUL-terminated source. Not thread-safe; not yet a firmware component.
+NUL-terminated source. Not thread-safe. The optional ESP32 diagnostic uses this same component.
 
 MD4C parses the small corpus and supplies actual inline/display math callbacks.
 This is **not** a streaming Markdown reader: the harness explicitly caps its
@@ -33,8 +34,7 @@ tables, pagination, reader fonts and dictionary hit boxes are not implemented.
 - TrueType, SFNT, PostScript glyph names and monochrome raster FreeType modules.
   No auto-hinter, color/SVG font renderer, external compression or shaping deps.
   Glyph hinting is disabled: native hints erased thin mathematical strokes.
-  Upstream CMake still compiles additional archive objects; unregistered modules
-  are not pulled into the executable. Further firmware build trimming is pending.
+  The shared source list compiles 13 required FreeType translation units.
 - Four FreeType face slots, least-recently-used replacement; no glyph cache.
 - One fixed 480x800, 48,000-byte caller-owned bitmap, 1=black. This is portrait
   math output, **not** the diagnostic's landscape/1=white frame format.
@@ -59,7 +59,7 @@ measured ESP32-S3 heap/stack, allocation-failure behavior and long-run stability
 
 ## Provenance
 
-All pins are enforced by `run.sh`; upstream files remain in the disposable cache.
+All pins are enforced by `../../scripts/fetch-math.sh`, called by `run.sh`; upstream files remain in the disposable cache.
 
 | Source | Revision | Purpose |
 |---|---|---|
@@ -75,4 +75,6 @@ copyright © 2024 The FreeType Project (www.freetype.org). All rights reserved.
 MicroTeX fonts have separate notices, preserved without renaming/modifying fonts.
 Only `res/fonts` is copied into the test resource root. Optional `res/greek` and
 `res/cyrillic` language packs are neither bundled nor needed for TeX Greek symbols.
-A reduced final font manifest remains a later porting task.
+The Stage 4 staging script retains 27 math fonts and generates their hash manifest.
+See `../../docs/MATH-DEVICE.md` for the device diagnostic and measured build results.
+
