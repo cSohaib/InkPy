@@ -1,55 +1,44 @@
 # InkPy checkpoint
 
 Updated: 2026-10-01
-Stage 0: scope and workflow recorded. Pause here.
+Stage 1 complete: UI specification and component audit. Pause here.
+
+## Read first
+Read AGENTS.md, then this file. Read docs/UI.md when changing interactions and only the relevant sections of docs/COMPONENT-AUDIT.md for implementation. Do not repeat upstream discovery; the audit contains exact source pins and inspected paths.
 
 ## Completed
-- Repository inspected: initially empty, default branch main.
-- AGENTS.md records efficient reads, batching, bounded stages, progress commits, and handoff requirements.
-- README.md records confirmed scope and provisional architecture.
-- No firmware, dependency import, build, or hardware experiment performed.
-- Documentation checked for consistency with the user's scope; no software tests apply yet.
+- docs/UI.md records the full user-requested controls, menus, file routing and sleep behaviour; proposals and open questions are explicitly labelled.
+- docs/COMPONENT-AUDIT.md pins CrossPoint master, its FreeInk SDK gitlink, MicroPython, ESP-IDF v5.5.5, MD4C and MicroTeX. It records inspected interfaces, licensing, hardware inconsistencies, porting decisions and memory gates.
+- fixtures/markdown-math.md defines proposed rendering/edge-case coverage. Its missing image is intentional; add a real small image in the rendering prototype.
+- README.md links the specifications and reflects the new power menu.
+- No firmware implemented, dependencies imported, builds run or hardware tests claimed.
 
-## Decisions and rationale
-Confirmed: X4 Pro only; fixed minimal UI; Markdown math rather than full LaTeX; editor, MicroPython scripts/console, fonts, StarDict; SD file transfer; networking only as needed by Python; restricted EPUB later.
-User requests continuity through commits, including planning/research checkpoints, and explicit pauses between stages.
-Proposed: C + ESP-IDF with narrowly scoped C++ dependencies. Avoid translating useful libraries purely for language uniformity.
-Proposed: English UI and a single programming-friendly keyboard; exact layout remains undecided.
-Proposed: shared native layout engine, bounded document caches, SD-backed editing, and explicit memory ownership.
-Preserve font/library licences when porting; project licence remains to be selected.
+## Main findings
+- Keep a C-first native ESP-IDF application; isolate useful C++ components. SDK code needs an Arduino-to-IDF transport port.
+- X4 Pro has production panel variants; one-device scope does not permit assuming a single panel controller.
+- MD4C recognizes math spans but requires a contiguous input buffer. Bounded parsing remains a prototype gate, not a solved feature.
+- MicroTeX needs an embedded graphics/font backend, local C++ exception support and resource trimming validated by measurement.
+- Integrate the existing MicroPython ESP32 port with a controlled task lifecycle, bounded heap, shared storage and console I/O. Automatic boot/main scripts and peripheral cleanup need adaptation.
+- Preserve unsaved editor state and idle REPL state. Prefer light sleep initially; deep sleep loses ordinary RAM. Unchanged e-ink pixels are separate from CPU power state.
+- Brightness/warmth hardware exists. Treat sliders as tap-to-set (+/- also available), consistent with the no-slide rule.
 
-## Existing source leads (reuse; inspect exact code only when needed)
-These were identified in the preceding discussion through web retrieval. No revisions are pinned and no port compatibility is established.
-- CrossPoint reference: https://github.com/crosspoint-reader/crosspoint-reader
-  Use X4 Pro hardware handling as a reference, not the entire application architecture. Inspect a pinned revision before selecting code.
-- Board configuration: https://github.com/tuya/TuyaOpen/blob/master/boards/ESP32/XTEINK_X4_PRO/board_config.h
-  Reports ESP32-S3, 16 MB flash, 8 MB octal PSRAM. Verify driver details and actual board assumptions before implementation.
-- MicroPython ESP32 reference: https://docs.micropython.org/en/latest/esp32/quickref.html
-- MicroPython S3 target: https://micropython.org/download/ESP32_GENERIC_S3/
-  Existing target support is established; integrating the VM, SD ownership, network access, console and interruption remains work.
-- Candidate math renderer: https://github.com/NanoMichael/MicroTex
-  Embeddable C++ math renderer; size, dependencies, font needs and device performance unverified. Candidate only.
+## Unresolved user semantics (do not block board bring-up)
+1. Does manual sleep while a Python script runs leave it running with the interface asleep, suspend it, or stop it?
+2. Does ordinary Close console stop the script or allow background execution? Long Home definitely stops and closes.
+3. Should extensionless Python files be executable? Proposed initial identification is .py.
+Proposed defaults (not user-confirmed): English UI, tap-to-set sliders, save-then-close, frontlight off during sleep/restored on wake, UTF-8 text, single interpreter session. Exact keyboard layout remains open.
 
-## Next bounded stage: component audit and feasibility specification
-Research/design only; stop before firmware implementation.
-1. Inspect and pin relevant CrossPoint hardware code, MicroPython ESP32 port, and one credible math renderer candidate. Record versions, relevant paths, licences, dependencies and reuse/removal decisions.
-2. Specify a small Markdown/math compatibility corpus: paragraphs, emphasis, lists, code, tables, local images; Greek symbols, fractions, scripts, roots, sums, integrals, matrices and aligned equations. These are proposed coverage, not an already supported feature list.
-3. Resolve integration approach and build-version constraints; identify memory consumers and measurements required. Do not claim measured budgets before a prototype exists.
-4. Record a bounded bring-up/prototype plan and update this checkpoint. Commit and pause.
+## Next bounded stage: minimal board bring-up
+1. Create an ESP-IDF v5.5.5 build pinned to the audit commit and record build prerequisites.
+2. Implement a small X4 Pro-only hardware adapter/diagnostic entry point: display, buttons/GT911 Home, SDMMC, warm/cool light and RTC; establish memory reporting.
+3. Retain relevant panel detection/driver variants. Inspect only their needed source plus GT911 details at the saved SDK revision; earlier audit did not inspect every driver body.
+4. Add sleep/wake and input-event probes, preserving visible pixels. Confirm actual partition/recovery conditions before offering flashing instructions.
+5. Build if the execution environment permits; record exact blockers otherwise. Produce a concise device checklist (panel ID, corner taps, Home hold, button sequences, SD read/write, light channels, sleep retention/current).
+6. Commit and pause for hardware validation. No full file browser, reader, editor or MicroPython app in this stage.
 
-## Later stages (provisional; split when necessary)
-- Minimal board bring-up and repeatable build: display, touch/buttons, SD and basic power management.
-- Math/font and refresh/keyboard probes; MicroPython coexistence probe. Hardware evidence required before declaring feasibility proven.
-- Markdown reader using shared layout, pagination and bounded caching.
-- SD-backed text editor with bounded indexing, reliable save/recovery and long-line handling.
-- MicroPython script runner and console with bounded output and interruption behaviour.
-- StarDict integration with reader hitboxes and bounded lookup memory.
-- Device-level integration and usability checks.
-- Restricted EPUB import only after Markdown is accepted.
+## Later gates
+Math/font rendering; bounded Markdown parsing/indexing; Python lifecycle/coexistence; feature stages for reader/editor/console/dictionary; hardware integration; restricted EPUB only after Markdown acceptance.
+Dependencies are research pins, not a tested lockfile. Build-stage component resolution still needs exact locks. InkPy's own licence is unselected; preserve notices when code/assets are actually ported.
 
-Each stage ends with a committed checkpoint and pause. The list is not authorization to implement all stages in one run.
-
-## Open risks
-Math coverage and font footprint; e-ink typing latency; peak RAM with Python/networking; interrupting blocking scripts; SD ownership and save recovery; board-specific sleep/wake and installation/recovery.
-An English-only UI must not accidentally imply ASCII-only document content. Text encoding/glyph coverage is a separate decision.
-No browser-equivalent math compatibility, arbitrary EPUB fidelity, or desktop Python package compatibility has been promised.
+## Validation
+Planning files reviewed against user requirements and inspected primary source code. Source SHA pins verified via GitHub. No runtime or hardware results exist. Local scratch directory was not a git checkout; planning commits are made through GitHub Git data APIs with a non-force ref update.
