@@ -1,8 +1,9 @@
 # InkPy
 
 Minimal firmware exclusively for the Xteink X4 Pro. Stage 2 provides a compiled
-hardware diagnostic; device validation is pending. The file browser, Markdown,
-editor and MicroPython runtime are not implemented yet.
+hardware diagnostic; Stage 3 adds an isolated host math/font prototype. Device
+validation is pending. The file browser, full Markdown reader, editor and
+MicroPython runtime are not implemented yet.
 
 ## Confirmed scope
 - Markdown reader with embedded LaTeX mathematics: inline `$…$` and display `$$…$$`, including multiline display blocks. Target the mathematical notation used in ChatGPT Markdown responses, not full LaTeX documents or packages.
@@ -25,6 +26,7 @@ Keep layout separate from document parsing so a later restricted EPUB importer c
 “ChatGPT-style math” describes the intended use, not a fixed compatibility specification. The proposed acceptance corpus defines representative notation; actual supported coverage must be established by the rendering prototype. Delimiters alone do not make mathematical layout trivial.
 
 ## Interaction and implementation references
+- [Math/font prototype](docs/MATH-PROTOTYPE.md): measured host results, preview and remaining gates.
 - [Hardware diagnostic](docs/BRINGUP.md): build instructions, diagnostic controls and device checklist.
 - [Port provenance](docs/PORTING.md): reused code, deliberate reductions and licences.
 - [UI specification](docs/UI.md): file browser home, file actions, editor/console/reader controls, no slide gestures, power menu and sleep.

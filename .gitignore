@@ -3,3 +3,6 @@ sdkconfig
 sdkconfig.old
 .DS_Store
 __pycache__/
+
+prototypes/math/.deps/
+prototypes/math/build/

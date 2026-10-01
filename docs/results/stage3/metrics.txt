@@ -1,0 +1,3 @@
+preflight/recovery/glyph tests passed (16 cases)
+formulas=29 rendered=26 fallback=3
+glibc_heap_before_init=387520 after_init=499728 max_post_formula_sample=571264 after_release=495888 peak_process_rss_kib=4608
