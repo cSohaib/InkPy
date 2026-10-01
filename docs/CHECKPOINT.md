@@ -1,44 +1,75 @@
 # InkPy checkpoint
 
 Updated: 2026-10-01
-Stage 1 complete: UI specification and component audit. Pause here.
+Stage 2 source/build complete; physical hardware validation pending. Pause here.
 
 ## Read first
-Read AGENTS.md, then this file. Read docs/UI.md when changing interactions and only the relevant sections of docs/COMPONENT-AUDIT.md for implementation. Do not repeat upstream discovery; the audit contains exact source pins and inspected paths.
+Read AGENTS.md and this checkpoint. docs/UI.md owns interaction requirements;
+docs/BRINGUP.md owns the diagnostic instructions/results; docs/PORTING.md owns
+port provenance. The earlier COMPONENT-AUDIT.md remains a dated research record.
+Use its pinned references instead of repeating source discovery.
 
-## Completed
-- docs/UI.md records the full user-requested controls, menus, file routing and sleep behaviour; proposals and open questions are explicitly labelled.
-- docs/COMPONENT-AUDIT.md pins CrossPoint master, its FreeInk SDK gitlink, MicroPython, ESP-IDF v5.5.5, MD4C and MicroTeX. It records inspected interfaces, licensing, hardware inconsistencies, porting decisions and memory gates.
-- fixtures/markdown-math.md defines proposed rendering/edge-case coverage. Its missing image is intentional; add a real small image in the rendering prototype.
-- README.md links the specifications and reflects the new power menu.
-- No firmware implemented, dependencies imported, builds run or hardware tests claimed.
+## New confirmed Python requirements
+Close console stops/kills its session; no background execution. Manual sleep
+suspends the running script, wake resumes it. No hard runtime limit. Scripts
+usually taking under a minute are the intended workload, not an execution cap.
+The existing auto-sleep exemption for running Python is retained. These are
+recorded contracts; Python is not present in the current diagnostic.
 
-## Main findings
-- Keep a C-first native ESP-IDF application; isolate useful C++ components. SDK code needs an Arduino-to-IDF transport port.
-- X4 Pro has production panel variants; one-device scope does not permit assuming a single panel controller.
-- MD4C recognizes math spans but requires a contiguous input buffer. Bounded parsing remains a prototype gate, not a solved feature.
-- MicroTeX needs an embedded graphics/font backend, local C++ exception support and resource trimming validated by measurement.
-- Integrate the existing MicroPython ESP32 port with a controlled task lifecycle, bounded heap, shared storage and console I/O. Automatic boot/main scripts and peripheral cleanup need adaptation.
-- Preserve unsaved editor state and idle REPL state. Prefer light sleep initially; deep sleep loses ordinary RAM. Unchanged e-ink pixels are separate from CPU power state.
-- Brightness/warmth hardware exists. Treat sliders as tap-to-set (+/- also available), consistent with the no-slide rule.
+## Implemented
+- Native C/ESP-IDF build restricted to ESP32-S3 and required components;
+  scripts/build.sh enforces IDF b774170ff46c393eeb5e495ea37936038d3f4f4f (v5.5.5).
+- main/pins.h: fixed X4 Pro map; main/board.c: shared I2C, GT911/Home, dual light,
+  RTC read/validity, raw gauge report, SDMMC/FatFs mount with bounded retries,
+  sector validation and non-overwriting temporary-file write/read test.
+- main/display.c: two-pass live controller probe/MTP fallback, SSD1677/UC8179/
+  UC8279 monochrome full-frame ports, internal DMA bounce buffer, timeout/error
+  reporting and panel sleep. Variant orientation/padding is preserved.
+- main/input.c: debounced short/double/long recognition; meaningful host tests
+  in tests/input_test.c, invoked by scripts/test-host.sh.
+- main/sleep.c: light sleep, retained RAM/pixels, touch/light shutdown and restore,
+  long-Power qualification, consumed wake press, no redraw on wake.
+- main/main.c: diagnostic patterns, tap/hold coordinates, paging buttons,
+  light controls, reports and five-minute idle sleep. Product UI is deferred.
+- partitions.csv mirrors the source reference layout for linking only, not
+  permission/evidence to replace the actual device's partition table.
+- FreeInk MIT notice retained; no full SDK/Arduino/UI framework imported.
 
-## Unresolved user semantics (do not block board bring-up)
-1. Does manual sleep while a Python script runs leave it running with the interface asleep, suspend it, or stop it?
-2. Does ordinary Close console stop the script or allow background execution? Long Home definitely stops and closes.
-3. Should extensionless Python files be executable? Proposed initial identification is .py.
-Proposed defaults (not user-confirmed): English UI, tap-to-set sliders, save-then-close, frontlight off during sleep/restored on wake, UTF-8 text, single interpreter session. Exact keyboard layout remains open.
+## Verified
+Host input tests passed. Native IDF build/link and image-size checks passed with
+InkPy warnings-as-errors. Application binary 332,112 bytes; 96% of configured app
+slot free. Static DIRAM use 73,735 bytes; runtime memory remains unmeasured.
+See BRINGUP.md for tool versions, binary SHA and local setup fixes.
+No hardware attached or flashed. No panel, touch, sleep-current or SD behaviour
+has been demonstrated on the user's device. No MicroPython lifecycle test exists.
 
-## Next bounded stage: minimal board bring-up
-1. Create an ESP-IDF v5.5.5 build pinned to the audit commit and record build prerequisites.
-2. Implement a small X4 Pro-only hardware adapter/diagnostic entry point: display, buttons/GT911 Home, SDMMC, warm/cool light and RTC; establish memory reporting.
-3. Retain relevant panel detection/driver variants. Inspect only their needed source plus GT911 details at the saved SDK revision; earlier audit did not inspect every driver body.
-4. Add sleep/wake and input-event probes, preserving visible pixels. Confirm actual partition/recovery conditions before offering flashing instructions.
-5. Build if the execution environment permits; record exact blockers otherwise. Produce a concise device checklist (panel ID, corner taps, Home hold, button sequences, SD read/write, light channels, sleep retention/current).
-6. Commit and pause for hardware validation. No full file browser, reader, editor or MicroPython app in this stage.
+## Exact next step: hardware handoff
+Before any flash command, establish installed firmware/version, actual partition
+layout/active slot and a known working recovery route for this particular device.
+Then follow the hardware checklist in BRINGUP.md and retain the diagnostic log.
+If no hardware session is available, pause at this gate; do not describe the
+board port as device-validated. Independent math/font host prototyping can be
+its own later stage when requested, with hardware readiness still marked pending.
 
-## Later gates
-Math/font rendering; bounded Markdown parsing/indexing; Python lifecycle/coexistence; feature stages for reader/editor/console/dictionary; hardware integration; restricted EPUB only after Markdown acceptance.
-Dependencies are research pins, not a tested lockfile. Build-stage component resolution still needs exact locks. InkPy's own licence is unselected; preserve notices when code/assets are actually ported.
+## Known limits and follow-up
+- Full refresh blocks the diagnostic task: short touches during refresh can be
+  missed. Separate input/render scheduling before the actual editor/console UI.
+- All hardware calls have one owner today. Add storage/I2C arbitration and a
+  quiesce handshake before a Python worker can access them. Never force-delete
+  or suspend a task while it owns these locks.
+- SD remains mounted/powered in light sleep. Current draw needs measurement;
+  CPU sleep is not claimed equivalent to deep sleep. Screen pixels are retained.
+- Battery service is raw read-only: profile validation/low-battery handling and
+  RTC setting are not completed. Do not treat this diagnostic as daily-use firmware.
+- No script runtime limit; any future peripheral-operation timeout protects an
+  I/O transaction, not total script duration. External time still passes in sleep.
+- MD4C bounded input and MicroTeX resource/backend work remain later gates.
+- Open choices: extensionless script execution, final keyboard layout and
+  InkPy licence. Proposed English/UTF-8 UI/content defaults remain as documented.
 
-## Validation
-Planning files reviewed against user requirements and inspected primary source code. Source SHA pins verified via GitHub. No runtime or hardware results exist. Local scratch directory was not a git checkout; planning commits are made through GitHub Git data APIs with a non-force ref update.
+## Resume efficiently
+Inspect main/ and BRINGUP.md for the current stage, not the entire SDK again.
+Reference files/toolchain under the preceding session's scratch directory are
+only disposable caches. Repository sources and pinned upstream revisions are
+the durable checkpoint. Dependencies are all from the pinned IDF this stage;
+Component Manager is disabled until an actual managed dependency is introduced.

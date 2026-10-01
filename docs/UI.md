@@ -35,7 +35,8 @@ A single onscreen keyboard is shared with filename entry and the Python console.
 - Long-press Home stops its process, closes the console and goes home.
 - The top-level browser button opens an interactive MicroPython console.
 Proposed: Execute opens this same console with the selected script; output stays visible after completion. Stop interrupts execution and keeps the console open.
-Open: does ordinary Close console stop the running script, or leave it running in the background? Do not silently decide this during implementation. Long-press Home always stops and closes.
+Closing the console stops whatever is executing and releases the session; no background script continues. Long-press Home does the same and goes home.
+Scripts have no fixed runtime limit. The expected workload is short scripts (usually under one minute), which guides design and testing but must never become an execution timeout.
 Console history needs SD-backed paging or an explicit retention policy, not unlimited RAM accumulation. Output rate must not drive a display refresh for every print.
 
 ## Markdown reader
@@ -61,5 +62,6 @@ Proposed: chapters come from Markdown headings; page numbers belong to the curre
   - Font selector
 
 Proposed: disable touch and side-button interaction while asleep; ignore short/double Power actions until an intentional long wake. Turn the frontlight off for sleep and restore its prior state on wake; this changes illumination, not screen content. Night mode means inverted rendering within the fixed theme. Time is set locally, without a network time service.
-Open: what should manual sleep do while Python is running (continue running with input/light off, suspend it, or stop it)? Auto-sleep exemption is confirmed; manual policy is not.
+Sleep suspends Python execution and waking resumes it; it must not kill or restart the script. The existing automatic-sleep exception while a script runs remains in effect. Manual Power sleep can suspend a running script.
+Implementation note: preserve the VM, stack and local variables, but wall-clock time still passes. Network connections and external I/O may time out across a long sleep; suspension does not freeze the outside world.
 Implementation must distinguish idle power saving, state-preserving sleep and deep sleep. An unchanged e-ink image does not imply that the processor is already sleeping.

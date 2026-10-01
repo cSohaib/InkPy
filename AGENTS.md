@@ -14,7 +14,7 @@ InkPy targets only Xteink X4 Pro. Read README.md for product scope and docs/CHEC
 - Optimize for reliable completion per stage, not simply the fewest lines of code.
 
 ## Implementation direction
-C-first application on ESP-IDF is provisional pending component evaluation. Small C++ dependencies are acceptable where they materially reduce porting work. Avoid inheritance-heavy frameworks, hidden state, and unnecessary generic abstraction. Use explicit memory ownership and small cohesive interfaces.
+C-first application on pinned ESP-IDF; small C++ dependencies remain acceptable where they materially reduce porting work. Avoid inheritance-heavy frameworks, hidden state, and unnecessary generic abstraction. Use explicit memory ownership and small cohesive interfaces.
 Reuse proven components, strip unused application/device functionality, and preserve required licence notices. Do not rewrite mature internals solely for stylistic consistency.
 Use bounded memory for document processing, editing, caches, and Python output. File size must not directly determine RAM consumption.
 
