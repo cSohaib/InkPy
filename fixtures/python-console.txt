@@ -1,0 +1,7 @@
+answer
+for i in range(3):
+    print(i)
+
+math.sqrt(16)
+1 / 0
+print("still alive")

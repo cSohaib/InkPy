@@ -20,6 +20,10 @@ int main(int argc,char **argv)
 {
     assert(argc==3);
     ink_browser b; assert(!ink_browser_init(&b,argv[1]));
+    assert(ink_keyboard_key(&b.keyboard,3,0)=='\'');
+    assert(ink_keyboard_key(&b.keyboard,3,2)=='(');
+    assert(ink_keyboard_key(&b.keyboard,3,4)=='[');
+    assert(ink_keyboard_key(&b.keyboard,3,9)==INK_KEY_INDENT);
     const char *names[]={"notes.py","chapter.md","plain.txt","scratch"};
     for(unsigned i=0;i<4;++i) {
         ink_browser_tap(&b,50,70); assert(b.view==INK_NEW_FILE);

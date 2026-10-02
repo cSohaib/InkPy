@@ -2,11 +2,12 @@
 #include <string.h>
 int ink_keyboard_key(const ink_keyboard *k,unsigned row,unsigned column)
 {
-    static const char *letters[]={"qwertyuiop","asdfghjkl:","zxcvbnm,._","1234567890"};
+    static const char *letters[]={"qwertyuiop","asdfghjkl:","zxcvbnm,._","'\"()[]{}\\"};
     static const char *symbols[]={"1234567890","!@#$%^&*()","+-=/\\[]{};","'\"<>?~`|"};
     static const int controls[]={INK_KEY_SHIFT,INK_KEY_SYMBOLS,' ',INK_KEY_DELETE,INK_KEY_ENTER};
     if(row==4) return column<5?controls[column]:0;
     if(row>=4) return 0;
+    if(!k->symbols && row==3 && column==9) return INK_KEY_INDENT;
     const char *keys=k->symbols?symbols[row]:letters[row];
     if(column>=strlen(keys)) return 0;
     int key=(unsigned char)keys[column];

@@ -45,8 +45,8 @@ static void new_file(const ink_browser *b,uint8_t *frame)
         int key=ink_keyboard_key(&b->keyboard,row,col); if(!key) continue;
         unsigned w=INK_KB_WIDTH*(row==4?2:1),x=INK_KB_X+col*w,y=INK_KB_Y+row*INK_KB_HEIGHT;
         box(frame,x+1,y+1,w-2,INK_KB_HEIGHT-2);
-        if(row==4) {
-            const char *label=key==INK_KEY_SHIFT?(b->keyboard.shift?"SHIFT":"Shift"):
+        if(row==4 || key==INK_KEY_INDENT) {
+            const char *label=key==INK_KEY_INDENT?"Tab":key==INK_KEY_SHIFT?(b->keyboard.shift?"SHIFT":"Shift"):
                 key==INK_KEY_SYMBOLS?(b->keyboard.symbols?"abc":"#+="):
                 key==' '?"Space":key==INK_KEY_DELETE?"Del":"Enter";
             text_size(frame,x+(w-(unsigned)strlen(label)*9)/2,y+19,label,1);

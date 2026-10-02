@@ -1,0 +1,16 @@
+Hello from InkPy MicroPython
+squares: [0, 1, 4, 9, 16, 25]
+sqrt: 9.0
+big integer: 1208925819614629174706176
+caught division by zero
+InkPy MicroPython console; EOF closes, blank line finishes a block.
+>>> 42
+>>> ... ... 0
+1
+2
+>>> 4.0
+>>> Traceback (most recent call last):
+  File "<stdin>", in <module>
+ZeroDivisionError: divide by zero
+>>> still alive
+>>>

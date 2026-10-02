@@ -1,6 +1,6 @@
 # InkPy checkpoint
 
-Updated: 2026-10-02. Stage 9 keyboard/New file source complete; ESP32 build and hardware validation pending.
+Updated: 2026-10-02. Stage 10 host MicroPython runnable; ESP32 build and hardware validation pending.
 Committed stage boundary: pause before starting further implementation.
 
 ## Read first
@@ -65,7 +65,7 @@ math-source preflight and a narrow C boundary; this is not a hard engine heap ca
 Close console must stop its session; no background execution. Manual sleep must
 suspend Python and resume it on wake. No script runtime limit; under a minute is
 workload guidance only. Auto-sleep after five minutes except while script runs.
-Python, editor, dictionary and complete Markdown reader do not yet exist.
+A host Python embedding now exists; device Python, editor, dictionary and complete Markdown reader do not yet exist.
 An optional file browser and paginated plain text viewer now exist. Markdown
 selection remains a placeholder until its richer reader is connected. EPUB remains deferred until Markdown is accepted. No slide gestures.
 
@@ -136,14 +136,30 @@ runtime acceptance stays pending; never call these ports device-validated.
 - User is eager for MicroPython: prioritize its first working prototype next,
   before expanding the text editor. This is the current sequencing decision.
 
+## Stage 10 delivered
+- Reused the already-audited MicroPython pin 19e685eca906a5a602135a485976253e705297d0
+  via ports/embed. components/ink_python is a small C execution/REPL boundary.
+- Runnable prototypes/python: .py script execution and multiline terminal REPL,
+  expression display and persistent globals; no runtime timeout. Fixed 256 KiB
+  host VM heap, streaming source lexer, 4,095-byte console block limit.
+- Floats, bigints, math/gc/sys. Python file I/O/external imports, network and machine
+  bindings deferred. No onscreen console/worker lifecycle integration yet.
+- Python-first main keyboard now has quotes/brackets/backslash and Tab action;
+  digits/operators on symbol layer. Future Tab default: four spaces, not literal
+  tabs. New file ignores indentation action. Keep one fixed English keyboard.
+- Basic script/REPL and keyboard/name checks passed; session and inspected keyboard
+  preview under results/stage10/. docs/MICROPYTHON.md owns commands and limits.
+- Fresh generated-header directories avoid upstream stale module registrations
+  after config changes. GNU C11 required by GC register collector. Dependencies
+  stay unchanged and ignored. No ESP32/SDK build or physical validation.
+
 ## Exact next bounded stage
-Stage 10 on continuation: start MicroPython with a runnable minimal interpreter
-prototype for .py scripts and an interactive console, using upstream native C
-code and a small InkPy boundary. Reuse the fixed keyboard when connecting UI.
-Keep the stage small; establish main-path execution first. Preserve no script
-timeout, close-stops-session and manual-sleep-suspends requirements; do not claim
-those lifecycle behaviors before implementing them. SDK/device build limits and
-the installation gate remain explicit. Basic checks, commit and pause.
+Stage 11 on continuation: add the console input/output boundary needed by the
+device, using the existing Python keyboard, bounded output/history and a VM worker
+separate from e-ink refresh. Establish safe stop/pause acknowledgment before
+enabling Close or sleep during execution; no forced task deletion/suspension.
+Keep the stage small; device SDK/build remains pending until environment restored.
+Retain no runtime timeout and the installation gate. Basic checks, commit, pause.
 
 ## Risks to preserve
 - Full panel refresh blocks diagnostic input today; split scheduling before editor

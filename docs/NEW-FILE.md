@@ -26,4 +26,5 @@ keyboard drawing in results/stage9/new-file.png was visually inspected.
 
 Build the app through scripts/build-browser.sh as before. ESP-IDF is still absent
 in this workspace: no ESP32 build or physical-device validation this stage.
-The rendering issue noted earlier remains deferred. MicroPython comes next.
+The rendering issue noted earlier remains deferred. Stage 10's MicroPython
+prototype and Python-focused keyboard update are documented in MICROPYTHON.md.
