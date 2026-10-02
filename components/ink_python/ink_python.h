@@ -2,9 +2,16 @@
 #include <stdbool.h>
 #include <stddef.h>
 /* One VM owner. Caller owns heap and supplies its worker's stack top.
- * Host embedding prototype; device scheduling/lifecycle are not integrated yet. */
+ * Host embedding prototype; device scheduling/lifecycle are not integrated yet.
+ * Execution returns 0 success, 1 exception, 2 stopped. After 2, close/reset the
+ * session before accepting more input; abort does not run Python finally blocks. */
 void ink_python_init(void *heap,size_t bytes,void *stack_top);
 int ink_python_file(const char *path);
 int ink_python_text(const char *source,bool repl);
 bool ink_python_more(const char *source);
 void ink_python_close(void);
+/* Called only by the VM owner. Control callback may wait for resume and returns
+ * true to stop. Output callback must copy bytes, never retain the pointer. */
+void ink_python_callbacks(bool (*control)(void *),
+    void (*output)(void *,const char *,size_t),void *context);
+void ink_python_poll(void);

@@ -10,6 +10,23 @@
 #include "py/stackctrl.h"
 
 static FILE *source_file;
+static bool (*control_callback)(void *);
+static void (*output_callback)(void *,const char *,size_t);
+static void *callback_context;
+void ink_python_callbacks(bool (*control)(void *),
+    void (*output)(void *,const char *,size_t),void *context)
+{
+    control_callback=control; output_callback=output; callback_context=context;
+}
+void ink_python_poll(void)
+{
+    if(control_callback && control_callback(callback_context)) nlr_jump_abort();
+}
+void mp_hal_stdout_tx_strn_cooked(const char *str,size_t len)
+{
+    if(output_callback) output_callback(callback_context,str,len);
+    else fwrite(str,1,len,stdout);
+}
 void ink_python_init(void *heap,size_t bytes,void *stack_top)
 {
     mp_embed_init(heap,bytes,stack_top);
@@ -36,23 +53,29 @@ static void execute(mp_lexer_t *lex,bool repl)
 int ink_python_file(const char *path)
 {
     nlr_buf_t nlr;
+    nlr_set_abort(&nlr);
     if(nlr_push(&nlr)==0) {
         source_file=fopen(path,"rb");
         if(!source_file) mp_raise_OSError(errno);
         mp_reader_t reader={source_file,read_byte,close_source};
         execute(mp_lexer_new(qstr_from_str(path),reader),false);
-        nlr_pop(); close_source(NULL); return 0;
+        nlr_pop(); nlr_set_abort(NULL); close_source(NULL); return 0;
     }
     close_source(NULL);
+    nlr_set_abort(NULL);
+    if(!nlr.ret_val) return 2;
     mp_obj_print_exception(&mp_plat_print,(mp_obj_t)nlr.ret_val); return 1;
 }
 int ink_python_text(const char *source,bool repl)
 {
     nlr_buf_t nlr;
+    nlr_set_abort(&nlr);
     if(nlr_push(&nlr)==0) {
         execute(mp_lexer_new_from_str_len(MP_QSTR__lt_stdin_gt_,source,strlen(source),0),repl);
-        nlr_pop(); return 0;
+        nlr_pop(); nlr_set_abort(NULL); return 0;
     }
+    nlr_set_abort(NULL);
+    if(!nlr.ret_val) return 2;
     mp_obj_print_exception(&mp_plat_print,(mp_obj_t)nlr.ret_val); return 1;
 }
 bool ink_python_more(const char *source) { return mp_repl_continue_with_input(source); }

@@ -1,6 +1,6 @@
 # InkPy checkpoint
 
-Updated: 2026-10-02. Stage 10 host MicroPython runnable; ESP32 build and hardware validation pending.
+Updated: 2026-10-02. Stage 11 host Python worker control proven; ESP32 build and hardware validation pending.
 Committed stage boundary: pause before starting further implementation.
 
 ## Read first
@@ -153,13 +153,27 @@ runtime acceptance stays pending; never call these ports device-validated.
   after config changes. GNU C11 required by GC register collector. Dependencies
   stay unchanged and ignored. No ESP32/SDK build or physical validation.
 
+## Stage 11 outcome
+- Python core now exposes worker-owned control/output callbacks. VM branch hooks
+  acknowledge pause through the host adapter; stop uses upstream nlr_jump_abort,
+  bypassing Python exception handlers. Return 2 means stopped; caller must close
+  and reset the VM session. Python finally blocks are not guaranteed on stop.
+- prototypes/python/worker.c proves a separate UI/control thread, pause/resume,
+  stop while paused, and acknowledgment only after VM cleanup. Output retains at
+  most 8192 newest bytes. This is a host adapter, not device task integration.
+- Build and existing smoke check pass. Worker checks pass with an endless loop
+  catching BaseException. Five-second test watchdog is NOT a runtime timeout.
+- Control is cooperative at bytecode branch points, not arbitrary native calls.
+  Future blocking storage/network bindings need their own safe cancellation.
+  No forced task suspension/deletion and no close/sleep UI enabled prematurely.
+- Preserved pre-existing run.sh permission-only change, excluded from commit.
+
 ## Exact next bounded stage
-Stage 11 on continuation: add the console input/output boundary needed by the
-device, using the existing Python keyboard, bounded output/history and a VM worker
-separate from e-ink refresh. Establish safe stop/pause acknowledgment before
-enabling Close or sleep during execution; no forced task deletion/suspension.
-Keep the stage small; device SDK/build remains pending until environment restored.
-Retain no runtime timeout and the installation gate. Basic checks, commit, pause.
+Stage 12: build the host onscreen console using the existing Python keyboard,
+bounded input and output/history pages, and the worker boundary. Make one command
+submission path work; keep device FreeRTOS and hardware wiring a later bounded
+stage. Retain no runtime timeout and the installation gate. Basic checks, commit,
+pause. Do not rebuild unrelated math or restore the SDK in this stage.
 
 ## Risks to preserve
 - Full panel refresh blocks diagnostic input today; split scheduling before editor

@@ -1,0 +1,8 @@
+pause acknowledged; UI thread remains responsive
+resume and second pause acknowledged
+worker ready
+stop acknowledged after VM cleanup, including while paused
+
+Host only. Separate pthread owns VM and heap; caller owns controls and bounded
+output. Endless bytecode loop catches BaseException, but stop bypasses it.
+Existing script/multiline REPL smoke check also passed.
