@@ -52,6 +52,8 @@ void app_main(void)
         if(he==INK_PRESS_SHORT) changed|=ink_browser_home(&browser);
         if(te==INK_PRESS_SHORT && !moved && origin_x<800 && origin_y<480)
             changed|=ink_browser_tap(&browser,origin_y,799-origin_x);
+        if(te==INK_PRESS_LONG && !moved && origin_x<800 && origin_y<480)
+            changed|=ink_browser_long_press(&browser,origin_y,799-origin_x);
         if(pe==INK_PRESS_SHORT) {
             snprintf(browser.message,sizeof(browser.message),"Power menu: coming later");
             browser.view=INK_NOTICE; changed=true;

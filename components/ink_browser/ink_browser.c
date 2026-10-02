@@ -95,13 +95,26 @@ static bool filename_tap(ink_browser *b,unsigned x,unsigned y)
 bool ink_browser_tap(ink_browser *b,unsigned x,unsigned y)
 {
     if(x>=480 || y>=800) return false;
+    if(b->view==INK_FILE_MENU) {
+        if(x<32 || x>=448 || y<180 || y>=308) return false;
+        if(y>=244) {
+            const char *name=strrchr(b->selected,'/'); name=name?name+1:b->selected;
+            const char *ext=strrchr(name,'.');
+            if(!ext || strcasecmp(ext,".py")) notice(b,"not executable");
+            else b->view=INK_EXECUTE_PYTHON;
+        } else {
+            if(ink_text_open(&b->text,b->selected)) notice(b,b->text.error);
+            else b->view=INK_EDIT_TEXT;
+        }
+        return true;
+    }
     if(b->view==INK_NEW_FILE) return filename_tap(b,x,y);
     if(b->view==INK_OPEN_TEXT) return false;
     if(b->view!=INK_FILES) return ink_browser_home(b);
     if(y>=48 && y<92) {
         if(x<240) {
             b->new_name[0]=b->message[0]=0; b->keyboard=(ink_keyboard){0}; b->view=INK_NEW_FILE;
-        } else notice(b,"Python console: coming later");
+        } else { b->selected[0]=0; b->view=INK_OPEN_CONSOLE; }
         return true;
     }
     if(y<148 || y>=148+42*INK_BROWSER_ROWS) return false;
@@ -129,4 +142,14 @@ bool ink_browser_tap(ink_browser *b,unsigned x,unsigned y)
     b->view=extension && !strcasecmp(extension,".md")?INK_OPEN_MARKDOWN:INK_OPEN_TEXT;
     if(b->view==INK_OPEN_TEXT && ink_text_open(&b->text,b->selected)) notice(b,b->text.error);
     return true;
+}
+bool ink_browser_long_press(ink_browser *b,unsigned x,unsigned y)
+{
+    if(b->view!=INK_FILES || x>=480 || y<148 || y>=148+42*INK_BROWSER_ROWS) return false;
+    unsigned row=(y-148)/42;
+    if(row>=b->count || b->rows[row].directory) return false;
+    if(join(b->selected,sizeof(b->selected),b->folder,b->rows[row].name)) {
+        notice(b,"Path is too long"); return true;
+    }
+    b->view=INK_FILE_MENU; return true;
 }

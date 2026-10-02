@@ -2,7 +2,7 @@
 
 Minimal firmware exclusively for the Xteink X4 Pro. The hardware diagnostic and shared host/ESP32 math
 diagnostic and host-only Markdown pagination with inline/display math are implemented. An optional device file browser and plain text viewer are also wired up; its ESP32 build and device validation are pending. The full Markdown reader, editor and
-device MicroPython runtime are not implemented yet. A minimal host MicroPython embedding now runs scripts and an interactive terminal console, with a keyboard-driven onscreen console preview and worker-backed Stop/Close/pause controls.
+device MicroPython runtime are not implemented yet. A minimal host MicroPython embedding now runs scripts and an interactive terminal console, with a browser-connected onscreen console preview, file execution and worker-backed Stop/Close/pause controls. The file browser has a long-press Edit/Execute menu; the editor remains pending.
 
 ## Confirmed scope
 - Markdown reader with embedded LaTeX mathematics: inline `$…$` and display `$$…$$`, including multiline display blocks. Target the mathematical notation used in ChatGPT Markdown responses, not full LaTeX documents or packages.

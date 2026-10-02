@@ -1,6 +1,6 @@
 # InkPy checkpoint
 
-Updated: 2026-10-02. Stage 14 host script jobs wired; ESP32 build and hardware validation pending.
+Updated: 2026-10-02. Stages 14–15 host browser/script/console path wired; ESP32 build and hardware validation pending.
 Committed stage boundary: pause before starting further implementation.
 
 ## Read first
@@ -216,10 +216,30 @@ runtime acceptance stays pending; never call these ports device-validated.
 - User authorized 2–3 stages this run; continue directly to Stage 15 rather than
   pausing at this intermediate local commit. Device integration remains pending.
 
+## Stage 15 outcome
+- Portable browser has long-press Edit/Execute menu. Execute requires .py,
+  otherwise exact "not executable" notice. Edit validates its initial text page
+  and issues an editor request; editor itself is still pending. No directory menu.
+- Top Console button now issues console request. Optional device browser source
+  handles long touch events; device runtime/editor requests remain honest pending
+  screens because no FreeRTOS Python adapter exists yet. No firmware build claim.
+- prototypes/python/app.{c,h} composes browser, console and session for the host:
+  Execute launches a file job, Console opens an empty session, keyboard/side/Home
+  events route to console, Close is polled then returns to original folder/page.
+  Rendering copies worker state under lock, then draws outside it.
+- Browser-console probe passes actual tap path: Console button, non-Python error,
+  file Execute, stdout, tapped 6*7 -> 42, Close menu, long Home on running file.
+  Portable browser checks pass paging/folders/text routing, Edit/binary gate,
+  Execute gate; New file probe still passes. Previews under results/stage15.
+- Two stages completed this batch as authorized; pause after pushing. No SDK,
+  flash or physical validation. Keep pre-existing run.sh permission-only change.
+
 ## Exact next bounded stage
-Stage 15: browser long-press Edit/Execute menu, Execute routing to the host
-console/session, non-Python error, and top Console button. Keep editor rendering
-and SDK restoration outside this batch. Basic checks, commit, push and pause.
+Stage 16: start host text editor for INK_EDIT_TEXT with the same Python keyboard,
+cursor placement and bounded visible text. Use a temporary file-backed working
+copy, not a file-sized RAM buffer. Make one edit/save/discard path work via Home;
+leave broader editor cases and device integration for subsequent stages. Basic
+checks, commit, pause (or a small batch if user explicitly continues that way).
 
 ## Risks to preserve
 - Full panel refresh blocks diagnostic input today; split scheduling before editor

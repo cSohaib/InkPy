@@ -1,0 +1,13 @@
+Stage 14:
+OK: .py job, not executable, script output/globals, missing file recovery
+OK: Home menu, Cancel, pause acknowledgment, Stop while paused, VM reset, result 42
+OK: Close while running and paused acknowledges VM cleanup
+OK: second Home cancels, long Home closes, fresh console opens
+
+Stage 15:
+OK: browser Console, long press Execute, script output, tapped REPL, Close returns, running-file long Home
+OK: paging, folders, Home, Markdown/text routing, file menu, Edit text/binary gate, Execute gate
+OK: keyboard, exact extensions, extensionless file, no overwrite, invalid name, cancel
+
+Host only; no firmware build or device validation. Editor is a request/pending
+screen. Initial-page text validation does not prove the entire file is valid.

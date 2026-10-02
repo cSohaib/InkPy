@@ -1,10 +1,14 @@
-# Stage 10: first runnable MicroPython embedding
+# MicroPython host prototype (through Stage 15)
 
 ```
 bash prototypes/python/run.sh fixtures/python-demo.py
 bash prototypes/python/run.sh
 bash prototypes/python/run.sh -i fixtures/python-demo.py
 python3 prototypes/python/smoke.py
+# Once the pinned dependencies/generated package exist:
+make -s -C prototypes/python build/inkpy-console build/inkpy-browser-console
+(cd prototypes/python && build/inkpy-console && build/inkpy-browser-console)
+python3 prototypes/python/preview.py
 ```
 
 This is native MicroPython, not CPython. The host prototype runs .py files and an
@@ -24,22 +28,26 @@ REPL continuation and normal shutdown. One owner/worker stack; caller owns the
 heap. The prototype uses a fixed 256 KiB GC heap and provisional 32 KiB C-stack
 limit. Script source feeds the lexer through a read-only FILE stream instead of
 a whole-file source buffer; parser/bytecode allocations must fit the VM heap.
-Console input is capped at 4,095 bytes per block; output streams to stdout.
+Terminal input is capped at 4,095 bytes per block; output streams to stdout.
+The onscreen model reserves a continuation newline in its 4096-byte input and
+keeps the newest 128 wrapped output lines, seven visible at once.
 These are host defaults, not device RAM acceptance measurements.
 
 Core features include doubles, big integers, math, gc and sys. Python open(),
 external .py imports, networking, machine bindings and user input() are not yet
-provided by this minimal embedding. No changes to board firmware build this stage.
-The onscreen Console button is still a placeholder. Close while running, safe
-stop, suspend/resume and SD-backed session history still need worker integration;
-normal shutdown is only called after execution returns. No lifecycle guarantee
-is implied by this host prototype. Upstream embed fatal internal errors still
+provided by this minimal embedding. The host browser Console/Execute routes now
+use prototypes/python/app and session: one VM worker, file/REPL command slot,
+cooperative pause and uncaught VM abort. Stop resets globals and retains history;
+Close acknowledges VM cleanup before returning to the browser. Native blocking
+calls need their own cooperation; no universal arbitrary-native-call guarantee.
+The device has no FreeRTOS Python integration yet, and shows a pending screen.
+SD-backed full history is deferred. Upstream embed fatal internal errors still
 use its terminal loop; robust fatal/OOM recovery is deferred.
 
 The fixed English keyboard is now Python-first: quotes, parentheses, square/curly
 brackets and backslash share its main layer with letters, colon and underscore.
 Digits/operators remain on the symbol layer. Tab emits an indentation action for
-the upcoming console/editor to insert four spaces; it is ignored in filename
+the console/editor to insert four spaces; it is ignored in filename
 entry. Enter remains an action, allowing a console to submit multiline input.
 
 Basic host checks passed script execution, math/bigints, persistent globals,

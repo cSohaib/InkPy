@@ -97,6 +97,16 @@ void ink_browser_draw(const ink_browser *b,uint8_t frame[48000])
         return;
     }
     text(frame,16,8,"InkPy");
+    if(b->view==INK_FILE_MENU) {
+        const char *name=strrchr(b->selected,'/');
+        text(frame,16,80,name?name+1:b->selected);
+        box(frame,32,180,416,64); box(frame,32,244,416,64);
+        text(frame,48,196,"Edit"); text(frame,48,260,"Execute"); return;
+    }
+    if(b->view==INK_OPEN_CONSOLE || b->view==INK_EXECUTE_PYTHON || b->view==INK_EDIT_TEXT) {
+        text(frame,16,80,b->view==INK_EDIT_TEXT?"Editor: pending":"Python runtime: pending");
+        text(frame,16,300,"Home: back"); return;
+    }
     if(b->view!=INK_FILES) {
         const char *name=strrchr(b->selected,'/');
         text(frame,16,80,b->view==INK_NOTICE?b->message:
