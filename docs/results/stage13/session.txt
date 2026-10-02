@@ -1,0 +1,7 @@
+OK: Home menu, Cancel, pause acknowledgment, Stop while paused, VM reset, result 42
+OK: Close while running and paused acknowledges VM cleanup
+OK: second Home cancels, long Home closes, fresh console opens
+OK: existing New file keyboard/filename probe
+
+Host pthread adapter only. Tests use the real VM branch hook, cooperative pause
+and upstream abort. Stop resets Python globals while retaining console history.

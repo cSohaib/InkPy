@@ -1,6 +1,6 @@
 # InkPy checkpoint
 
-Updated: 2026-10-02. Stage 12 host onscreen console proven; ESP32 build and hardware validation pending.
+Updated: 2026-10-02. Stage 13 host console lifecycle wired; ESP32 build and hardware validation pending.
 Committed stage boundary: pause before starting further implementation.
 
 ## Read first
@@ -186,12 +186,31 @@ runtime acceptance stays pending; never call these ports device-validated.
   are not wired to this screen yet. Stage 11 remains the stop/pause proof.
 - SDK/device validation still pending. Kept pre-existing run.sh mode change out.
 
+## Stage 13 outcome
+- prototypes/python/session.{c,h} is the reusable pthread session adapter:
+  one VM owner, one command slot, guarded console model, cooperative pause,
+  Stop request and Close acknowledgment after cleanup. Caller supplies VM heap.
+  Console probe uses this adapter; Stage 11 worker remains a historical proof.
+- Short Home opens Stop process / Close console / Cancel. Second Home cancels;
+  long Home requests Close. Menu taps cannot type through to keyboard. No swipes.
+- Stop keeps console/history open, resets the VM and clears input; globals are
+  lost deliberately because an aborted VM must not be reused partially unwound.
+  Close works during pause and waits for VM cleanup. No task deletion or timeout.
+- Build/probe pass: running endless command pauses at bytecode branch, Stop while
+  paused, reset followed by 6*7 -> 42, Close during another paused command, reopen,
+  idle long Home and second Home cancel. Shared New file probe still passes.
+- Rendering uses a console snapshot outside the session lock. Menu/after-stop
+  previews saved under docs/results/stage13. Host only, no ESP32/device result.
+- Native blocking calls still need future cancellation support; abort skips
+  Python finally blocks. Adapter is POSIX-specific, to be translated to FreeRTOS
+  later without changing the console model. Pre-existing run.sh mode preserved.
+
 ## Exact next bounded stage
-Stage 13: make a reusable VM session adapter with command submission and
-stop/close/pause acknowledgments, combining the two host proofs without duplicating
-their worker logic. Wire console Home menu in the host preview and prove stopping
-a running command, then another command after reset. Keep FreeRTOS/device build
-for a later stage. Basic checks, commit, pause; no unrelated rebuilds.
+Stage 14: add file execution jobs to the session adapter using ink_python_file,
+with a .py/not-executable gate and captured output in the same console. Exercise
+a selected fixture script and return to interactive commands; preserve streamed
+file reads and Stop/Close semantics. Keep device SDK restoration and editor out
+of this small stage. Basic checks, commit, pause.
 
 ## Risks to preserve
 - Full panel refresh blocks diagnostic input today; split scheduling before editor

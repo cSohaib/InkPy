@@ -4,7 +4,7 @@ void ink_console_init(ink_console *c)
 { memset(c,0,sizeof(*c)); c->count=1; }
 bool ink_console_key(ink_console *c,int key)
 {
-    if(c->busy) return false;
+    if(c->busy || c->menu) return false;
     c->full=false;
     if(key==INK_KEY_ENTER) {
         c->busy=true; c->page=0; return true;
@@ -53,7 +53,20 @@ void ink_console_completed(ink_console *c,bool more)
 }
 void ink_console_page(ink_console *c,int direction)
 {
+    if(c->menu) return;
     unsigned max=(c->count-1)/INK_CONSOLE_PAGE_ROWS;
     if(direction<0 && c->page<max) c->page++;
     if(direction>0 && c->page) c->page--;
+}
+int ink_console_home(ink_console *c,bool long_press)
+{
+    if(long_press) { c->menu=false; return INK_CONSOLE_CLOSE; }
+    c->menu=!c->menu; return INK_CONSOLE_NONE;
+}
+int ink_console_tap(ink_console *c,unsigned x,unsigned y)
+{
+    if(!c->menu) return INK_CONSOLE_NONE;
+    if(x<32 || x>=448 || y<180 || y>=372) return INK_CONSOLE_NONE;
+    unsigned row=(y-180)/64; c->menu=false;
+    return row==0?INK_CONSOLE_STOP:row==1?INK_CONSOLE_CLOSE:INK_CONSOLE_NONE;
 }

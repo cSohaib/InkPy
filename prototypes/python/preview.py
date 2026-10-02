@@ -2,5 +2,7 @@
 from pathlib import Path
 from PIL import Image
 
-source = Path(__file__).parent / "build" / "console.pbm"
-Image.open(source).transpose(Image.Transpose.ROTATE_90).save(source.with_suffix(".png"))
+for name in ("console", "console-menu"):
+    source = Path(__file__).parent / "build" / f"{name}.pbm"
+    if source.exists():
+        Image.open(source).transpose(Image.Transpose.ROTATE_90).save(source.with_suffix(".png"))

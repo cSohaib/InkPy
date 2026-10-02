@@ -64,6 +64,15 @@ void ink_console_draw(const ink_console *c,uint8_t frame[48000])
 {
     memset(frame,0xff,48000);
     text(frame,16,8,"Python console");
+    if(c->menu) {
+        text(frame,16,80,c->busy?"Python is running":"Console is idle");
+        const char *labels[]={"Stop process","Close console","Cancel"};
+        for(unsigned i=0;i<3;i++) {
+            box(frame,32,180+i*64,416,64);
+            text(frame,48,196+i*64,labels[i]);
+        }
+        return;
+    }
     char status[32]; snprintf(status,sizeof(status),"%s  History %u",c->busy?"Running":c->more?"...":">>>",c->page+1);
     text(frame,16,48,status);
     for(unsigned row=0;row<INK_CONSOLE_PAGE_ROWS;row++) text(frame,16,92+row*34,ink_console_line(c,row));
