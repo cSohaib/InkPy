@@ -1,0 +1,7 @@
+OK: 8 MiB edit preserves tail, fixed-size editor, gap growth, pages, four-space Tab
+OK: browser Console, long press Execute, script output, tapped REPL, Close returns, running-file long Home
+OK: browser Edit, tapped cursor/Delete/type, Save, Cancel, Discard, long Home, temp cleanup
+OK: keyboard, exact extensions, extensionless file, no overwrite, invalid name, cancel
+
+Host only. The edit/save test changed print(1) to print(2); later discarded edits
+left that saved result unchanged. File size does not determine editor RAM use.

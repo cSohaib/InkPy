@@ -1,6 +1,6 @@
 # InkPy checkpoint
 
-Updated: 2026-10-02. Stages 14–15 host browser/script/console path wired; ESP32 build and hardware validation pending.
+Updated: 2026-10-02. Stage 16 host disk-backed editor works; ESP32 build and hardware validation pending.
 Committed stage boundary: pause before starting further implementation.
 
 ## Read first
@@ -234,12 +234,32 @@ runtime acceptance stays pending; never call these ports device-validated.
 - Two stages completed this batch as authorized; pause after pushing. No SDK,
   flash or physical validation. Keep pre-existing run.sh permission-only change.
 
+## Stage 16 outcome
+- components/ink_browser/ink_editor.{c,h}: disk-backed gap working copy, fixed
+  4 KiB transfer buffers, 9x24 visible cells with byte-offset cursor mapping.
+  No document-sized RAM buffer/index. Open streams/copies and validates full UTF-8
+  text; ASCII font displays non-ASCII codepoints as '?' while preserving bytes.
+- Same Python keyboard, four-space Tab, newline and backspace. Taps move cursor;
+  side buttons page. Home Save/Discard/Cancel; second Home cancels; long Home
+  discards. No swipes or separate Save button. Host app now opens Edit requests.
+- Gap moves only bytes between old/new cursor. Growth shifts suffix in chunks
+  every gap capacity expansion. Save streams to a sibling temp, flushes/fsyncs
+  and renames on host; source is unchanged until successful Save. Discard removes
+  working temp. Disk cost proportional to file size; opening/saving O(file size).
+- Checks pass: tapped print(1)->print(2), Save, Cancel, Discard, long Home, temp
+  cleanup; 8 MiB edit preserves length/tail, gap growth, Previous pages, Tab.
+  Browser/Python route and New file checks still pass. Previews in results/stage16.
+- No ESP32 build/device validation. SD durability, disk-full recovery and stale
+  temp cleanup after power failure are not validated. Previous page rescans and
+  ASCII fixed-grid layout remain provisional. Original file stays separate while
+  editing. Preserve pre-existing run.sh permission-only change outside commit.
+
 ## Exact next bounded stage
-Stage 16: start host text editor for INK_EDIT_TEXT with the same Python keyboard,
-cursor placement and bounded visible text. Use a temporary file-backed working
-copy, not a file-sized RAM buffer. Make one edit/save/discard path work via Home;
-leave broader editor cases and device integration for subsequent stages. Basic
-checks, commit, pause (or a small batch if user explicitly continues that way).
+Stage 17: connect New file creation directly to the host editor, then exercise
+create .py -> type -> Save -> Execute -> console output, with arbitrary filename
+extensions retained. Make this complete creation flow usable; leave editor polish,
+SDK restoration and other feature work out of this stage. Basic checks, commit,
+pause (or a small batch if the user explicitly requests one).
 
 ## Risks to preserve
 - Full panel refresh blocks diagnostic input today; split scheduling before editor

@@ -1,5 +1,6 @@
 #include "ink_browser.h"
 #include "ink_ui_font.h"
+#include "ink_editor.h"
 #include "../ink_python/ink_console.h"
 #include <stdio.h>
 #include <string.h>
@@ -83,6 +84,22 @@ void ink_console_draw(const ink_console *c,uint8_t frame[48000])
     line[i]=0; text(frame,24,350,line);
     keyboard_draw(&c->keyboard,frame);
     text(frame,16,730,c->full?"Input full":"Home: console menu");
+}
+void ink_editor_draw(const ink_editor *e,uint8_t frame[48000])
+{
+    memset(frame,0xff,48000);
+    const char *name=strrchr(e->path,'/'); text(frame,16,8,name?name+1:e->path);
+    if(e->menu) {
+        const char *labels[]={"Save","Discard","Cancel"};
+        for(unsigned i=0;i<3;i++) { box(frame,32,180+i*64,416,64); text(frame,48,196+i*64,labels[i]); }
+    } else {
+        for(unsigned row=0;row<e->rows;row++) text(frame,16,64+row*34,e->lines[row]);
+        unsigned x=16+e->cursor_column*18,y=64+e->cursor_row*34;
+        for(unsigned i=0;i<32;i++) pixel(frame,x,y+i);
+        keyboard_draw(&e->keyboard,frame);
+        text(frame,16,730,"Home: save or discard");
+    }
+    if(e->error[0]) text(frame,16,110,e->error);
 }
 void ink_browser_draw(const ink_browser *b,uint8_t frame[48000])
 {

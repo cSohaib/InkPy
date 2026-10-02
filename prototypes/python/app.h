@@ -1,13 +1,15 @@
 #pragma once
 #include "session.h"
 #include "../../components/ink_browser/ink_browser.h"
+#include "../../components/ink_browser/ink_editor.h"
 /* Host composition of portable browser/console and POSIX worker. */
 typedef struct {
     ink_browser browser;
     ink_session python;
+    ink_editor editor;
     void *heap;
     size_t heap_size;
-    bool console_active;
+    bool console_active,editor_active;
 } ink_host_app;
 int ink_host_init(ink_host_app *a,const char *root,void *heap,size_t size);
 void ink_host_tap(ink_host_app *a,unsigned x,unsigned y,bool long_press);

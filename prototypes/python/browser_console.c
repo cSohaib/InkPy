@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 static ink_host_app app;
 static union { max_align_t align; unsigned char bytes[256*1024]; } heap;
 static void check(bool ok,const char *why)
@@ -78,5 +79,30 @@ int main(void)
     pthread_mutex_unlock(&app.python.lock);
     ink_host_home(&app,true); closed();
     puts("OK: browser Console, long press Execute, script output, tapped REPL, Close returns, running-file long Home");
+    char folder[]="build/editor-XXXXXX"; check(mkdtemp(folder)!=NULL,"editor folder");
+    char path[512]; snprintf(path,sizeof(path),"%s/script.py",folder);
+    FILE *file=fopen(path,"wb"); check(file!=NULL,"editor fixture");
+    fputs("print(1)\n",file); fclose(file);
+    check(!ink_host_init(&app,folder,heap.bytes,sizeof(heap.bytes)),"editor browser");
+    menu("script.py"); ink_host_tap(&app,60,200,false); check(app.editor_active,"Edit opens editor");
+    ink_host_tap(&app,16+7*18,66,false); /* after 1 */
+    ink_host_tap(&app,282,626,false); /* Delete */
+    ink_host_tap(&app,106,626,false); /* symbols */
+    ink_host_tap(&app,62,402,false); /* 2 */
+    ink_host_home(&app,false); ink_host_tap(&app,60,330,false); check(app.editor_active && !app.editor.menu,"Cancel keeps editor");
+    capture("build/editor.pbm");
+    ink_host_home(&app,false); capture("build/editor-menu.pbm");
+    ink_host_tap(&app,60,200,false); check(!app.editor_active,"Save closes");
+    file=fopen(path,"rb"); check(file!=NULL,"saved fixture"); char text[32]={0}; check(fread(text,1,sizeof(text)-1,file)==9,"saved length"); fclose(file);
+    check(!strcmp(text,"print(2)\n"),"exact edit saved");
+    menu("script.py"); ink_host_tap(&app,60,200,false); ink_host_tap(&app,18,402,false); /* q */
+    ink_host_home(&app,false); ink_host_home(&app,false); check(!app.editor.menu,"second Home cancels editor menu");
+    ink_host_home(&app,false); ink_host_tap(&app,60,270,false); check(!app.editor_active,"Discard closes");
+    menu("script.py"); ink_host_tap(&app,60,200,false); ink_host_tap(&app,18,402,false); ink_host_home(&app,true);
+    check(!app.editor_active,"long Home discards");
+    file=fopen(path,"rb"); check(file!=NULL,"discard fixture"); memset(text,0,sizeof(text)); check(fread(text,1,sizeof(text)-1,file)==9,"discard length"); fclose(file);
+    check(!strcmp(text,"print(2)\n"),"discard preserves original");
+    check(!unlink(path) && !rmdir(folder),"working copies removed");
+    puts("OK: browser Edit, tapped cursor/Delete/type, Save, Cancel, Discard, long Home, temp cleanup");
     return 0;
 }
