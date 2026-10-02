@@ -304,6 +304,15 @@ runtime acceptance stays pending; never call these ports device-validated.
 - Stage boundary: commit and pause. Preserve unrelated Python run.sh mode change.
 
 ## Exact next bounded stage
+Safety audit requested after Stage 19: docs/SAFETY-AUDIT.md records passed rebuild,
+image/pin checks, sanitizer edit tests, rename-failure rollback, large-file/browser
+probes and GCC static analysis, with limits. Delivered binary unchanged. Fixed
+browser probe link list; added scripts/audit-editor.sh. Current firmware identified
+only as CrossPoint/CrossInk; version, actual partitions, chip/security and independent
+recovery remain unknown. Installation is on hold: locked units can be stranded
+because InkPy has no updater/recovery path. Next safety task: obtain read-only device
+evidence and establish recovery before selecting any flash method or offset.
+
 Stage 20: begin device MicroPython integration with a FreeRTOS VM worker and the
 existing console model/keyboard. Aim for a compiling device REPL command path,
 reusing the pinned host embedding and cooperative Stop/Close/pause protocol.

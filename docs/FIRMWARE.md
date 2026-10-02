@@ -1,5 +1,10 @@
 # Stage 19 firmware checkpoint
 
+**Installation hold:** the [safety audit](SAFETY-AUDIT.md) passed offline checks
+but found recovery unverified. Do not install on a USB-locked X4 Pro: this image
+has no recovery updater. CrossPoint/CrossInk being installed is not proof of USB
+recovery access. Actual security state and partition/boot-slot evidence are required.
+
 `firmware.bin` is an ESP32-S3 **application image** for the X4 Pro. It does not
 contain a bootloader or partition table and is not a merged full-flash image.
 It has compiled and passed image checksum/hash validation; it has not been flashed

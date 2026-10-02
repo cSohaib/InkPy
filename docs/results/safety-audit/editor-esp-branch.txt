@@ -1,0 +1,1 @@
+PASS: 6000 deterministic edit/navigation operations, exact save, UTF-8 preservation, invalid-text rejection; ESP branch also tests failed replacement rollback
