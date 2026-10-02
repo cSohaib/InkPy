@@ -28,7 +28,7 @@ int main(int argc,char **argv)
     for(unsigned i=0;i<4;++i) {
         ink_browser_tap(&b,50,70); assert(b.view==INK_NEW_FILE);
         type(&b,names[i]); assert(!strcmp(b.new_name,names[i]));
-        ink_browser_tap(&b,350,745); assert(b.view==INK_NOTICE);
+        ink_browser_tap(&b,350,745); assert(b.view==INK_EDIT_TEXT);
         struct stat st; assert(!stat(b.selected,&st) && st.st_size==0);
         ink_browser_home(&b);
     }

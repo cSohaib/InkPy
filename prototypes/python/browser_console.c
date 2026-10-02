@@ -45,6 +45,23 @@ static void capture(const char *path)
     for(unsigned i=0;i<sizeof(frame);i++) fputc(frame[i]^255,file);
     check(!fclose(file),"capture close");
 }
+/* Type through the same tap router used by browser, editor and console. */
+static void type(const char *text)
+{
+    for(;*text;text++) {
+        bool found=false;
+        for(unsigned layer=0;layer<2 && !found;layer++) {
+            ink_keyboard *keyboard=app.editor_active?&app.editor.keyboard:&app.browser.keyboard;
+            for(unsigned row=0;row<5 && !found;row++) for(unsigned col=0;col<(row==4?5u:10u);col++)
+                if(ink_keyboard_key(keyboard,row,col)==*text) {
+                    unsigned width=row==4?88:44;
+                    ink_host_tap(&app,INK_KB_X+col*width+width/2,INK_KB_Y+row*56+28,false); found=true; break;
+                }
+            if(!found) ink_host_tap(&app,INK_KB_X+132,INK_KB_Y+252,false);
+        }
+        check(found,"typing character");
+    }
+}
 int main(void)
 {
     check(!ink_host_init(&app,"../../fixtures",heap.bytes,sizeof(heap.bytes)),"browser");
@@ -102,7 +119,26 @@ int main(void)
     check(!app.editor_active,"long Home discards");
     file=fopen(path,"rb"); check(file!=NULL,"discard fixture"); memset(text,0,sizeof(text)); check(fread(text,1,sizeof(text)-1,file)==9,"discard length"); fclose(file);
     check(!strcmp(text,"print(2)\n"),"discard preserves original");
+    check(!unlink(path),"old fixture removed");
+    check(!ink_browser_reload(&app.browser),"refresh after fixture removal");
+    ink_host_tap(&app,50,70,false); type("new.py"); ink_host_tap(&app,350,745,false);
+    check(app.editor_active && app.editor.size==0,"New file opens empty editor");
+    type("print(6*7)"); ink_host_home(&app,false); ink_host_tap(&app,60,200,false);
+    check(!app.editor_active,"new script saved");
+    menu("new.py"); ink_host_tap(&app,60,270,false); idle();
+    pthread_mutex_lock(&app.python.lock); found=false; c=&app.python.console;
+    for(unsigned i=0;i<c->count;i++) if(!strcmp(c->lines[(c->first+i)%INK_CONSOLE_LINES],"42")) found=true;
+    pthread_mutex_unlock(&app.python.lock); check(found,"created script executes");
+    capture("build/created-script.pbm"); ink_host_home(&app,true); closed();
+    snprintf(path,sizeof(path),"%s/new.py",folder); check(!unlink(path),"created script cleanup");
+    check(!ink_browser_reload(&app.browser),"refresh");
+    ink_host_tap(&app,50,70,false); type("scratch"); ink_host_tap(&app,350,745,false);
+    check(app.editor_active,"extensionless creation opens editor");
+    type("discard me"); ink_host_home(&app,true);
+    snprintf(path,sizeof(path),"%s/scratch",folder);
+    file=fopen(path,"rb"); check(file!=NULL && fgetc(file)==EOF,"discard keeps newly created file empty"); fclose(file);
     check(!unlink(path) && !rmdir(folder),"working copies removed");
     puts("OK: browser Edit, tapped cursor/Delete/type, Save, Cancel, Discard, long Home, temp cleanup");
+    puts("OK: create .py, type, Save, Execute -> 42; extensionless creation and Discard");
     return 0;
 }

@@ -74,7 +74,7 @@ static bool create_file(ink_browser *b)
         snprintf(b->message,sizeof(b->message),"%s",errno==EEXIST?"Already exists":"Cannot create file"); return true;
     }
     if(close(fd)) { snprintf(b->message,sizeof(b->message),"Create close failed"); return true; }
-    b->page=0; ink_browser_reload(b); notice(b,"File created"); return true;
+    b->page=0; ink_browser_reload(b); b->view=INK_EDIT_TEXT; return true;
 }
 static bool filename_tap(ink_browser *b,unsigned x,unsigned y)
 {

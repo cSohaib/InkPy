@@ -1,6 +1,6 @@
 # InkPy checkpoint
 
-Updated: 2026-10-02. Stage 16 host disk-backed editor works; ESP32 build and hardware validation pending.
+Updated: 2026-10-02. Stages 17–18 creation flow and device editor source wired; ESP32 build and hardware validation pending.
 Committed stage boundary: pause before starting further implementation.
 
 ## Read first
@@ -254,12 +254,38 @@ runtime acceptance stays pending; never call these ports device-validated.
   ASCII fixed-grid layout remain provisional. Original file stays separate while
   editing. Preserve pre-existing run.sh permission-only change outside commit.
 
+## Stage 17 outcome
+- Successful New file now requests the editor directly, keeping exact filename
+  and extension; failed/existing names remain in filename entry. Empty source is
+  created immediately; discarding new edits leaves that empty file in place.
+- Host tap test creates new.py, types print(6*7), Home Save, long-press Execute,
+  and sees 42. Extensionless create/discard and previous filename checks pass.
+- User authorized two stages this run; continue to Stage 18 source integration.
+
+## Stage 18 outcome
+- Editor tap/Home controller lives in ink_editor.c and is shared by host app and
+  main/browser_app.c. Optional device browser now opens New/Edit requests, draws
+  editor, routes side buttons and long Home, and includes editor in main CMake.
+- Device sleep path flushes working FILE before sleep and leaves editor/gap/cursor
+  state alive; a flush error keeps device awake. Sleep remains light sleep with
+  SD mounted, per existing implementation. Not physically tested.
+- Restored current remote sdkconfig.defaults locally, changing only main stack
+  8192 -> 20480 bytes. Device editor asserts >=16384 to avoid stale configurations
+  using too little stack for nested fixed-size I/O buffers. No measured margin.
+- Shared controller checks pass editor Save/Cancel/Discard/long Home and 8 MiB
+  edit/gap growth. Filename checks pass. Full host create .py -> type print(6*7)
+  -> Save -> Execute produces 42; extensionless discard keeps an empty source.
+- Corrected host tap helper to include Space/control row and editor probe linkage
+  to shared keyboard. No SDK build or device runtime validation. Python remains
+  host-only; device Console/Execute pending screens are unchanged.
+- Two stages completed as authorized. Push batch and pause; preserve unrelated
+  run.sh mode-only change. Preview/results in docs/results/stage18.
+
 ## Exact next bounded stage
-Stage 17: connect New file creation directly to the host editor, then exercise
-create .py -> type -> Save -> Execute -> console output, with arbitrary filename
-extensions retained. Make this complete creation flow usable; leave editor polish,
-SDK restoration and other feature work out of this stage. Basic checks, commit,
-pause (or a small batch if the user explicitly requests one).
+Stage 19: restore the pinned ESP-IDF/toolchain environment and missing board files
+from current GitHub state, compile INKPY_BROWSER with editor, and resolve concrete
+port/build failures only. Keep Python task port, new features and flashing out of
+this stage. Record any environment blocker concretely; commit and pause.
 
 ## Risks to preserve
 - Full panel refresh blocks diagnostic input today; split scheduling before editor

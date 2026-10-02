@@ -36,17 +36,7 @@ void ink_host_tap(ink_host_app *a,unsigned x,unsigned y,bool long_press)
 {
     if(a->editor_active) {
         if(long_press) return;
-        ink_editor *e=&a->editor;
-        if(e->menu) {
-            if(x<32 || x>=448 || y<180 || y>=372) return;
-            unsigned row=(y-180)/64;
-            if(row==0 && ink_editor_save(e)) return;
-            if(row==1) ink_editor_discard(e);
-            e->menu=false;
-            if(row<2) { a->editor_active=false; ink_browser_home(&a->browser); }
-        } else if(x>=16 && x<464 && y>=64 && y<370)
-            ink_editor_cursor(e,(y-64)/34,(x-16)/18);
-        else ink_editor_key(e,ink_keyboard_tap(&e->keyboard,x,y));
+        if(ink_editor_tap(&a->editor,x,y)) { a->editor_active=false; ink_browser_home(&a->browser); }
         return;
     }
     if(!a->console_active) {
@@ -67,8 +57,7 @@ void ink_host_tap(ink_host_app *a,unsigned x,unsigned y,bool long_press)
 void ink_host_home(ink_host_app *a,bool long_press)
 {
     if(a->editor_active) {
-        if(long_press) { ink_editor_discard(&a->editor); a->editor_active=false; ink_browser_home(&a->browser); }
-        else a->editor.menu=!a->editor.menu;
+        if(ink_editor_home(&a->editor,long_press)) { a->editor_active=false; ink_browser_home(&a->browser); }
         return;
     }
     if(!a->console_active) { ink_browser_home(&a->browser); return; }

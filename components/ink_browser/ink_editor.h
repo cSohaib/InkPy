@@ -20,4 +20,7 @@ void ink_editor_cursor(ink_editor *e,unsigned row,unsigned column);
 /* Save closes only on success; failure leaves the working copy editable. */
 int ink_editor_save(ink_editor *e);
 void ink_editor_discard(ink_editor *e);
+/* True means editor closed. No caller-specific UI or filesystem ownership. */
+bool ink_editor_home(ink_editor *e,bool long_press);
+bool ink_editor_tap(ink_editor *e,unsigned x,unsigned y);
 void ink_editor_draw(const ink_editor *e,uint8_t frame[48000]);

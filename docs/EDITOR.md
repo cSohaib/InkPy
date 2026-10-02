@@ -1,6 +1,6 @@
-# Host text editor, Stage 16
+# Text editor, through Stage 18
 
-Browser long press -> Edit opens the host editor. Tap text to place the cursor;
+New file creation and browser long press -> Edit open the host editor. Tap text to place the cursor;
 type with the shared Python keyboard. Side buttons page, Home opens Save / Discard
 / Cancel, second Home cancels, long Home discards. No separate Save button.
 
@@ -20,6 +20,16 @@ file, flushes/fsyncs and renames it over the source on the host. On success the
 working file is removed; on failure the editor stays open with an error. Discard
 removes only its working copy. Power-loss recovery, stale temp cleanup, SD/FAT
 rename durability and device integration are deferred.
+
+The optional device browser source now uses the same tap/Home controller and
+includes editor code in its build. Its sleep path flushes the working stream and
+retains editor state. SDK compilation and physical validation remain pending.
+Default main stack is 20 KiB; existing SDK configs need at least 16 KiB or the
+editor build assertion fails. No stack high-water or SD latency measurements yet.
+
+Creating a file creates an empty source immediately, then opens the editor.
+Discarding that initial edit keeps the empty file; no implicit filename extension
+or file deletion. The host probe covers create .py -> edit -> Save -> Execute.
 
 Basic checks:
 ```

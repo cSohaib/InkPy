@@ -204,3 +204,22 @@ void ink_editor_discard(ink_editor *e)
 {
     if(e->work) { fclose(e->work); e->work=NULL; unlink(e->temporary); }
 }
+bool ink_editor_home(ink_editor *e,bool long_press)
+{
+    if(long_press) { ink_editor_discard(e); return true; }
+    e->menu=!e->menu; return false;
+}
+bool ink_editor_tap(ink_editor *e,unsigned x,unsigned y)
+{
+    if(e->menu) {
+        if(x<32 || x>=448 || y<180 || y>=372) return false;
+        unsigned row=(y-180)/64;
+        if(row==0 && ink_editor_save(e)) return false;
+        if(row==1) ink_editor_discard(e);
+        e->menu=false; return row<2;
+    }
+    if(x>=16 && x<464 && y>=64 && y<370)
+        ink_editor_cursor(e,(y-64)/34,(x-16)/18);
+    else ink_editor_key(e,ink_keyboard_tap(&e->keyboard,x,y));
+    return false;
+}
