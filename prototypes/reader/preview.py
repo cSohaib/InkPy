@@ -12,6 +12,12 @@ meta=metadata(root); data=page(root,int(number))
 im=Image.new('1',(meta['width'],meta['height']),1); draw=ImageDraw.Draw(im)
 loaded={}
 for run in data['runs']:
+    if 'bitmap' in run:
+        # Cache uses black=1; Pillow's 1-bit image uses white=1.
+        from PIL import ImageChops
+        tile=Image.frombytes('1',(run['width'],run['height']),run['bitmap'])
+        im.paste(ImageChops.invert(tile),(run['x'],run['y']))
+        continue
     level=(run['style']>>8)&7
     size=meta['font_pixels']+(2*(7-level) if level else 0)
     bold=bool(run['style']&1 or level); italic=bool(run['style']&2)

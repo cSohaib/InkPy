@@ -1,5 +1,8 @@
 # Stage 5: bounded Markdown pagination
 
+Historical text-only stage. Stage 6 adds math composition and cache version 2;
+see [READER-MATH.md](READER-MATH.md) for the current mixed-page prototype.
+
 Host prototype only. This stage adds the C layout core in components/ink_layout,
 not a firmware reader or product menu. Existing math rendering is unchanged.
 

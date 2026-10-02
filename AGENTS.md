@@ -13,6 +13,12 @@ InkPy targets only Xteink X4 Pro. Read README.md for product scope and docs/CHEC
 - Do not delegate to subagents unless the user explicitly requests it.
 - Optimize for reliable completion per stage, not simply the fewest lines of code.
 
+## Prototype pace
+Prioritize a working main path and a version the user can explore. Keep stages
+small, roughly the Stage 5 effort. Do basic compile/run/visual checks; postpone
+broad edge-case suites, polish, exhaustive measurements and optimization unless
+a concrete failure blocks use. Preserve bounded-file memory and source files.
+
 ## Implementation direction
 C-first application on pinned ESP-IDF; small C++ dependencies remain acceptable where they materially reduce porting work. Avoid inheritance-heavy frameworks, hidden state, and unnecessary generic abstraction. Use explicit memory ownership and small cohesive interfaces.
 Reuse proven components, strip unused application/device functionality, and preserve required licence notices. Do not rewrite mature internals solely for stylistic consistency.

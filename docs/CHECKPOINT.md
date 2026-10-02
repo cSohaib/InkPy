@@ -1,6 +1,6 @@
 # InkPy checkpoint
 
-Updated: 2026-10-02. Stage 5 host pagination complete; hardware validation pending.
+Updated: 2026-10-02. Stage 6 host text/math composition complete; hardware validation pending.
 Committed stage boundary: pause before starting further implementation.
 
 ## Read first
@@ -86,12 +86,27 @@ runtime acceptance stays pending; never call these ports device-validated.
 - Math is tagged source in this prototype; shared math backend unchanged. No
   EPUB-first pivot, firmware UI, SDK rebuild or flash performed this stage.
 
+## Stage 6 delivered
+- C layout accepts the existing math C API through an optional callback; inline
+  formulas reserve width/baseline, display formulas occupy centered lines.
+- Version 2 cache stores bitmap runs; host cache reader and preview compose them.
+  Unsupported/too-large math falls back to source. Text metrics remain provisional.
+- Small fixture: six rendered formulas, one fallback, three H2 chapters, two pages.
+  Portrait/landscape generated and read; portrait previews visually inspected.
+  Existing larger corpus: 26 rendered formulas and three expected fallbacks.
+- docs/READER-MATH.md owns run instructions and limits; results/stage6 holds previews.
+  Host build passed with own warnings-as-errors; no SDK build or device validation.
+- User changed pace: prioritize a feature-complete exploratory version, small
+  stages, basic compile/run/visual checks; defer extensive testing and polish.
+  AGENTS.md records this. Real text font metrics and typography are deferred.
+
 ## Exact next bounded stage
-Stage 6 on continuation: replace provisional codepoint metrics with actual font
-metrics and connect bounded inline/display math composition in the host reader.
-Define and test supported Markdown boundaries before calling the reader complete.
-Keep cache invalidation/source anchors in view; do not start EPUB or whole UI yet.
-Hardware/math runtime validation remains independently gated as above.
+Stage 7 on continuation: begin the minimal device file browser: filenames and
+folders from microSD, side-button paging, parent-folder Home and tap-to-open
+routing. Reuse current board input/display support. Keep new-file/editor/Python
+controls as subsequent bounded stages; do not build the whole UI in one turn.
+Connect the reader to the device in a later small stage. Preserve the independent
+hardware flash/recovery gate; do not claim device acceptance without a session.
 
 ## Risks to preserve
 - Full panel refresh blocks diagnostic input today; split scheduling before editor

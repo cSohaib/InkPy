@@ -9,9 +9,9 @@
 
 enum { CELLS=128, MARGIN=16 };
 typedef struct { uint32_t value,min; unsigned need; uint64_t start; } Utf;
-typedef struct { uint32_t cp; uint16_t style; uint64_t source; } Cell;
+typedef struct { uint32_t cp; uint16_t style; uint64_t source, bitmap_offset; unsigned width,height,baseline; bool display; } Cell;
 typedef struct {
-    FILE *input,*draw,*pages,*chapters;
+    FILE *input,*draw,*pages,*chapters,*bitmaps;
     ink_layout_config cfg;
     ink_layout_stats *stats;
     char block[INK_BLOCK_BYTES], physical[INK_BLOCK_BYTES];
@@ -28,6 +28,9 @@ typedef struct {
     uint64_t title_source;
     char title[INK_TITLE_BYTES];
     unsigned list_depth,list_order[16];
+    char formula[4096]; unsigned formula_n; bool formula_cut,display_math;
+    uint64_t formula_source;
+    uint8_t bitmap[48000];
 } Layout;
 
 static int fail(Layout *l,const char *why,uint64_t offset)
@@ -93,24 +96,51 @@ static void open_page(Layout *l,uint64_t source)
     l->page_open=true; l->page_begin=l->draw_bytes; l->page_source=source;
     l->page_chapter=l->chapter;
 }
+static unsigned item_width(Layout *l,const Cell *c) { return c->width?c->width:cell_width(l); }
+static unsigned line_width(Layout *l)
+{ unsigned n=0; for (unsigned i=0;i<l->count;++i) n+=item_width(l,&l->line[i]); return n; }
 static void output_line(Layout *l,unsigned n)
 {
     if (!n || l->failed) return;
-    room(l); open_page(l,l->line[0].source);
+    unsigned above=pixels(l),below=0;
+    for (unsigned i=0;i<n;++i) if (l->line[i].width) {
+        Cell *c=&l->line[i]; if(c->baseline>above) above=c->baseline;
+        if(c->height-c->baseline>below) below=c->height-c->baseline;
+    }
+    unsigned height=above+below+8;
+    if (l->y+height>l->cfg.height-MARGIN) end_page(l);
+    open_page(l,l->line[0].source);
     if (l->head==2 && !l->title_located) {
         l->title_located=true; l->title_page=(unsigned)l->stats->pages+1;
         l->title_source=l->line[0].source;
     }
     unsigned step=cell_width(l),x=MARGIN;
     for (unsigned i=0;i<n;) {
-        unsigned j=i; char text[CELLS*4]; unsigned len=0;
-        while (j<n && l->line[j].style==l->line[i].style) { len+=encode(l->line[j].cp,text+len); ++j; }
-        number(l,l->draw,x,2); number(l,l->draw,l->y,2); number(l,l->draw,step,2);
-        number(l,l->draw,l->line[i].style,2); number(l,l->draw,len,4);
-        number(l,l->draw,l->line[i].source,8); bytes(l,l->draw,text,len);
-        l->draw_bytes+=20+len; l->stats->runs++; x+=(j-i)*step; i=j;
+        Cell *c=&l->line[i]; unsigned j=i+1,len=0; char text[CELLS*4];
+        unsigned y=l->y+above-pixels(l);
+        if (c->width) {
+            y=l->y+above-c->baseline;
+            if(c->display) x=(l->cfg.width-c->width)/2;
+            len=2+((c->width+7)/8)*c->height;
+        } else {
+            j=i;
+            while (j<n && !l->line[j].width && l->line[j].style==c->style) { len+=encode(l->line[j].cp,text+len); ++j; }
+        }
+        number(l,l->draw,x,2); number(l,l->draw,y,2); number(l,l->draw,c->width?c->width:step,2);
+        number(l,l->draw,c->width?INK_BITMAP:c->style,2); number(l,l->draw,len,4);
+        number(l,l->draw,c->source,8);
+        if(c->width) {
+            number(l,l->draw,c->height,2);
+            if(fseeko(l->bitmaps,(off_t)c->bitmap_offset,SEEK_SET)) fail(l,"bitmap seek failed",c->source);
+            for(unsigned remaining=len-2;remaining && !l->failed;) {
+                unsigned chunk=remaining>sizeof(text)?sizeof(text):remaining;
+                if(fread(text,1,chunk,l->bitmaps)!=chunk) { fail(l,"bitmap read failed",c->source); break; }
+                bytes(l,l->draw,text,chunk); remaining-=chunk;
+            }
+        } else bytes(l,l->draw,text,len);
+        l->draw_bytes+=20+len; l->stats->runs++; x+=c->width?c->width:(j-i)*step; i=j;
     }
-    l->y+=row_height(l);
+    l->y+=height;
 }
 static void finish_line(Layout *l)
 { output_line(l,l->count); l->count=0; }
@@ -130,8 +160,8 @@ static void emit(Layout *l,uint32_t cp,uint64_t source,bool preserve)
         if (!l->title_cut && l->title_n+n<INK_TITLE_BYTES) { memcpy(l->title+l->title_n,b,n); l->title_n+=n; }
         else l->title_cut=true;
     }
-    unsigned max=(l->cfg.width-2*MARGIN)/cell_width(l);
-    if (l->count==max) {
+    unsigned max=l->cfg.width-2*MARGIN;
+    if (line_width(l)+cell_width(l)>max || l->count==CELLS) {
         unsigned cut=l->count;
         if (!preserve) {
             for (unsigned i=l->count;i>0;--i) if (l->line[i-1].cp==' ') { cut=i; break; }
@@ -140,7 +170,7 @@ static void emit(Layout *l,uint32_t cp,uint64_t source,bool preserve)
         memmove(l->line,l->line+cut,(l->count-cut)*sizeof(Cell)); l->count-=cut;
         if (!preserve && cp==' ' && !l->count) return;
     }
-    l->line[l->count++]=(Cell){cp,(uint16_t)style(l),source};
+    l->line[l->count++]=(Cell){.cp=cp,.style=(uint16_t)style(l),.source=source};
 }
 static void literal_text(Layout *l,const char *s,size_t n,uint64_t source)
 {
@@ -196,6 +226,33 @@ static int block_leave(MD_BLOCKTYPE t,void *detail,void *user)
     if (t==MD_BLOCK_TD || t==MD_BLOCK_TH) synthetic(l," | ");
     return l->failed?-1:0;
 }
+static void formula(Layout *l)
+{
+    unsigned w=0,h=0,base=0;
+    l->formula[l->formula_n]=0;
+    int bad=l->formula_cut || l->cfg.render_math(l->formula,l->display_math,pixels(l),l->bitmap,&w,&h,&base);
+    if (bad || !w || w>480 || w>l->cfg.width-2*MARGIN || !h || h>800 ||
+        base>h || (base>pixels(l)?base:pixels(l))+h-base+8>l->cfg.height-2*MARGIN) {
+        ++l->stats->math_fallbacks;
+        synthetic(l,l->display_math?"$$":"$");
+        Utf state={0};
+        for(unsigned i=0;i<l->formula_n;++i) { uint32_t cp; int r=utf(&state,(unsigned char)l->formula[i],l->formula_source+i,&cp); if(r>0) emit(l,cp,state.start,true); }
+        if(l->formula_cut) synthetic(l,"...");
+        synthetic(l,l->display_math?"$$":"$");
+        return;
+    }
+    if(l->display_math) paragraph(l);
+    if(line_width(l)+w>l->cfg.width-2*MARGIN || l->count==CELLS) finish_line(l);
+    if(fseeko(l->bitmaps,0,SEEK_END)) { fail(l,"bitmap spool seek failed",l->formula_source); return; }
+    off_t offset=ftello(l->bitmaps);
+    if(offset<0) { fail(l,"bitmap spool position failed",l->formula_source); return; }
+    unsigned stride=(w+7)/8;
+    for(unsigned y=0;y<h;++y) bytes(l,l->bitmaps,l->bitmap+y*60,stride);
+    l->line[l->count++]=(Cell){.source=l->formula_source,.bitmap_offset=(uint64_t)offset,
+                             .width=w,.height=h,.baseline=base,.display=l->display_math};
+    ++l->stats->formulas;
+    if(l->display_math) paragraph(l);
+}
 static int span(MD_SPANTYPE t,void *user,bool enter)
 {
     Layout *l=user; int delta=enter?1:-1;
@@ -203,9 +260,15 @@ static int span(MD_SPANTYPE t,void *user,bool enter)
     if (t==MD_SPAN_EM) l->italic+=delta;
     if (t==MD_SPAN_CODE) l->code+=delta;
     if (t==MD_SPAN_LATEXMATH || t==MD_SPAN_LATEXMATH_DISPLAY) {
-        if (enter) ++l->math;
-        synthetic(l,t==MD_SPAN_LATEXMATH?"$":"$$");
-        if (!enter) --l->math;
+        if(l->cfg.render_math) {
+            if(enter) { ++l->math; l->formula_n=0; l->formula_cut=false;
+                l->display_math=t==MD_SPAN_LATEXMATH_DISPLAY; l->formula_source=l->last_source; }
+            else { formula(l); --l->math; }
+        } else {
+            if (enter) ++l->math;
+            synthetic(l,t==MD_SPAN_LATEXMATH?"$":"$$");
+            if (!enter) --l->math;
+        }
     }
     if (t==MD_SPAN_IMG) {
         if (enter) { ++l->image; synthetic(l,"[image: "); }
@@ -239,6 +302,15 @@ static int text(MD_TEXTTYPE t,const MD_CHAR *s,MD_SIZE n,void *user)
     Layout *l=user; uint64_t at=l->last_source;
     uintptr_t p=(uintptr_t)s,base=(uintptr_t)l->block;
     if (p>=base && p-base<l->block_n) at=l->block_source+(p-base);
+    if(l->math && l->cfg.render_math) {
+        if(!l->formula_n) l->formula_source=at;
+        for(unsigned i=0;i<n;++i) {
+            if(l->formula_n+1<sizeof(l->formula)) l->formula[l->formula_n++]=s[i];
+            else l->formula_cut=true;
+        }
+        if(at+n>l->last_source) l->last_source=at+n;
+        return 0;
+    }
     bool preserve=l->code || l->math;
     if (t==MD_TEXT_SOFTBR) { emit(l,' ',at,false); return l->failed?-1:0; }
     if (t==MD_TEXT_BR) { finish_line(l); return l->failed?-1:0; }
@@ -281,7 +353,7 @@ static int get(Layout *l)
     int c=peek(l); if (c==EOF) return EOF;
     ++l->read_at; uint32_t cp; int r=utf(&l->validation,(unsigned char)c,l->position,&cp);
     if (r<0) fail(l,"invalid UTF-8",l->validation.start);
-    if (r && (cp==0 || (cp<32 && cp!='\n' && cp!='\r' && cp!='\t') || cp==127)) fail(l,"NUL/control byte in text",l->validation.start);
+    if (r>0 && (cp==0 || (cp<32 && cp!='\n' && cp!='\r' && cp!='\t') || cp==127)) fail(l,"NUL/control byte in text",l->validation.start);
     ++l->position; return c;
 }
 typedef struct { bool blank,tail_space,tail_tick,in_run; unsigned indent,mark; uint64_t run; } Line;
@@ -354,7 +426,9 @@ int ink_layout_run(FILE *source,FILE *draw,FILE *pages,FILE *chapters,
     unsigned char bom[3]; size_t n=fread(bom,1,3,source);
     l->position=n==3 && !memcmp(bom,"\xef\xbb\xbf",3)?3:0;
     if (fseeko(source,(off_t)l->position,SEEK_SET)) fail(l,"source must be seekable",0);
+    if(config->render_math && !(l->bitmaps=tmpfile())) fail(l,"bitmap spool creation failed",0);
     if (!l->failed) scan(l);
+    if(l->bitmaps) fclose(l->bitmaps);
     if (fflush(draw)||fflush(pages)||fflush(chapters)) fail(l,"cache flush failed",l->position);
     stats->source_bytes=l->position; stats->parser_peak_bytes=ink_md_peak();
     int result=l->failed?-1:0; free(l); return result;

@@ -1,5 +1,16 @@
 #define _POSIX_C_SOURCE 200809L
 #include "ink_layout.h"
+#ifdef INK_READER_MATH
+#include "ink_math.h"
+static int render_formula(const char *s,int display,unsigned pixels,uint8_t *bitmap,
+                          unsigned *w,unsigned *h,unsigned *baseline)
+{
+    ink_math_result r; int status=ink_math_render(s,display,(int)pixels,bitmap,&r);
+    *w=(unsigned)r.width; *h=(unsigned)r.height; *baseline=(unsigned)r.baseline;
+    if(status) fprintf(stderr,"math fallback: %s\n",r.error);
+    return status;
+}
+#endif
 #include <errno.h>
 #include <inttypes.h>
 #include <stdlib.h>
@@ -13,7 +24,14 @@ static int path(char *out,size_t n,const char *dir,const char *name)
 int main(int argc,char **argv)
 {
     if (argc!=3 && argc!=6) { fprintf(stderr,"usage: reader-probe SOURCE NEW_OUTPUT_DIR [WIDTH HEIGHT READ_BYTES]\n"); return 2; }
-    ink_layout_config cfg={480,800,22,1024};
+    ink_layout_config cfg={.width=480,.height=800,.font_pixels=22,.read_bytes=1024};
+#ifdef INK_READER_MATH
+    const char *resources=getenv("INK_MATH_RESOURCES"); char error[160];
+    if(!resources || ink_math_init(resources,error,sizeof(error))) {
+        fprintf(stderr,"set INK_MATH_RESOURCES to MicroTeX/res (initialization failed)\n"); return 2;
+    }
+    cfg.render_math=render_formula;
+#endif
     if (argc==6) {
         unsigned *values[]={&cfg.width,&cfg.height,&cfg.read_bytes};
         for (int i=0;i<3;++i) {
@@ -50,11 +68,11 @@ int main(int argc,char **argv)
     }
     struct rusage usage; getrusage(RUSAGE_SELF,&usage);
     char manifest[1024];
-    snprintf(manifest,sizeof(manifest),"{\"version\":1,\"complete\":true,\"width\":%u,\"height\":%u,\"font_pixels\":%u,"
+    snprintf(manifest,sizeof(manifest),"{\"version\":2,\"complete\":true,\"width\":%u,\"height\":%u,\"font_pixels\":%u,"
         "\"source_bytes\":%" PRIu64 ",\"pages\":%" PRIu64 ",\"chapters\":%" PRIu64 ",\"literal_blocks\":%" PRIu64
-        ",\"runs\":%" PRIu64 ",\"context_bytes\":%zu,\"parser_peak_bytes\":%zu,\"parser_budget_bytes\":%u,\"peak_rss_kib\":%ld}\n",
+        ",\"formulas\":%" PRIu64 ",\"math_fallbacks\":%" PRIu64 ",\"runs\":%" PRIu64 ",\"context_bytes\":%zu,\"parser_peak_bytes\":%zu,\"parser_budget_bytes\":%u,\"peak_rss_kib\":%ld}\n",
         cfg.width,cfg.height,cfg.font_pixels,stats.source_bytes,stats.pages,stats.chapters,
-        stats.literal_blocks,stats.runs,stats.context_bytes,stats.parser_peak_bytes,INK_MD_HEAP_BYTES,usage.ru_maxrss);
+        stats.literal_blocks,stats.formulas,stats.math_fallbacks,stats.runs,stats.context_bytes,stats.parser_peak_bytes,INK_MD_HEAP_BYTES,usage.ru_maxrss);
     if (path(dest,sizeof(dest),argv[2],"manifest.json")) return 1;
     FILE *out=fopen(dest,"wb"); if (!out) return 1;
     int bad=fputs(manifest,out)==EOF;
