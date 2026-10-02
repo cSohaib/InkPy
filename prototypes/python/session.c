@@ -1,6 +1,7 @@
 #include "session.h"
 #include "ink_python.h"
 #include <string.h>
+#include <strings.h>
 static bool control(void *context)
 {
     ink_session *s=context;
@@ -40,8 +41,8 @@ static void *worker(void *context)
         s->queued=false;
         pthread_cond_broadcast(&s->changed);
         pthread_mutex_unlock(&s->lock);
-        bool more=ink_python_more(s->command);
-        int result=more?0:ink_python_text(s->command,true);
+        bool more=!s->file_job && ink_python_more(s->command);
+        int result=s->file_job?ink_python_file(s->path):more?0:ink_python_text(s->command,true);
         if(result==2) {
             /* Hard stop discards globals: never reuse a partially unwound VM. */
             ink_python_close();
@@ -75,12 +76,28 @@ int ink_session_start(ink_session *s,void *heap,size_t size)
 }
 void ink_session_submit(ink_session *s)
 {
+    s->file_job=false;
     ink_console *c=&s->console;
     ink_console_output(c,c->more?"... ":">>> ",4);
     const char *last=strrchr(c->input,'\n'); last=last?last+1:c->input;
     ink_console_output(c,last,strlen(last)); ink_console_output(c,"\n",1);
     memcpy(s->command,c->input,c->used+1); s->queued=true;
     pthread_cond_broadcast(&s->changed);
+}
+bool ink_session_file(ink_session *s,const char *path)
+{
+    if(s->console.busy || s->closing || s->closed) return false;
+    const char *name=strrchr(path,'/'); name=name?name+1:path;
+    const char *ext=strrchr(name,'.');
+    const char *error=(!ext || strcasecmp(ext,".py"))?"not executable\n":
+        strlen(path)>=sizeof(s->path)?"Path is too long\n":NULL;
+    if(error) { ink_console_output(&s->console,error,strlen(error)); return false; }
+    memcpy(s->path,path,strlen(path)+1); s->file_job=true;
+    ink_console_completed(&s->console,false);
+    s->console.busy=true; s->console.page=0;
+    ink_console_output(&s->console,"Run: ",5);
+    ink_console_output(&s->console,name,strlen(name)); ink_console_output(&s->console,"\n",1);
+    s->queued=true; pthread_cond_broadcast(&s->changed); return true;
 }
 void ink_session_stop(ink_session *s)
 {

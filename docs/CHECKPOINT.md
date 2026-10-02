@@ -1,6 +1,6 @@
 # InkPy checkpoint
 
-Updated: 2026-10-02. Stage 13 host console lifecycle wired; ESP32 build and hardware validation pending.
+Updated: 2026-10-02. Stage 14 host script jobs wired; ESP32 build and hardware validation pending.
 Committed stage boundary: pause before starting further implementation.
 
 ## Read first
@@ -205,12 +205,21 @@ runtime acceptance stays pending; never call these ports device-validated.
   Python finally blocks. Adapter is POSIX-specific, to be translated to FreeRTOS
   later without changing the console model. Pre-existing run.sh mode preserved.
 
+## Stage 14 outcome
+- Session adapter accepts .py file jobs with a fixed 512-byte path; rejects busy,
+  closing, non-.py and oversized paths. Script source still streams through the
+  existing FILE reader; parsing/bytecode use the supplied VM heap.
+- Script output shares console history and globals remain available afterward.
+  File errors print exceptions and return to the REPL. Stop still resets Python.
+- Host checks pass: demo output, answer -> 42, non-executable rejection, missing
+  file recovery, busy rejection, pause/Stop of a file catching BaseException.
+- User authorized 2–3 stages this run; continue directly to Stage 15 rather than
+  pausing at this intermediate local commit. Device integration remains pending.
+
 ## Exact next bounded stage
-Stage 14: add file execution jobs to the session adapter using ink_python_file,
-with a .py/not-executable gate and captured output in the same console. Exercise
-a selected fixture script and return to interactive commands; preserve streamed
-file reads and Stop/Close semantics. Keep device SDK restoration and editor out
-of this small stage. Basic checks, commit, pause.
+Stage 15: browser long-press Edit/Execute menu, Execute routing to the host
+console/session, non-Python error, and top Console button. Keep editor rendering
+and SDK restoration outside this batch. Basic checks, commit, push and pause.
 
 ## Risks to preserve
 - Full panel refresh blocks diagnostic input today; split scheduling before editor

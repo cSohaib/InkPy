@@ -73,10 +73,26 @@ static void endless(void)
 int main(void)
 {
     check(ink_session_start(&session,heap.bytes,sizeof(heap.bytes))==0,"worker");
+    pthread_mutex_lock(&session.lock);
+    check(!ink_session_file(&session,"../../fixtures/python-console.txt"),"not executable gate");
+    check(ink_session_file(&session,"../../fixtures/python-demo.py"),"file job");
+    pthread_mutex_unlock(&session.lock); wait_idle();
+    check(has_line("sqrt: 9.0"),"script output");
+    submit("answer",true); check(has_line("42"),"script globals in console");
+    pthread_mutex_lock(&session.lock);
+    check(ink_session_file(&session,"../../fixtures/missing.py"),"missing path queued");
+    pthread_mutex_unlock(&session.lock); wait_idle();
+    submit("3+4",true); check(has_line("7"),"recovery after file error");
+    puts("OK: .py job, not executable, script output/globals, missing file recovery");
     submit("x=2+3",true); submit("x",true); check(has_line("5"),"persistent globals");
     submit("for i in range(3):",true); submit("    print(i)",true); submit("",true);
     check(has_line("2"),"multiline output");
-    endless();
+    pthread_mutex_lock(&session.lock);
+    check(ink_session_file(&session,"../../fixtures/python-loop.py"),"endless file job");
+    while(session.queued) wait_change();
+    ink_session_pause(&session,true); while(!session.paused) wait_change();
+    check(!ink_session_file(&session,"../../fixtures/python-demo.py"),"busy file rejection");
+    pthread_mutex_unlock(&session.lock);
     pthread_mutex_lock(&session.lock);
     ink_console_home(&session.console,false);
     check(ink_console_tap(&session.console,60,330)==INK_CONSOLE_NONE && !session.console.menu,"Cancel");
