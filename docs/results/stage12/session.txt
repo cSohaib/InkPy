@@ -1,0 +1,14 @@
+>>> x=2+3
+>>> x
+5
+>>> for i in range(3):
+...     print(i)
+...
+0
+1
+2
+
+OK: keyboard, worker REPL, multiline, bounded history, pages, close
+OK: existing New file keyboard and filename probe
+
+Host only; tap coordinates use the same keyboard mapping as firmware.

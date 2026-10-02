@@ -1,6 +1,6 @@
 # InkPy checkpoint
 
-Updated: 2026-10-02. Stage 11 host Python worker control proven; ESP32 build and hardware validation pending.
+Updated: 2026-10-02. Stage 12 host onscreen console proven; ESP32 build and hardware validation pending.
 Committed stage boundary: pause before starting further implementation.
 
 ## Read first
@@ -168,12 +168,30 @@ runtime acceptance stays pending; never call these ports device-validated.
   No forced task suspension/deletion and no close/sleep UI enabled prematurely.
 - Preserved pre-existing run.sh permission-only change, excluded from commit.
 
+## Stage 12 outcome
+- components/ink_python/ink_console.{c,h}: bounded 4096-byte multiline input,
+  four-space Tab, delete, Enter submission, busy input gate. History retains the
+  newest 128 wrapped ASCII lines (24 columns); previous/next pages, seven rows.
+  Older history is deliberately discarded for now; no unbounded RAM growth.
+- Shared raster keyboard now draws filename and Python console screens. Console
+  shows history, current input tail and running/continuation status; no swipes.
+- prototypes/python/console.c: pthread VM owner, single command slot and locked
+  output callbacks. Keyboard taps submit assignments, expressions and multiline
+  blocks to the worker, preserving globals. Rendering happens outside the VM.
+- Host build and checks pass: tap submission, result 5, multiline output 0/1/2,
+  bounded history wrap, both page directions, normal close. Existing New file
+  probe passes after sharing keyboard drawing. Preview in results/stage12.
+- This is a scripted host preview, NOT an interactive desktop application or
+  device console. Home menu, cursor movement and long-running stop/sleep controls
+  are not wired to this screen yet. Stage 11 remains the stop/pause proof.
+- SDK/device validation still pending. Kept pre-existing run.sh mode change out.
+
 ## Exact next bounded stage
-Stage 12: build the host onscreen console using the existing Python keyboard,
-bounded input and output/history pages, and the worker boundary. Make one command
-submission path work; keep device FreeRTOS and hardware wiring a later bounded
-stage. Retain no runtime timeout and the installation gate. Basic checks, commit,
-pause. Do not rebuild unrelated math or restore the SDK in this stage.
+Stage 13: make a reusable VM session adapter with command submission and
+stop/close/pause acknowledgments, combining the two host proofs without duplicating
+their worker logic. Wire console Home menu in the host preview and prove stopping
+a running command, then another command after reset. Keep FreeRTOS/device build
+for a later stage. Basic checks, commit, pause; no unrelated rebuilds.
 
 ## Risks to preserve
 - Full panel refresh blocks diagnostic input today; split scheduling before editor

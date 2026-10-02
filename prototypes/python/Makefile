@@ -5,7 +5,10 @@ CFLAGS += -I. -I$(EMBED) -I$(EMBED)/port -I../../components/ink_python
 VENDOR = $(wildcard $(EMBED)/*/*.c) $(wildcard $(EMBED)/*/*/*.c)
 VENDOR := $(filter-out $(EMBED)/port/mphalport.c,$(VENDOR))
 CORE = ../../components/ink_python/ink_python.c
-all: build/inkpy-python build/inkpy-worker
+all: build/inkpy-python build/inkpy-worker build/inkpy-console
+UI = ../../components/ink_browser
+build/inkpy-console: $(VENDOR) $(CORE) console.c ../../components/ink_python/ink_console.c $(UI)/browser_draw.c $(UI)/ink_keyboard.c mpconfigport.h
+	$(CC) $(CFLAGS) $(VENDOR) $(CORE) console.c ../../components/ink_python/ink_console.c $(UI)/browser_draw.c $(UI)/ink_keyboard.c -pthread -lm -o $@
 build/inkpy-worker: $(VENDOR) $(CORE) worker.c mpconfigport.h
 	$(CC) $(CFLAGS) $(VENDOR) $(CORE) worker.c -pthread -lm -o $@
 build/inkpy-python: $(VENDOR) $(CORE) probe.c mpconfigport.h
