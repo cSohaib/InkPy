@@ -25,6 +25,7 @@ Keep layout separate from document parsing so a later restricted EPUB importer c
 “ChatGPT-style math” describes the intended use, not a fixed compatibility specification. The proposed acceptance corpus defines representative notation; actual supported coverage must be established by the rendering prototype. Delimiters alone do not make mathematical layout trivial.
 
 ## Interaction and implementation references
+- [Keyboard and New file](docs/NEW-FILE.md): Stage 9 filename entry and empty-file creation.
 - [Plain text viewer](docs/TEXT-VIEWER.md): Stage 8 paging and current limits.
 - [Device file browser](docs/FILE-BROWSER.md): Stage 7 controls, optional build and current limits.
 - [Mixed text/math preview](docs/READER-MATH.md): Stage 6 run command and sample pages.

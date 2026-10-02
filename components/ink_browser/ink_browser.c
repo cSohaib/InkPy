@@ -1,5 +1,8 @@
 #include "ink_browser.h"
 #include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
@@ -16,7 +19,7 @@ int ink_browser_reload(ink_browser *b)
     if(!dir) return notice(b,"Cannot open folder");
     struct dirent *entry; unsigned seen=0;
     while((entry=readdir(dir))) {
-        if(entry->d_name[0]=='.') continue;
+        if(!strcmp(entry->d_name,".") || !strcmp(entry->d_name,"..")) continue;
         char path[INK_BROWSER_PATH]; struct stat st;
         if(join(path,sizeof(path),b->folder,entry->d_name)||stat(path,&st)) continue;
         if(!S_ISDIR(st.st_mode)&&!S_ISREG(st.st_mode)) continue;
@@ -56,13 +59,50 @@ bool ink_browser_home(ink_browser *b)
     else snprintf(b->folder,sizeof(b->folder),"%s",b->root);
     b->page=0; ink_browser_reload(b); return true;
 }
+static bool create_file(ink_browser *b)
+{
+    size_t n=strlen(b->new_name);
+    if(!n || !strcmp(b->new_name,".") || !strcmp(b->new_name,"..") ||
+       b->new_name[n-1]==' ' || b->new_name[n-1]=='.' || strpbrk(b->new_name,"/\\:*?\"<>|")) {
+        snprintf(b->message,sizeof(b->message),"Invalid filename"); return true;
+    }
+    if(join(b->selected,sizeof(b->selected),b->folder,b->new_name)) {
+        snprintf(b->message,sizeof(b->message),"Path is too long"); return true;
+    }
+    int fd=open(b->selected,O_WRONLY|O_CREAT|O_EXCL,0666);
+    if(fd<0) {
+        snprintf(b->message,sizeof(b->message),"%s",errno==EEXIST?"Already exists":"Cannot create file"); return true;
+    }
+    if(close(fd)) { snprintf(b->message,sizeof(b->message),"Create close failed"); return true; }
+    b->page=0; ink_browser_reload(b); notice(b,"File created"); return true;
+}
+static bool filename_tap(ink_browser *b,unsigned x,unsigned y)
+{
+    if(y>=720 && y<776 && x>=16 && x<464)
+        return x<240?ink_browser_home(b):create_file(b);
+    int key=ink_keyboard_tap(&b->keyboard,x,y);
+    if(!key) return false;
+    if(key==INK_KEY_ENTER) return create_file(b);
+    size_t n=strlen(b->new_name);
+    b->message[0]=0;
+    if(key==INK_KEY_DELETE) { if(n) b->new_name[n-1]=0; }
+    else if(key>=32 && key<=126) {
+        if(n+1<sizeof(b->new_name)) { b->new_name[n]=(char)key; b->new_name[n+1]=0; }
+        else snprintf(b->message,sizeof(b->message),"Filename is too long");
+    }
+    return true;
+}
 bool ink_browser_tap(ink_browser *b,unsigned x,unsigned y)
 {
     if(x>=480 || y>=800) return false;
+    if(b->view==INK_NEW_FILE) return filename_tap(b,x,y);
     if(b->view==INK_OPEN_TEXT) return false;
     if(b->view!=INK_FILES) return ink_browser_home(b);
     if(y>=48 && y<92) {
-        notice(b,x<240?"New file: coming next":"Python console: coming later"); return true;
+        if(x<240) {
+            b->new_name[0]=b->message[0]=0; b->keyboard=(ink_keyboard){0}; b->view=INK_NEW_FILE;
+        } else notice(b,"Python console: coming later");
+        return true;
     }
     if(y<148 || y>=148+42*INK_BROWSER_ROWS) return false;
     unsigned row=(y-148)/42; if(row>=b->count) return false;

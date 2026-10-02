@@ -2,8 +2,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "ink_text.h"
+#include "ink_keyboard.h"
 enum { INK_BROWSER_ROWS=14, INK_BROWSER_PATH=512 };
-typedef enum { INK_FILES, INK_OPEN_MARKDOWN, INK_OPEN_TEXT, INK_NOTICE } ink_browser_view;
+typedef enum { INK_FILES, INK_OPEN_MARKDOWN, INK_OPEN_TEXT, INK_NEW_FILE, INK_NOTICE } ink_browser_view;
 typedef struct { char name[256]; bool directory; } ink_browser_entry;
 typedef struct {
     char root[INK_BROWSER_PATH], folder[INK_BROWSER_PATH], selected[INK_BROWSER_PATH];
@@ -13,6 +14,8 @@ typedef struct {
     bool has_next;
     ink_browser_view view;
     ink_text_view text;
+    ink_keyboard keyboard;
+    char new_name[256];
 } ink_browser;
 int ink_browser_init(ink_browser *b,const char *root);
 int ink_browser_reload(ink_browser *b);

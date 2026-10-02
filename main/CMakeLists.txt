@@ -9,7 +9,7 @@ if(INKPY_MATH_DIAGNOSTIC)
 endif()
 if(INKPY_BROWSER)
     set(app_source "browser_app.c")
-    list(APPEND extra_sources "../components/ink_browser/ink_browser.c" "../components/ink_browser/browser_draw.c" "../components/ink_browser/ink_text.c")
+    list(APPEND extra_sources "../components/ink_browser/ink_browser.c" "../components/ink_browser/browser_draw.c" "../components/ink_browser/ink_text.c" "../components/ink_browser/ink_keyboard.c")
 endif()
 idf_component_register(SRCS ${app_source} "board.c" "display.c" "input.c" "sleep.c" ${extra_sources}
     INCLUDE_DIRS "." "../components/ink_browser"

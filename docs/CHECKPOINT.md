@@ -1,6 +1,6 @@
 # InkPy checkpoint
 
-Updated: 2026-10-02. Stage 8 plain text viewer source complete; ESP32 build and hardware validation pending.
+Updated: 2026-10-02. Stage 9 keyboard/New file source complete; ESP32 build and hardware validation pending.
 Committed stage boundary: pause before starting further implementation.
 
 ## Read first
@@ -124,13 +124,26 @@ runtime acceptance stays pending; never call these ports device-validated.
 - Word wrapping/font polish and backward seek optimization deferred. Stage 6
   math rendering unchanged. SDK absent; no ESP32 build or hardware claim.
 
+## Stage 9 delivered
+- ink_keyboard.c/.h: fixed English keys with ASCII characters and action events;
+  reusable by later editor/console. Browser New file now accepts the filename and
+  extension as typed, creates exclusively, and never overwrites existing files.
+- Cancel/Home exits naming; success refreshes the listing. Dot-prefixed filenames
+  are now shown. SD-invalid names and excessive path lengths produce inline errors.
+- Basic creation/keyboard/no-overwrite checks and existing browser/viewer checks
+  passed; real keyboard preview inspected under results/stage9/.
+  docs/NEW-FILE.md owns commands/limits. No SDK/device build; math unchanged.
+- User is eager for MicroPython: prioritize its first working prototype next,
+  before expanding the text editor. This is the current sequencing decision.
+
 ## Exact next bounded stage
-Stage 9 on continuation: implement the browser's New file flow with a minimal
-onscreen keyboard for filename/extension entry, and create an empty file without
-forcing an extension or overwriting an existing file. Reuse its keyboard for the
-editor in a following small stage. Keep Markdown/math device connection pending.
-If the pinned SDK is available, build the browser app; otherwise state the build
-limit. Basic main-path checks, commit and pause; retain the installation gate.
+Stage 10 on continuation: start MicroPython with a runnable minimal interpreter
+prototype for .py scripts and an interactive console, using upstream native C
+code and a small InkPy boundary. Reuse the fixed keyboard when connecting UI.
+Keep the stage small; establish main-path execution first. Preserve no script
+timeout, close-stops-session and manual-sleep-suspends requirements; do not claim
+those lifecycle behaviors before implementing them. SDK/device build limits and
+the installation gate remain explicit. Basic checks, commit and pause.
 
 ## Risks to preserve
 - Full panel refresh blocks diagnostic input today; split scheduling before editor

@@ -21,7 +21,7 @@ void app_main(void)
     if(e!=ESP_OK) { ESP_LOGE(tag,"display: %s",esp_err_to_name(e)); return; }
     e=ink_sd_mount();
     ESP_LOGI(tag,"SD: %s",esp_err_to_name(e));
-    /* Browser is read-only at this stage; no diagnostic SD write probe. */
+    /* Only New file writes to SD; no diagnostic SD write probe. */
     ink_browser_init(&browser,"/sd");
     uint8_t *frame=heap_caps_malloc(48000,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
     if(!frame) { ESP_LOGE(tag,"frame allocation failed"); return; }
