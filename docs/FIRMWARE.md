@@ -1,14 +1,17 @@
-# Stage 19 firmware checkpoint
+# Stage 19.1 firmware checkpoint
 
-**Installation hold:** the [safety audit](SAFETY-AUDIT.md) passed offline checks
-but found recovery unverified. Do not install on a USB-locked X4 Pro: this image
-has no recovery updater. CrossPoint/CrossInk being installed is not proof of USB
-recovery access. Actual security state and partition/boot-slot evidence are required.
+The user confirms an unlocked X4 Pro and reports a successful Stage 19 installation
+through CrossPoint's web installer. Stage 19.1 corrects upside-down orientation and
+adds successful-first-boot confirmation plus reset/slot/sleep logging; see
+[the hardware feedback and fixes](BOOT-FIX.md). Sleep caused a return to CrossPoint
+on the previous image; the underlying reset cause remains unknown. This updated
+image still needs hardware checking. Do not install on USB-locked devices.
 
 `firmware.bin` is an ESP32-S3 **application image** for the X4 Pro. It does not
 contain a bootloader or partition table and is not a merged full-flash image.
-It has compiled and passed image checksum/hash validation; it has not been flashed
-or tested on physical hardware. The installation gate in BRINGUP.md still applies.
+This revised image has compiled and passed checksum/hash validation; its predecessor
+was tested by the user, but these corrections still need physical verification.
+Use the X4 Pro custom application-image installer, retaining the existing bootloader.
 
 Included: filename browser/folders/paging, New file with arbitrary extension,
 plain-text viewer, long-press Edit/Execute menu, disk-backed editor with keyboard,
@@ -24,8 +27,8 @@ existing full-refresh panel driver; no additional refresh-menu control yet.
 - SDK: ESP-IDF v5.5.5, `b774170ff46c393eeb5e495ea37936038d3f4f4f`, clean pinned submodules.
 - Compiler: Xtensa GCC 14.2.0, esp-14.2.0_20260121.
 - Build: browser ON, math diagnostic OFF; 20 KiB main-task stack.
-- Image: 344544 bytes; configured app slot 8257536 bytes, 96% free.
-- SHA-256: `3d8b7eac5b1b69cf63d1c387ff735f399003677e2ae97022bc55e08ae5e14471`.
+- Image: 356576 bytes; configured app slot 8257536 bytes, 96% free.
+- SHA-256: `e123b05a90bb0b58ede9c4c46238f34bc373260183f81dccce5d126739e90fae`.
 
 With the pinned SDK installed and its `export.sh` sourced:
 ```

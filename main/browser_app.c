@@ -1,6 +1,8 @@
 #include "board.h"
 #include "input.h"
 #include "pins.h"
+#include "boot.h"
+#include "orientation.h"
 #include "ink_browser.h"
 #include "ink_editor.h"
 #include "sdkconfig.h"
@@ -18,7 +20,10 @@ _Static_assert(CONFIG_ESP_MAIN_TASK_STACK_SIZE>=16384,"Editor needs >=16 KiB mai
 static ink_editor editor;
 static bool editor_active;
 static void draw(uint8_t *frame)
-{ if(editor_active) ink_editor_draw(&editor,frame); else ink_browser_draw(&browser,frame); }
+{
+    if(editor_active) ink_editor_draw(&editor,frame); else ink_browser_draw(&browser,frame);
+    ink_frame_rotate_180(frame);
+}
 static void open_editor(void)
 {
     if(editor_active || browser.view!=INK_EDIT_TEXT) return;
@@ -35,6 +40,7 @@ static void handle_home(bool long_press)
 void app_main(void)
 {
     const char *tag="browser";
+    ink_boot_report();
     esp_err_t e=ink_board_init();
     if(e!=ESP_OK) { ESP_LOGE(tag,"board: %s",esp_err_to_name(e)); return; }
     e=ink_display_init();
@@ -47,6 +53,8 @@ void app_main(void)
     if(!frame) { ESP_LOGE(tag,"frame allocation failed"); return; }
     draw(frame);
     if(ink_display_frame(frame)!=ESP_OK) { heap_caps_free(frame); return; }
+    e=ink_boot_confirm();
+    if(e!=ESP_OK) ESP_LOGE(tag,"boot confirmation failed: %s; next reset may roll back",esp_err_to_name(e));
     ink_button_t prev={0},next={0},home={0},power={0},contact={0};
     ink_touch_t touch={0};
     unsigned origin_x=0,origin_y=0;
@@ -74,13 +82,16 @@ void app_main(void)
         }
         if(he==INK_PRESS_SHORT || he==INK_PRESS_LONG) { handle_home(he==INK_PRESS_LONG); changed=true; }
         if(te==INK_PRESS_SHORT && !moved && origin_x<800 && origin_y<480) {
+            unsigned ui_x,ui_y; ink_panel_to_ui(origin_x,origin_y,&ui_x,&ui_y);
             if(editor_active) {
-                if(ink_editor_tap(&editor,origin_y,799-origin_x)) { editor_active=false; ink_browser_home(&browser); }
+                if(ink_editor_tap(&editor,ui_x,ui_y)) { editor_active=false; ink_browser_home(&browser); }
                 changed=true;
-            } else changed|=ink_browser_tap(&browser,origin_y,799-origin_x);
+            } else changed|=ink_browser_tap(&browser,ui_x,ui_y);
         }
-        if(te==INK_PRESS_LONG && !editor_active && !moved && origin_x<800 && origin_y<480)
-            changed|=ink_browser_long_press(&browser,origin_y,799-origin_x);
+        if(te==INK_PRESS_LONG && !editor_active && !moved && origin_x<800 && origin_y<480) {
+            unsigned ui_x,ui_y; ink_panel_to_ui(origin_x,origin_y,&ui_x,&ui_y);
+            changed|=ink_browser_long_press(&browser,ui_x,ui_y);
+        }
         if(changed) open_editor();
         if(pe==INK_PRESS_SHORT) {
             snprintf(browser.message,sizeof(browser.message),"Power menu: coming later");

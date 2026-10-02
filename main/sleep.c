@@ -43,6 +43,7 @@ esp_err_t ink_sleep(void)
     if (e != ESP_OK) goto restore;
     ESP_LOGI(TAG, "light sleep; one Power press wakes, pixels remain untouched");
     e = esp_light_sleep_start();
+    ESP_LOGI(TAG,"light sleep returned: %s wake cause=%d",esp_err_to_name(e),(int)esp_sleep_get_wakeup_cause());
     if (e == ESP_OK) wait_power_released();
 
 restore:

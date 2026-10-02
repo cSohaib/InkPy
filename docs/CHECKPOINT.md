@@ -1,6 +1,6 @@
 # InkPy checkpoint
 
-Updated: 2026-10-02. Stage 19 browser/editor firmware.bin built and supplied; hardware validation pending.
+Updated: 2026-10-03 (Luxembourg). Stage 19.1 boot-confirmation/orientation correction; see docs/BOOT-FIX.md.
 Committed stage boundary: pause before starting further implementation.
 
 ## Read first
@@ -304,14 +304,21 @@ runtime acceptance stays pending; never call these ports device-validated.
 - Stage boundary: commit and pause. Preserve unrelated Python run.sh mode change.
 
 ## Exact next bounded stage
-Safety audit requested after Stage 19: docs/SAFETY-AUDIT.md records passed rebuild,
-image/pin checks, sanitizer edit tests, rename-failure rollback, large-file/browser
-probes and GCC static analysis, with limits. Delivered binary unchanged. Fixed
-browser probe link list; added scripts/audit-editor.sh. Current firmware identified
-only as CrossPoint/CrossInk; version, actual partitions, chip/security and independent
-recovery remain unknown. Installation is on hold: locked units can be stranded
-because InkPy has no updater/recovery path. Next safety task: obtain read-only device
-evidence and establish recovery before selecting any flash method or offset.
+Stage 19.1: user confirms unlocked X4 Pro and reports browser firmware worked,
+was upside-down, and CrossPoint returned after sleep/wake. docs/BOOT-FIX.md owns
+the evidence/limits. Added main/boot.c: reset/slot/OTA-state reporting and trial-boot
+confirmation after first successful display refresh; preserve startup-failure
+rollback, prohibit anti-rollback/eFuse updates. Installer writes OTA state NEW;
+missing confirmation was missed by the earlier audit. Reset cause is still unknown.
+Device framebuffer now rotates 180 degrees; short/long touch mapping follows it.
+Host orientation probe checks all pixels and matching touch coordinates. Sleep
+return now logs error/wake cause. Next hardware task: check upright/aligned UI,
+reboot persistence, then sleep/wake; capture reset logs if it restarts. Keep existing
+bootloader/partitions and USB recovery. No claim that sleep reset is resolved.
+
+Audit details remain in docs/SAFETY-AUDIT.md: pinned image/SDK/pin checks,
+sanitizers, failure rollback, large-file/browser probes, static analyzer. Its
+installation hold reflected knowledge before the user's unlocked-device/test report.
 
 Stage 20: begin device MicroPython integration with a FreeRTOS VM worker and the
 existing console model/keyboard. Aim for a compiling device REPL command path,

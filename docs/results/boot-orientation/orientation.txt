@@ -1,0 +1,1 @@
+PASS: all 384000 pixels rotate 180 degrees; touch coordinates agree; two rotations restore every byte
