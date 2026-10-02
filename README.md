@@ -1,7 +1,7 @@
 # InkPy
 
 Minimal firmware exclusively for the Xteink X4 Pro. The hardware diagnostic and shared host/ESP32 math
-diagnostic and host-only Markdown pagination with inline/display math are implemented. Optional device browser, plain text viewer and editor source are wired up; the current ESP32 build and device validation are pending. Device Markdown reader and
+diagnostic and host-only Markdown pagination with inline/display math are implemented. The device browser, plain text viewer and editor compile into an ESP32-S3 application image; physical validation is pending. See [the firmware checkpoint](docs/FIRMWARE.md). Device Markdown reader and
 MicroPython runtime are not integrated yet. The host prototype supports creating/editing/saving files and executing Python through its console, with Stop/Close/pause controls.
 
 ## Confirmed scope

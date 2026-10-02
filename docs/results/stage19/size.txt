@@ -1,0 +1,43 @@
+Executing action: size
+Running ninja in directory /workspace/scratch/5fae3dc186b5/InkPy/build-browser
+Executing "ninja -j 4 all"...
+[1/4] cd /workspace/scratch/5fae3dc186b5/InkPy/build-browser/esp-idf/esptool_py && /root/.espressif/python_env/idf5.5_py3.12_env/bin/python /workspace/scratch/5fae3dc186b5/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app /workspace/scratch/5fae3dc186b5/InkPy/build-browser/partition_table/partition-table.bin /workspace/scratch/5fae3dc186b5/InkPy/build-browser/inkpy.bin
+inkpy.bin binary size 0x541e0 bytes. Smallest app partition is 0x7e0000 bytes. 0x78be20 bytes (96%) free.
+[2/4] Performing build step for 'bootloader'
+[1/1] cd /workspace/scratch/5fae3dc186b5/InkPy/build-browser/bootloader/esp-idf/esptool_py && /root/.espressif/python_env/idf5.5_py3.12_env/bin/python /workspace/scratch/5fae3dc186b5/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 /workspace/scratch/5fae3dc186b5/InkPy/build-browser/bootloader/bootloader.bin
+Bootloader binary size 0x5170 bytes. 0x2e90 bytes (36%) free.
+[3/4] No install step for 'bootloader'
+[4/4] Completed 'bootloader'
+Running ninja in directory /workspace/scratch/5fae3dc186b5/InkPy/build-browser
+Executing "ninja -j 4 size"...
+[0/1] cd /workspace/scratch/5fae3dc186b5/InkPy/build-browser && /workspace/scratch/5fae3dc186b5/build-tools/lib/python3.12/site-packages/cmake/data/bin/cmake -D "IDF_SIZE_TOOL=/root/.espressif/python_env/idf5.5_py3.12_env/bin/python;-m;esp_idf_size" -D MAP_FILE=/workspace/scratch/5fae3dc186b5/InkPy/build-browser/inkpy.map -D OUTPUT_JSON= -P /workspace/scratch/5fae3dc186b5/esp-idf/tools/cmake/run_size_tool.cmake
+                           Memory Type Usage Summary                            
+┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Memory            ┃              ┃          ┃                ┃               ┃
+┃ Type/Section      ┃ Used [bytes] ┃ Used [%] ┃ Remain [bytes] ┃ Total [bytes] ┃
+┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ Flash Code        │       189964 │          │                │               │
+│    .text          │       189964 │          │                │               │
+│ DIRAM             │        83151 │    24.33 │         258609 │        341760 │
+│    .text          │        53179 │    15.56 │                │               │
+│    .data          │        17908 │     5.24 │                │               │
+│    .bss           │        12064 │     3.53 │                │               │
+│ Flash Data        │        66868 │          │                │               │
+│    .rodata        │        66612 │          │                │               │
+│    .appdesc       │          256 │          │                │               │
+│ IRAM              │        16384 │    100.0 │              0 │         16384 │
+│    .text          │        15356 │    93.73 │                │               │
+│    .vectors       │         1028 │     6.27 │                │               │
+│ RTC FAST          │          112 │     1.37 │           8080 │          8192 │
+│    .text          │           84 │     1.03 │                │               │
+│    .rtc_reserved  │           24 │     0.29 │                │               │
+│    .force_fast    │            4 │     0.05 │                │               │
+│ RTC SLOW          │           32 │     0.39 │           8160 │          8192 │
+│    .force_slow    │           32 │     0.39 │                │               │
+└───────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
+Total image size: 344423 bytes (.bin may be padded larger)
+Note: The reported total sizes may be smaller than those in the technical 
+reference manual due to reserved memory and application configuration. The total
+flash size available for the application is not included by default, as it 
+cannot be reliably determined due to the presence of other data like the 
+bootloader, partition table, and application partition size.

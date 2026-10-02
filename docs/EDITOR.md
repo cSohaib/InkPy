@@ -23,9 +23,16 @@ rename durability and device integration are deferred.
 
 The optional device browser source now uses the same tap/Home controller and
 includes editor code in its build. Its sleep path flushes the working stream and
-retains editor state. SDK compilation and physical validation remain pending.
+retains editor state. ESP32-S3 compilation passes; physical validation is pending.
 Default main stack is 20 KiB; existing SDK configs need at least 16 KiB or the
 editor build assertion fails. No stack high-water or SD latency measurements yet.
+
+Stage 19 adapts Save to ESP-IDF FatFs, which rejects an existing rename destination:
+the original is moved to a uniquely named sibling backup, then the saved file is
+moved into place. Failure attempts to restore the original; a failed rollback
+retains its backup. This sequence is not atomic across power loss. Host POSIX saves
+still use replacement rename. Both branches pass the host large-file edit check;
+actual SD Save behavior is not yet physically tested.
 
 Creating a file creates an empty source immediately, then opens the editor.
 Discarding that initial edit keeps the empty file; no implicit filename extension

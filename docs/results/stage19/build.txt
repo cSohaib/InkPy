@@ -1,0 +1,13 @@
+ESP-IDF v5.5.5 b774170ff46c393eeb5e495ea37936038d3f4f4f; clean pinned submodules.
+Xtensa GCC 14.2.0 esp-14.2.0_20260121; CMake 3.30.9; Ninja 1.13.2.
+INKPY_BROWSER=ON; INKPY_MATH_DIAGNOSTIC=OFF; main task stack=20480.
+
+Browser/editor build and link passed. Own sources compile with warnings-as-errors.
+inkpy.bin binary size 0x541e0 bytes (344544).
+Smallest configured app partition 0x7e0000; 0x78be20 bytes (96%) free.
+SHA256 3d8b7eac5b1b69cf63d1c387ff735f399003677e2ae97022bc55e08ae5e14471
+
+OK: host POSIX Save branch, 8 MiB edit, gap growth, pages, Tab.
+OK: device backup Save branch on host, same check (not actual FatFs runtime).
+
+No hardware attached or flashed. No runtime RAM/stack/current/SD/touch measurements.

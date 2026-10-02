@@ -62,10 +62,10 @@ Proposed: page numbers are one-based and belong to the current font/orientation 
   - Orientation: portrait/landscape
   - Time settings
   - Font selector
+  - Refresh screen: close the menu and force a full refresh of the underlying screen to clear e-ink ghosting, keeping its page/cursor/session unchanged
 - Only while the power menu is open, its header shows time, date and battery level. Do not show these in the reader, browser, editor, console or any other screen. No persistent status bar.
 
 Proposed: disable touch and side-button interaction while asleep; consume the waking Power press so it does not also open the power menu, toggle light or put the device back to sleep. Turn the frontlight off for sleep and restore its prior state on wake; this changes illumination, not screen content. Night mode means inverted rendering within the fixed theme. Time is set locally, without a network time service.
 Sleep suspends Python execution and waking resumes it; it must not kill or restart the script. The existing automatic-sleep exception while a script runs remains in effect. Manual Power sleep can suspend a running script.
 Implementation note: preserve the VM, stack and local variables, but wall-clock time still passes. Network connections and external I/O may time out across a long sleep; suspension does not freeze the outside world.
 Implementation must distinguish idle power saving, state-preserving sleep and deep sleep. An unchanged e-ink image does not imply that the processor is already sleeping.
-

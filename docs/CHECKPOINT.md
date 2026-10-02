@@ -1,6 +1,6 @@
 # InkPy checkpoint
 
-Updated: 2026-10-02. Stages 17–18 creation flow and device editor source wired; ESP32 build and hardware validation pending.
+Updated: 2026-10-02. Stage 19 browser/editor firmware.bin built and supplied; hardware validation pending.
 Committed stage boundary: pause before starting further implementation.
 
 ## Read first
@@ -281,11 +281,35 @@ runtime acceptance stays pending; never call these ports device-validated.
 - Two stages completed as authorized. Push batch and pause; preserve unrelated
   run.sh mode-only change. Preview/results in docs/results/stage18.
 
+## Stage 19 outcome
+- Added power-menu Refresh screen requirement to UI.md: close menu, full refresh
+  of underlying view, preserve page/cursor/session. Power menu remains pending.
+- Restored unchanged board/display/pins/partitions/bringup files from current
+  remote. SDK v5.5.5 b774170ff46c393eeb5e495ea37936038d3f4f4f and recursive
+  submodule pins restored clean; official esp32s3 tools installed. Host SDK path
+  /workspace/scratch/5fae3dc186b5/esp-idf, build tools in ../build-tools/bin.
+  Reuse this cache; do not repeat downloads unless missing after environment reset.
+- Xtensa GCC esp-14.2.0_20260121, CMake 3.30.9, Ninja 1.13.2. Run source export.sh
+  with build-tools/bin on PATH, IDF_PY_BUILD_JOBS=4, bash scripts/build-browser.sh.
+  Separate build-browser/sdkconfig; browser ON, math diagnostic OFF, stack 20480.
+- Fixed device-only Home handler/button name collision. Inspected pinned FatFs
+  rename: no overwrite support. Device Save now uses sibling backup/replacement
+  and rollback; host keeps POSIX rename. Backup sequence isn't power-loss atomic.
+- Browser/editor ESP32-S3 build/link pass, own code warnings-as-errors. App image
+  344544 bytes, configured slot 0x7e0000, 96% free. esptool checksum/hash valid.
+  Both Save branches pass host 8 MiB/gap/page/Tab check. No physical result.
+- App-only firmware.bin supplied as downloadable artifact. Hash/results and scope
+  in docs/FIRMWARE.md and results/stage19. No merged image, flash, runtime heap,
+  stack high-water or device recovery assumption. Markdown/Python remain host-only.
+- Stage boundary: commit and pause. Preserve unrelated Python run.sh mode change.
+
 ## Exact next bounded stage
-Stage 19: restore the pinned ESP-IDF/toolchain environment and missing board files
-from current GitHub state, compile INKPY_BROWSER with editor, and resolve concrete
-port/build failures only. Keep Python task port, new features and flashing out of
-this stage. Record any environment blocker concretely; commit and pause.
+Stage 20: begin device MicroPython integration with a FreeRTOS VM worker and the
+existing console model/keyboard. Aim for a compiling device REPL command path,
+reusing the pinned host embedding and cooperative Stop/Close/pause protocol.
+No runtime timeout, arbitrary task suspension/deletion or premature sleep while
+VM active. Keep networking, reader and editor polish out of this stage. No flash
+without a verified installation/recovery route for the actual device.
 
 ## Risks to preserve
 - Full panel refresh blocks diagnostic input today; split scheduling before editor

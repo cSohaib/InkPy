@@ -26,7 +26,7 @@ static void open_editor(void)
         snprintf(browser.message,sizeof(browser.message),"%s",editor.error); browser.view=INK_NOTICE;
     } else editor_active=true;
 }
-static void home(bool long_press)
+static void handle_home(bool long_press)
 {
     if(editor_active) {
         if(ink_editor_home(&editor,long_press)) { editor_active=false; ink_browser_home(&browser); }
@@ -72,7 +72,7 @@ void app_main(void)
             if(editor_active) { ink_editor_page(&editor,direction); changed=true; }
             else changed|=ink_browser_page(&browser,direction);
         }
-        if(he==INK_PRESS_SHORT || he==INK_PRESS_LONG) { home(he==INK_PRESS_LONG); changed=true; }
+        if(he==INK_PRESS_SHORT || he==INK_PRESS_LONG) { handle_home(he==INK_PRESS_LONG); changed=true; }
         if(te==INK_PRESS_SHORT && !moved && origin_x<800 && origin_y<480) {
             if(editor_active) {
                 if(ink_editor_tap(&editor,origin_y,799-origin_x)) { editor_active=false; ink_browser_home(&browser); }

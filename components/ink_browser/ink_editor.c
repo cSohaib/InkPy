@@ -182,6 +182,27 @@ int ink_editor_page(ink_editor *e,int direction)
     if(move_gap(e,target)) return -1;
     return layout(e,target);
 }
+#ifdef ESP_PLATFORM
+/* FatFs f_rename rejects existing destinations. Keep the original as a sibling
+ * backup until replacement succeeds; never unlink it to make room for Save. */
+static int install_save(ink_editor *e,const char *saved)
+{
+    char backup[INK_EDITOR_PATH]; snprintf(backup,sizeof(backup),"%s.inkpy-XXXXXX",e->path);
+    int fd=mkstemp(backup); if(fd<0) return error(e,"Cannot reserve backup name");
+    int closed=close(fd);
+    if(unlink(backup) || closed) return error(e,"Cannot prepare backup name");
+    if(rename(e->path,backup)) return error(e,"Cannot back up original");
+    if(rename(saved,e->path)) {
+        if(rename(backup,e->path)) return error(e,"Save failed; original in backup");
+        return error(e,"Save failed; original restored");
+    }
+    /* A leftover backup is preferable to failing a completed save. */
+    unlink(backup); return 0;
+}
+#else
+static int install_save(ink_editor *e,const char *saved)
+{ return rename(saved,e->path)?error(e,"Save failed"):0; }
+#endif
 int ink_editor_save(ink_editor *e)
 {
     char path[INK_EDITOR_PATH]; snprintf(path,sizeof(path),"%s.inkpy-XXXXXX",e->path);
@@ -197,7 +218,8 @@ int ink_editor_save(ink_editor *e)
     }
     if(fflush(out) || fsync(fd)) bad=true;
     if(fclose(out)) bad=true;
-    if(bad || rename(path,e->path)) { unlink(path); return error(e,"Save failed"); }
+    if(bad) { unlink(path); return error(e,"Save failed"); }
+    if(install_save(e,path)) { unlink(path); return -1; }
     ink_editor_discard(e); return 0;
 }
 void ink_editor_discard(ink_editor *e)
