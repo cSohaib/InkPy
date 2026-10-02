@@ -242,6 +242,7 @@ bool ink_editor_tap(ink_editor *e,unsigned x,unsigned y)
     }
     if(x>=16 && x<464 && y>=64 && y<370)
         ink_editor_cursor(e,(y-64)/34,(x-16)/18);
-    else ink_editor_key(e,ink_keyboard_tap(&e->keyboard,x,y));
+    else if(y>=INK_KB_Y+INK_EDITOR_KEYBOARD_OFFSET)
+        ink_editor_key(e,ink_keyboard_tap(&e->keyboard,x,y-INK_EDITOR_KEYBOARD_OFFSET));
     return false;
 }

@@ -1,6 +1,6 @@
 # InkPy checkpoint
 
-Updated: 2026-10-03 (Luxembourg). Stage 19.1 boot-confirmation/orientation correction; see docs/BOOT-FIX.md.
+Updated: 2026-10-03 (Luxembourg). Stage 20 device-feedback UI patch; see docs/FIRMWARE.md.
 Committed stage boundary: pause before starting further implementation.
 
 ## Read first
@@ -304,6 +304,23 @@ runtime acceptance stays pending; never call these ports device-validated.
 - Stage boundary: commit and pause. Preserve unrelated Python run.sh mode change.
 
 ## Exact next bounded stage
+Stage 20 follows new hardware feedback instead of the previously planned VM worker.
+Hidden files/folders filtered; InkPy title removed; editor filename only in its
+Save/Discard/Cancel menu; bottom keyboard with matching tap coordinates; footer
+removed. Global Power modal preserves browser/editor state and gates underlying
+input. Brightness/warmth +/-5, light toggle, night inversion and Refresh screen
+work; Home/Power closes it. RTC date/time only in this menu; battery unavailable
+until validated. Orientation/time-setting/font rows remain explicit pending notices.
+All remarks recorded in UI.md, including global menu for future reader/console.
+Routine full refresh is STILL present; manual refresh button closes modal and
+refreshes underlying screen. Fast/partial panel refresh is a distinct pending
+driver task; user prefers manual cleanup, optional 20-update policy not selected.
+Browser hidden-fixture check, Power/editor model and render checks, existing host
+browser/Python/editor workflow passed. Power/editor previews inspected. Pinned
+ESP32-S3 build and esptool checksum/hash validation passed; new image in FIRMWARE.md.
+No new physical-device results inferred. Next implementation: resume bounded
+FreeRTOS MicroPython integration (now Stage 21), then panel-specific fast refresh.
+
 Stage 19.1: user confirms unlocked X4 Pro and reports browser firmware worked,
 was upside-down, and CrossPoint returned after sleep/wake. docs/BOOT-FIX.md owns
 the evidence/limits. Added main/boot.c: reset/slot/OTA-state reporting and trial-boot
@@ -320,7 +337,7 @@ Audit details remain in docs/SAFETY-AUDIT.md: pinned image/SDK/pin checks,
 sanitizers, failure rollback, large-file/browser probes, static analyzer. Its
 installation hold reflected knowledge before the user's unlocked-device/test report.
 
-Stage 20: begin device MicroPython integration with a FreeRTOS VM worker and the
+Stage 21: begin device MicroPython integration with a FreeRTOS VM worker and the
 existing console model/keyboard. Aim for a compiling device REPL command path,
 reusing the pinned host embedding and cooperative Stop/Close/pause protocol.
 No runtime timeout, arbitrary task suspension/deletion or premature sleep while

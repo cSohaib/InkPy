@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdio.h>
 enum { INK_EDITOR_ROWS=9, INK_EDITOR_COLUMNS=24, INK_EDITOR_PATH=544 };
+enum { INK_EDITOR_KEYBOARD_OFFSET=120 };
 typedef struct {
     FILE *work;
     char path[512],temporary[INK_EDITOR_PATH],error[80];

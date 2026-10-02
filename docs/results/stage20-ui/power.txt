@@ -1,0 +1,1 @@
+PASS: Power +/-/light/night/refresh model; bottom editor keyboard tap; clean editor and filename menu renders

@@ -1,12 +1,19 @@
 # InkPy interaction specification
-Updated 2026-10-01. User-confirmed requirements unless explicitly marked proposed or open.
+Updated 2026-10-03. User-confirmed requirements unless explicitly marked proposed or open.
 
 ## General
 No swipe, slide, drag-to-scroll or touchpad navigation gestures anywhere. Side buttons page through content. One fixed UI with hardcoded text and one keyboard layout. The power menu below is the complete requested settings surface; night mode and orientation are now explicitly in scope.
 Brightness and warmth use only + and - buttons; no sliders. Press durations, debounce and double-click timing are fixed implementation constants, not user settings. A long press must suppress its short-press action; a double power press must suppress the single-press menu.
+No screen displays an InkPy title/header. Power menu is global: accessible from
+the browser, editor, reader, console and their prompts, without losing their state.
+Routine display updates should use a fast/partial refresh; full refresh is explicitly
+available through Refresh screen in the Power menu. Manual cleanup is the preferred
+default. Automatic full refresh every 20 updates is an optional alternative, not
+a confirmed requirement. Hardware initialization/recovery may require a full refresh.
 
 ## Home: file browser
 - Filename list, no thumbnails.
+- Hide dot-prefixed files and folders; do not delete or modify them.
 - Two buttons at the top: New file and Python console.
 - New file accepts a freely entered filename and extension: .py, .md, .txt, another extension, or no extension. It creates a text file; do not append or force .txt.
 - Tap a folder to enter it. Side buttons change list pages.
@@ -26,6 +33,8 @@ Text validation must inspect content, not only the extension. Proposed encoding 
 - Home shows Discard / Save / Cancel. Pressing Home again cancels the prompt.
 - There is no other Save button.
 - Long-press Home closes and discards.
+- Normal editing displays neither filename nor "Home: save or discard" footer.
+  Keyboard sits at the bottom. Filename may remain in Save/Discard/Cancel prompt.
 Proposed: Save writes successfully then closes; on failure remain in the editor with changes intact. Discard closes without replacing the original. Cancel resumes editing. Prompt text and layout must make the destructive long-press rule predictable.
 A single onscreen keyboard is shared with filename entry and the Python console. Its exact layout is not chosen yet.
 

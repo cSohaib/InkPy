@@ -7,6 +7,8 @@ mkdir -p build
 sample_dir=$(mktemp -d)
 trap 'rm -r -- "$sample_dir"' EXIT
 mkdir "$sample_dir/Books"
+mkdir "$sample_dir/.hidden-folder"
+printf 'hidden\n' > "$sample_dir/.hidden-file"
 printf '# A book\n' > "$sample_dir/Books/book.md"
 printf 'print(1)\n' > "$sample_dir/Books/script.py"
 printf '\000\001' > "$sample_dir/Books/binary.bin"

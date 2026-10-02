@@ -1,6 +1,7 @@
 #include "ink_browser.h"
 #include "ink_ui_font.h"
 #include "ink_editor.h"
+#include "ink_power.h"
 #include "../ink_python/ink_console.h"
 #include <stdio.h>
 #include <string.h>
@@ -45,11 +46,11 @@ static void new_file(const ink_browser *b,uint8_t *frame)
     text(frame,16,180,b->message);
     /* Shared keyboard draw follows below. */
 }
-static void keyboard_draw(const ink_keyboard *keyboard,uint8_t *frame)
+static void keyboard_draw_at(const ink_keyboard *keyboard,uint8_t *frame,unsigned offset)
 {
     for(unsigned row=0;row<5;++row) for(unsigned col=0;col<(row==4?5u:10u);++col) {
         int key=ink_keyboard_key(keyboard,row,col); if(!key) continue;
-        unsigned w=INK_KB_WIDTH*(row==4?2:1),x=INK_KB_X+col*w,y=INK_KB_Y+row*INK_KB_HEIGHT;
+        unsigned w=INK_KB_WIDTH*(row==4?2:1),x=INK_KB_X+col*w,y=INK_KB_Y+offset+row*INK_KB_HEIGHT;
         box(frame,x+1,y+1,w-2,INK_KB_HEIGHT-2);
         if(row==4 || key==INK_KEY_INDENT) {
             const char *label=key==INK_KEY_INDENT?"Tab":key==INK_KEY_SHIFT?(keyboard->shift?"SHIFT":"Shift"):
@@ -60,6 +61,27 @@ static void keyboard_draw(const ink_keyboard *keyboard,uint8_t *frame)
             char label[2]={(char)key,0}; text(frame,x+(w-18)/2,y+10,label);
         }
     }
+}
+static void keyboard_draw(const ink_keyboard *keyboard,uint8_t *frame)
+{ keyboard_draw_at(keyboard,frame,0); }
+void ink_power_draw(const ink_power *p,uint8_t frame[48000])
+{
+    memset(frame,0xff,48000);
+    text(frame,16,8,p->time[0]?p->time:"Time: unavailable");
+    text(frame,16,48,"Battery: unavailable");
+    const char *labels[]={"Brightness","Warmth",p->on?"Light: on":"Light: off",
+        p->night?"Night mode: on":"Night mode: off","Orientation","Time settings",
+        "Font selector","Refresh screen","Close"};
+    for(unsigned row=0;row<9;row++) {
+        unsigned y=128+row*64; box(frame,32,y,416,64);
+        if(row<2) {
+            char label[20]; snprintf(label,sizeof(label),"%s %u",labels[row],row==0?p->brightness:p->warmth);
+            text_size(frame,48,y+22,label,1);
+            box(frame,288,y,80,64); box(frame,368,y,80,64);
+            text(frame,320,y+16,"-"); text(frame,400,y+16,"+");
+        } else text(frame,48,y+16,labels[row]);
+    }
+    text_size(frame,16,736,p->message,1);
 }
 void ink_console_draw(const ink_console *c,uint8_t frame[48000])
 {
@@ -88,16 +110,15 @@ void ink_console_draw(const ink_console *c,uint8_t frame[48000])
 void ink_editor_draw(const ink_editor *e,uint8_t frame[48000])
 {
     memset(frame,0xff,48000);
-    const char *name=strrchr(e->path,'/'); text(frame,16,8,name?name+1:e->path);
     if(e->menu) {
+        const char *name=strrchr(e->path,'/'); text(frame,16,8,name?name+1:e->path);
         const char *labels[]={"Save","Discard","Cancel"};
         for(unsigned i=0;i<3;i++) { box(frame,32,180+i*64,416,64); text(frame,48,196+i*64,labels[i]); }
     } else {
         for(unsigned row=0;row<e->rows;row++) text(frame,16,64+row*34,e->lines[row]);
         unsigned x=16+e->cursor_column*18,y=64+e->cursor_row*34;
         for(unsigned i=0;i<32;i++) pixel(frame,x,y+i);
-        keyboard_draw(&e->keyboard,frame);
-        text(frame,16,730,"Home: save or discard");
+        keyboard_draw_at(&e->keyboard,frame,INK_EDITOR_KEYBOARD_OFFSET);
     }
     if(e->error[0]) text(frame,16,110,e->error);
 }
@@ -113,7 +134,6 @@ void ink_browser_draw(const ink_browser *b,uint8_t frame[48000])
         for(unsigned row=0;row<b->text.rows;++row) text(frame,16,16+row*34,b->text.lines[row]);
         return;
     }
-    text(frame,16,8,"InkPy");
     if(b->view==INK_FILE_MENU) {
         const char *name=strrchr(b->selected,'/');
         text(frame,16,80,name?name+1:b->selected);

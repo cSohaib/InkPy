@@ -1,4 +1,4 @@
-# Stage 19.1 firmware checkpoint
+# Stage 20 firmware checkpoint
 
 The user confirms an unlocked X4 Pro and reports a successful Stage 19 installation
 through CrossPoint's web installer. Stage 19.1 corrects upside-down orientation and
@@ -13,22 +13,31 @@ This revised image has compiled and passed checksum/hash validation; its predece
 was tested by the user, but these corrections still need physical verification.
 Use the X4 Pro custom application-image installer, retaining the existing bootloader.
 
+Stage 20 incorporates device feedback: dot-files/folders hidden, InkPy title removed,
+clean editor with bottom keyboard and filename only in its Save/Discard/Cancel menu.
+Power menu now opens over every existing device screen, preserves its state, and
+offers brightness/warmth +/-5, light toggle, night mode and Refresh screen. Date/time
+appears here when RTC is valid; battery readout is explicitly unavailable. Orientation,
+time-setting and fonts remain pending controls. Routine fast/partial refresh is
+still pending: all current updates use the full-refresh driver. Manual Refresh
+screen closes the menu and refreshes the underlying view without saving or navigating.
+
 Included: filename browser/folders/paging, New file with arbitrary extension,
 plain-text viewer, long-press Edit/Execute menu, disk-backed editor with keyboard,
 tap cursor and Home Save/Discard/Cancel, long Home discard, light toggle and sleep.
 
 Pending on device: Markdown/math reader, Python Console/Execute, StarDict, fonts,
-full power menu (including the newly requested Refresh screen) and EPUB.
+orientation/time-setting/font controls, validated battery service, fast refresh and EPUB.
 Console/Execute currently show a pending screen. All draws already use the
-existing full-refresh panel driver; no additional refresh-menu control yet.
+existing full-refresh panel driver; a manual refresh-menu control is now present.
 
 ## Build identification
 
 - SDK: ESP-IDF v5.5.5, `b774170ff46c393eeb5e495ea37936038d3f4f4f`, clean pinned submodules.
 - Compiler: Xtensa GCC 14.2.0, esp-14.2.0_20260121.
 - Build: browser ON, math diagnostic OFF; 20 KiB main-task stack.
-- Image: 356576 bytes; configured app slot 8257536 bytes, 96% free.
-- SHA-256: `e123b05a90bb0b58ede9c4c46238f34bc373260183f81dccce5d126739e90fae`.
+- Image: 371504 bytes; configured app slot 8257536 bytes, 95% free.
+- SHA-256: `cc65982b9f36a9c6c0a8b41fbc67a45af897f45d13e005c5c878d62ab071a932`.
 
 With the pinned SDK installed and its `export.sh` sourced:
 ```

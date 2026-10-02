@@ -5,6 +5,7 @@
 #include "orientation.h"
 #include "ink_browser.h"
 #include "ink_editor.h"
+#include "ink_power.h"
 #include "sdkconfig.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,9 +20,13 @@ static ink_browser browser;
 _Static_assert(CONFIG_ESP_MAIN_TASK_STACK_SIZE>=16384,"Editor needs >=16 KiB main stack; update sdkconfig");
 static ink_editor editor;
 static bool editor_active;
+static ink_power power_menu={.brightness=20,.warmth=50};
 static void draw(uint8_t *frame)
 {
-    if(editor_active) ink_editor_draw(&editor,frame); else ink_browser_draw(&browser,frame);
+    if(power_menu.open) ink_power_draw(&power_menu,frame);
+    else if(editor_active) ink_editor_draw(&editor,frame);
+    else ink_browser_draw(&browser,frame);
+    if(power_menu.night) for(unsigned i=0;i<PANEL_BYTES;i++) frame[i]^=255;
     ink_frame_rotate_180(frame);
 }
 static void open_editor(void)
@@ -33,6 +38,7 @@ static void open_editor(void)
 }
 static void handle_home(bool long_press)
 {
+    if(power_menu.open) { power_menu.open=false; return; }
     if(editor_active) {
         if(ink_editor_home(&editor,long_press)) { editor_active=false; ink_browser_home(&browser); }
     } else ink_browser_home(&browser);
@@ -58,7 +64,7 @@ void app_main(void)
     ink_button_t prev={0},next={0},home={0},power={0},contact={0};
     ink_touch_t touch={0};
     unsigned origin_x=0,origin_y=0;
-    bool moved=false,light_on=false;
+    bool moved=false;
     uint32_t last_activity=(uint32_t)(esp_timer_get_time()/1000);
     for(;;) {
         uint32_t now=(uint32_t)(esp_timer_get_time()/1000);
@@ -75,7 +81,7 @@ void app_main(void)
         ink_press_t be=ink_button_update(&next,b,now,false);
         ink_press_t he=ink_button_update(&home,touch.home,now,false);
         ink_press_t te=ink_button_update(&contact,touch.contacts!=0,now,false);
-        if(ae==INK_PRESS_SHORT || be==INK_PRESS_SHORT) {
+        if(!power_menu.open && (ae==INK_PRESS_SHORT || be==INK_PRESS_SHORT)) {
             int direction=ae==INK_PRESS_SHORT?-1:1;
             if(editor_active) { ink_editor_page(&editor,direction); changed=true; }
             else changed|=ink_browser_page(&browser,direction);
@@ -83,21 +89,38 @@ void app_main(void)
         if(he==INK_PRESS_SHORT || he==INK_PRESS_LONG) { handle_home(he==INK_PRESS_LONG); changed=true; }
         if(te==INK_PRESS_SHORT && !moved && origin_x<800 && origin_y<480) {
             unsigned ui_x,ui_y; ink_panel_to_ui(origin_x,origin_y,&ui_x,&ui_y);
-            if(editor_active) {
+            if(power_menu.open) {
+                int action=ink_power_tap(&power_menu,ui_x,ui_y);
+                if(action==INK_POWER_LIGHT && ink_light_set(power_menu.brightness,power_menu.warmth,power_menu.on)!=ESP_OK)
+                    snprintf(power_menu.message,sizeof(power_menu.message),"Light update failed");
+                /* All draws are still full refresh. REFRESH closes this modal
+                 * and redraws the untouched underlying page/editor state. */
+                changed=true;
+            } else if(editor_active) {
                 if(ink_editor_tap(&editor,ui_x,ui_y)) { editor_active=false; ink_browser_home(&browser); }
                 changed=true;
             } else changed|=ink_browser_tap(&browser,ui_x,ui_y);
         }
-        if(te==INK_PRESS_LONG && !editor_active && !moved && origin_x<800 && origin_y<480) {
+        if(te==INK_PRESS_LONG && !power_menu.open && !editor_active && !moved && origin_x<800 && origin_y<480) {
             unsigned ui_x,ui_y; ink_panel_to_ui(origin_x,origin_y,&ui_x,&ui_y);
             changed|=ink_browser_long_press(&browser,ui_x,ui_y);
         }
         if(changed) open_editor();
         if(pe==INK_PRESS_SHORT) {
-            snprintf(browser.message,sizeof(browser.message),"Power menu: coming later");
-            browser.view=INK_NOTICE; changed=true;
+            power_menu.open=!power_menu.open; power_menu.message[0]=0;
+            if(power_menu.open) {
+                struct tm time;
+                if(ink_rtc_read(&time)==ESP_OK)
+                    strftime(power_menu.time,sizeof(power_menu.time),"%Y-%m-%d %H:%M",&time);
+                else power_menu.time[0]=0;
+            }
+            changed=true;
         }
-        if(pe==INK_PRESS_DOUBLE) { light_on=!light_on; ink_light_set(20,50,light_on); }
+        if(pe==INK_PRESS_DOUBLE) {
+            power_menu.on=!power_menu.on;
+            ink_light_set(power_menu.brightness,power_menu.warmth,power_menu.on);
+            changed|=power_menu.open;
+        }
         if(pe==INK_PRESS_LONG || now-last_activity>=300000) {
             if(editor_active && fflush(editor.work)) {
                 snprintf(editor.error,sizeof(editor.error),"Cannot flush before sleep");
