@@ -1,6 +1,6 @@
 # InkPy checkpoint
 
-Updated: 2026-10-02. Stage 7 file browser source complete; ESP32 build and hardware validation pending.
+Updated: 2026-10-02. Stage 8 plain text viewer source complete; ESP32 build and hardware validation pending.
 Committed stage boundary: pause before starting further implementation.
 
 ## Read first
@@ -66,7 +66,8 @@ Close console must stop its session; no background execution. Manual sleep must
 suspend Python and resume it on wake. No script runtime limit; under a minute is
 workload guidance only. Auto-sleep after five minutes except while script runs.
 Python, editor, dictionary and complete Markdown reader do not yet exist.
-An optional file browser now exists; file contents are not displayed yet. EPUB remains deferred until Markdown is accepted. No slide gestures.
+An optional file browser and paginated plain text viewer now exist. Markdown
+selection remains a placeholder until its richer reader is connected. EPUB remains deferred until Markdown is accepted. No slide gestures.
 
 ## Outstanding hardware gate
 Before any flash command: establish this device's installed firmware/version,
@@ -112,13 +113,24 @@ runtime acceptance stays pending; never call these ports device-validated.
 - No SDK in workspace: device integration was not ESP32-compiled or flashed.
   Rendering issue noted by user stays deferred; Stage 6 rendering unchanged.
 
+## Stage 8 delivered
+- ink_text.c/.h adds a fixed current-page text grid, forward offsets and backward
+  rescanning. Browser non-Markdown selection now opens it; side buttons page,
+  Home restores the browser, tapping text does nothing.
+- Read-only, no open file retained across sleep. CR/LF/CRLF, tabs and UTF-8/BOM
+  supported; non-ASCII uses the interim '?'. Invalid text errors when reached.
+- Browser and viewer host checks passed with warnings-as-errors; real drawing
+  preview inspected under results/stage8/. docs/TEXT-VIEWER.md owns details.
+- Word wrapping/font polish and backward seek optimization deferred. Stage 6
+  math rendering unchanged. SDK absent; no ESP32 build or hardware claim.
+
 ## Exact next bounded stage
-Stage 8 on continuation: connect selected text files to a bounded on-device text
-viewer with side-button pages and Home back. Reuse browser font/drawing and storage
-ownership; connect the richer Markdown/math reader in a subsequent small stage.
-If the pinned SDK becomes available, compile the browser app before expanding it.
-Do basic main-path checks only, keep prototype pace, commit and pause. The existing
-physical-device installation/recovery gate remains independent and pending.
+Stage 9 on continuation: implement the browser's New file flow with a minimal
+onscreen keyboard for filename/extension entry, and create an empty file without
+forcing an extension or overwriting an existing file. Reuse its keyboard for the
+editor in a following small stage. Keep Markdown/math device connection pending.
+If the pinned SDK is available, build the browser app; otherwise state the build
+limit. Basic main-path checks, commit and pause; retain the installation gate.
 
 ## Risks to preserve
 - Full panel refresh blocks diagnostic input today; split scheduling before editor

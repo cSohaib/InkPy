@@ -1,7 +1,7 @@
 # InkPy
 
 Minimal firmware exclusively for the Xteink X4 Pro. The hardware diagnostic and shared host/ESP32 math
-diagnostic and host-only Markdown pagination with inline/display math are implemented. An optional device file browser is also wired up; its ESP32 build and device validation are pending. The full Markdown reader, editor and
+diagnostic and host-only Markdown pagination with inline/display math are implemented. An optional device file browser and plain text viewer are also wired up; its ESP32 build and device validation are pending. The full Markdown reader, editor and
 MicroPython runtime are not implemented yet.
 
 ## Confirmed scope
@@ -25,6 +25,7 @@ Keep layout separate from document parsing so a later restricted EPUB importer c
 “ChatGPT-style math” describes the intended use, not a fixed compatibility specification. The proposed acceptance corpus defines representative notation; actual supported coverage must be established by the rendering prototype. Delimiters alone do not make mathematical layout trivial.
 
 ## Interaction and implementation references
+- [Plain text viewer](docs/TEXT-VIEWER.md): Stage 8 paging and current limits.
 - [Device file browser](docs/FILE-BROWSER.md): Stage 7 controls, optional build and current limits.
 - [Mixed text/math preview](docs/READER-MATH.md): Stage 6 run command and sample pages.
 - [Reader pagination prototype](docs/READER-PROTOTYPE.md): Stage 5 bounds, cache format, host checks and limitations.

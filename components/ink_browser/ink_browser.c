@@ -37,6 +37,11 @@ int ink_browser_init(ink_browser *b,const char *root)
 }
 bool ink_browser_page(ink_browser *b,int direction)
 {
+    if(b->view==INK_OPEN_TEXT) {
+        int changed=ink_text_turn(&b->text,b->selected,direction);
+        if(changed<0) notice(b,b->text.error);
+        return changed!=0;
+    }
     if(b->view!=INK_FILES) return false;
     if(direction>0) { if(!b->has_next) return false; ++b->page; }
     else { if(!b->page) return false; --b->page; }
@@ -54,6 +59,7 @@ bool ink_browser_home(ink_browser *b)
 bool ink_browser_tap(ink_browser *b,unsigned x,unsigned y)
 {
     if(x>=480 || y>=800) return false;
+    if(b->view==INK_OPEN_TEXT) return false;
     if(b->view!=INK_FILES) return ink_browser_home(b);
     if(y>=48 && y<92) {
         notice(b,x<240?"New file: coming next":"Python console: coming later"); return true;
@@ -81,5 +87,6 @@ bool ink_browser_tap(ink_browser *b,unsigned x,unsigned y)
     if(bad) { notice(b,"Binary file or read error"); return true; }
     const char *extension=strrchr(b->rows[row].name,'.');
     b->view=extension && !strcasecmp(extension,".md")?INK_OPEN_MARKDOWN:INK_OPEN_TEXT;
+    if(b->view==INK_OPEN_TEXT && ink_text_open(&b->text,b->selected)) notice(b,b->text.error);
     return true;
 }

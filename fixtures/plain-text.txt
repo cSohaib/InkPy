@@ -1,0 +1,15 @@
+InkPy text viewer
+
+This is a plain text file. It opens directly from the file browser, without editing the source.
+
+The side buttons turn pages. Home returns to the folder and browser page you came from.
+
+Only the current screen is kept in memory. Long files do not require a whole-file text buffer. Previous currently rescans the file, which is simple but may be slow near the end of a large document.
+
+This first version uses the small built-in font. Lines wrap at the screen edge. Tabs use four-column stops, and blank lines remain blank.
+
+Python source is also plain text when tapped. Running scripts and editing files will be added in later stages.
+
+Markdown still has its separate reader route. Its richer text-and-math renderer is already prototyped, and will be connected to the device later.
+
+End of sample.

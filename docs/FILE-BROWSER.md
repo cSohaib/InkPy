@@ -1,5 +1,8 @@
 # Stage 7: minimal device file browser
 
+Stage 8 connects text-file selection to a paginated viewer; see TEXT-VIEWER.md.
+The routing-only descriptions below record the Stage 7 boundary.
+
 Optional firmware app: `bash scripts/build-browser.sh` after sourcing the pinned
 ESP-IDF environment from BRINGUP.md. This selects INKPY_BROWSER and outputs to
 build-browser/. The original hardware and math diagnostic builds remain available.

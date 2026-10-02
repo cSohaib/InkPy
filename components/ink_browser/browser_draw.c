@@ -27,6 +27,10 @@ static void text(uint8_t *frame,unsigned x,unsigned y,const char *s)
 void ink_browser_draw(const ink_browser *b,uint8_t frame[48000])
 {
     memset(frame,0xff,48000);
+    if(b->view==INK_OPEN_TEXT) {
+        for(unsigned row=0;row<b->text.rows;++row) text(frame,16,16+row*34,b->text.lines[row]);
+        return;
+    }
     text(frame,16,8,"InkPy");
     if(b->view!=INK_FILES) {
         const char *name=strrchr(b->selected,'/');
