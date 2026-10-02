@@ -1,6 +1,6 @@
 # InkPy checkpoint
 
-Updated: 2026-10-01. Stage 4 source/build complete; hardware validation pending.
+Updated: 2026-10-02. Stage 5 host pagination complete; hardware validation pending.
 Committed stage boundary: pause before starting further implementation.
 
 ## Read first
@@ -75,12 +75,23 @@ partitions mirror a source reference for linking only, not installation evidence
 Then follow BRINGUP.md and MATH-DEVICE.md and retain logs. No device session means
 runtime acceptance stays pending; never call these ports device-validated.
 
+## Stage 5 delivered
+- components/ink_layout: C UTF-8 validation, bounded MD4C parse units, literal
+  oversized-unit fallback, provisional text layout, disk page/H2 chapter indexes.
+- prototypes/reader: reproducible pinned build, cache lookup/reflow source search,
+  host preview and 229 acceptance checks. docs/READER-PROTOTYPE.md owns details.
+- 8/32 MiB samples: context 19,976 bytes and parser peak 4,032 bytes unchanged;
+  parser requested allocation cap 131,072 bytes. Not total RAM or device evidence.
+- Two page previews inspected; results saved under docs/results/stage5/.
+- Math is tagged source in this prototype; shared math backend unchanged. No
+  EPUB-first pivot, firmware UI, SDK rebuild or flash performed this stage.
+
 ## Exact next bounded stage
-Stage 5, on continuation: independent host prototype for bounded Markdown text
-layout/pagination and UTF-8 handling, with page/source offsets and H2 chapter
-metadata needed by the reader menu. Do not implement the entire product UI or
-Python at once. If a device session is available, collect the outstanding board
-and math evidence first. Host work must not assume the device memory gate passed.
+Stage 6 on continuation: replace provisional codepoint metrics with actual font
+metrics and connect bounded inline/display math composition in the host reader.
+Define and test supported Markdown boundaries before calling the reader complete.
+Keep cache invalidation/source anchors in view; do not start EPUB or whole UI yet.
+Hardware/math runtime validation remains independently gated as above.
 
 ## Risks to preserve
 - Full panel refresh blocks diagnostic input today; split scheduling before editor
@@ -94,8 +105,9 @@ and math evidence first. Host work must not assume the device memory gate passed
 - MicroTeX/STL/FreeType/tinyxml2 allocate dynamically; no strict heap/stack cap or
   exhaustive OOM recovery. One initialization per boot/session. Current preflight
   accepts an intentionally limited ASCII math subset, not all ChatGPT notation.
-- MD4C host harness reads a <=64 KiB fixture whole. It is not large-file document
-  support. Editor/parser/cache memory must stay bounded independently of file size.
+- The old math harness reads a <=64 KiB fixture whole. Stage 5 adds a separate
+  bounded reader prototype, with incomplete cross-block Markdown semantics and
+  provisional font metrics. Its host results do not establish device viability.
 - Open: extensionless Python execution, exact keyboard layout, project licence.
 
 ## Resume efficiently

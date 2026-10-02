@@ -1,0 +1,26 @@
+"""Host-only bitmap preview. Monospaced codepoint layout, no text shaping.
+Usage: preview.py CACHE_DIR PAGE_NUMBER OUTPUT.png [FONT_DIRECTORY]
+"""
+import sys
+from pathlib import Path
+from PIL import Image, ImageDraw, ImageFont
+from cache import metadata, page
+
+root,number,output=sys.argv[1:4]
+fonts=Path(sys.argv[4] if len(sys.argv)>4 else '/usr/share/fonts/truetype/dejavu')
+meta=metadata(root); data=page(root,int(number))
+im=Image.new('1',(meta['width'],meta['height']),1); draw=ImageDraw.Draw(im)
+loaded={}
+for run in data['runs']:
+    level=(run['style']>>8)&7
+    size=meta['font_pixels']+(2*(7-level) if level else 0)
+    bold=bool(run['style']&1 or level); italic=bool(run['style']&2)
+    name='DejaVuSansMono'+('-BoldOblique' if bold and italic else '-Bold' if bold else '-Oblique' if italic else '')+'.ttf'
+    key=(name,size)
+    if key not in loaded:
+        loaded[key]=ImageFont.truetype(str(fonts/name),size)
+    x=run['x']
+    for char in run['text']:
+        draw.text((x,run['y']),char,font=loaded[key],fill=0,anchor='lt')
+        x+=run['cell']
+im.save(output)

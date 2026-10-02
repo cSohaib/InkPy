@@ -1,0 +1,37 @@
+{
+  "checks": 229,
+  "stress": [
+    {
+      "version": 1,
+      "complete": true,
+      "width": 480,
+      "height": 800,
+      "font_pixels": 22,
+      "source_bytes": 8387708,
+      "pages": 10804,
+      "chapters": 6482,
+      "literal_blocks": 0,
+      "runs": 628754,
+      "context_bytes": 19976,
+      "parser_peak_bytes": 4032,
+      "parser_budget_bytes": 131072,
+      "peak_rss_kib": 11392
+    },
+    {
+      "version": 1,
+      "complete": true,
+      "width": 480,
+      "height": 800,
+      "font_pixels": 22,
+      "source_bytes": 33553420,
+      "pages": 43217,
+      "chapters": 25930,
+      "literal_blocks": 0,
+      "runs": 2515210,
+      "context_bytes": 19976,
+      "parser_peak_bytes": 4032,
+      "parser_budget_bytes": 131072,
+      "peak_rss_kib": 11392
+    }
+  ]
+}

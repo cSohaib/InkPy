@@ -9,3 +9,6 @@ prototypes/math/build/
 
 
 build-math/
+
+prototypes/reader/.deps/
+prototypes/reader/build/
