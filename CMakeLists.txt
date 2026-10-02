@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
 option(INKPY_MATH_DIAGNOSTIC "Build the isolated math diagnostic" OFF)
+option(INKPY_BROWSER "Build the minimal file browser" OFF)
+if(INKPY_BROWSER AND INKPY_MATH_DIAGNOSTIC)
+    message(FATAL_ERROR "Select browser or math diagnostic, not both")
+endif()
 set(COMPONENTS main)
 set(IDF_TARGET esp32s3 CACHE STRING "InkPy supports only X4 Pro")
 if(NOT IDF_TARGET STREQUAL "esp32s3")
@@ -7,5 +11,7 @@ if(NOT IDF_TARGET STREQUAL "esp32s3")
 endif()
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 idf_build_set_property(INKPY_MATH_DIAGNOSTIC "${INKPY_MATH_DIAGNOSTIC}")
+idf_build_set_property(INKPY_BROWSER "${INKPY_BROWSER}")
 project(inkpy)
+
 

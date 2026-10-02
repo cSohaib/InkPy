@@ -12,3 +12,6 @@ build-math/
 
 prototypes/reader/.deps/
 prototypes/reader/build/
+
+prototypes/browser/build/
+build-browser/

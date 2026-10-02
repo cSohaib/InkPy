@@ -27,6 +27,7 @@ ink_panel_t ink_display_panel(void);
 esp_err_t ink_display_frame(const uint8_t frame[48000]);
 esp_err_t ink_display_sleep(void); /* Preserve physical pixels; next draw reinitializes RAM. */
 
-/* Blocks the diagnostic task in state-preserving light sleep until a long Power
- * hold. Future Python integration MUST quiesce VM/storage/network first. */
+/* Blocks the diagnostic task in state-preserving light sleep until one Power
+ * press. Future Python integration MUST quiesce VM/storage/network first. */
 esp_err_t ink_sleep(void);
+

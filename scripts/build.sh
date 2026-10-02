@@ -10,4 +10,5 @@ if [[ "$actual" != "$expected" ]]; then
 fi
 # This stage has no managed components; keep dependency discovery deterministic.
 export IDF_COMPONENT_MANAGER=0
-idf.py -DIDF_TARGET=esp32s3 build
+idf.py -DIDF_TARGET=esp32s3 "$@" build
+

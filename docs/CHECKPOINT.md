@@ -1,6 +1,6 @@
 # InkPy checkpoint
 
-Updated: 2026-10-02. Stage 6 host text/math composition complete; hardware validation pending.
+Updated: 2026-10-02. Stage 7 file browser source complete; ESP32 build and hardware validation pending.
 Committed stage boundary: pause before starting further implementation.
 
 ## Read first
@@ -65,8 +65,8 @@ math-source preflight and a narrow C boundary; this is not a hard engine heap ca
 Close console must stop its session; no background execution. Manual sleep must
 suspend Python and resume it on wake. No script runtime limit; under a minute is
 workload guidance only. Auto-sleep after five minutes except while script runs.
-Python, editor, file browser, dictionary and complete Markdown reader do not yet
-exist. EPUB remains deferred until Markdown is accepted. No slide gestures.
+Python, editor, dictionary and complete Markdown reader do not yet exist.
+An optional file browser now exists; file contents are not displayed yet. EPUB remains deferred until Markdown is accepted. No slide gestures.
 
 ## Outstanding hardware gate
 Before any flash command: establish this device's installed firmware/version,
@@ -100,13 +100,25 @@ runtime acceptance stays pending; never call these ports device-validated.
   stages, basic compile/run/visual checks; defer extensive testing and polish.
   AGENTS.md records this. Real text font metrics and typography are deferred.
 
+## Stage 7 delivered
+- components/ink_browser: bounded directory page, folder/Home navigation,
+  side-button paging, Markdown/text selection and sampled binary notice.
+- main/browser_app.c and INKPY_BROWSER optional build connect the board input,
+  native rotated framebuffer, SD mount, light and retained-state sleep.
+- scripts/build-browser.sh builds separately; default diagnostics remain available.
+  New-file/Console/power controls are notices; no reader contents or file-action menu.
+- Basic same-core host compile/run passed; browser preview inspected and saved
+  in results/stage7/. docs/FILE-BROWSER.md owns commands and current limitations.
+- No SDK in workspace: device integration was not ESP32-compiled or flashed.
+  Rendering issue noted by user stays deferred; Stage 6 rendering unchanged.
+
 ## Exact next bounded stage
-Stage 7 on continuation: begin the minimal device file browser: filenames and
-folders from microSD, side-button paging, parent-folder Home and tap-to-open
-routing. Reuse current board input/display support. Keep new-file/editor/Python
-controls as subsequent bounded stages; do not build the whole UI in one turn.
-Connect the reader to the device in a later small stage. Preserve the independent
-hardware flash/recovery gate; do not claim device acceptance without a session.
+Stage 8 on continuation: connect selected text files to a bounded on-device text
+viewer with side-button pages and Home back. Reuse browser font/drawing and storage
+ownership; connect the richer Markdown/math reader in a subsequent small stage.
+If the pinned SDK becomes available, compile the browser app before expanding it.
+Do basic main-path checks only, keep prototype pace, commit and pause. The existing
+physical-device installation/recovery gate remains independent and pending.
 
 ## Risks to preserve
 - Full panel refresh blocks diagnostic input today; split scheduling before editor
