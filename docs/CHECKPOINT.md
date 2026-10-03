@@ -1,5 +1,17 @@
 # InkPy checkpoint
 
+## Stage 28: device observations, documentation only (2026-10-03)
+
+User confirms Stage 27 boots and Console evaluates 1+1. Markdown cache creation
+fails; later Console allocation fails after other OS use. Investigation notes
+and confirmed Python resource-retention mismatch: docs/DEVICE-TEST-NOTES.md.
+Close currently resets the VM but retains task/heap/mutex; user requires full
+shutdown and resource release. Exact later allocation message conflicts with
+the normal same-boot reopen branch; reset/state/error details remain unverified.
+No code/config changes, build, or new firmware. Pause coding per user request.
+Next authorized coding stage: focused diagnostics, Python lifetime fix, and
+cache repair using actual filesystem error evidence.
+
 ## Stage 27: defer math allocation (2026-10-03)
 
 serial-log2 confirms Stage 26 passes the constructor-stack crash but aborts in
