@@ -78,3 +78,7 @@ static const mp_rom_map_elem_t time_globals_table[]={
 static MP_DEFINE_CONST_DICT(time_globals,time_globals_table);
 const mp_obj_module_t ink_time={.base={&mp_type_module},.globals=(mp_obj_dict_t *)&time_globals};
 MP_REGISTER_MODULE(MP_QSTR_time,ink_time);
+
+/* Keep the standard JSON API authoritative even if SD contains json.py/json/. */
+extern const mp_obj_module_t mp_module_json;
+MP_REGISTER_MODULE(MP_QSTR_json,mp_module_json);

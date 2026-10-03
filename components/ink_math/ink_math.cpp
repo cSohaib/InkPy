@@ -12,7 +12,6 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include <unordered_set>
 
 using namespace tex;
 std::string tex::RES_BASE;
@@ -145,7 +144,7 @@ struct Raster final : Graphics2D {
  * its own metric fonts. A real reader text shaper is outside this experiment. */
 void preflight(const char *s) {
     require(s && std::strlen(s)<=2048, "formula exceeds 2048-byte prototype budget");
-    static const std::unordered_set<std::string> allowed={
+    static constexpr const char *allowed[]={
         "alpha","beta","gamma","leq","geq","forall","in","mathbb","nabla","infty",
         "partial","frac","sqrt","sum","int","text","mathrm","mathbf","mathcal",
         "pm","left","right","lVert","rVert","begin","end","min","quad","lim","to"
@@ -168,7 +167,9 @@ void preflight(const char *s) {
             continue;
         }
         std::string command(s+start,i-start);
-        require(allowed.count(command)!=0,"unsupported command; show source");
+        bool supported=false;
+        for(const char *name:allowed) if(command==name) { supported=true; break; }
+        require(supported,"unsupported command; show source");
         if(command=="begin"||command=="end") {
             bool known=false;
             for(auto name:{"{pmatrix}","{aligned}","{cases}"})

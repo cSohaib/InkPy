@@ -16,3 +16,7 @@ void ink_python_close(void);
 void ink_python_callbacks(bool (*control)(void *),
     void (*output)(void *,const char *,size_t),void *context);
 void ink_python_poll(void);
+
+/* Complete-line input: callback blocks cooperatively until Enter, returns byte
+ * count or -1 for EOF. It must continue checking ink_python_poll for Stop/sleep. */
+void ink_python_input_callback(int (*read_line)(void *,char *,size_t));

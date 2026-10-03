@@ -18,6 +18,10 @@ with open('binary.dat', 'rb') as f:
 assert os.stat('binary.dat')[6] == 8192
 assert 'text.txt' in os.listdir()
 assert json.loads(json.dumps({'answer': 42}))['answer'] == 42
+with open('value.json', 'w') as f:
+    json.dump({'answer': 42}, f)
+with open('value.json') as f:
+    assert json.load(f)['answer'] == 42
 assert io.StringIO('abc').read() == 'abc'
 time.sleep(0.01)
 assert time.ticks_ms() >= 0

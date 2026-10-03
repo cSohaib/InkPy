@@ -14,7 +14,7 @@ typedef struct {
     TickType_t last_yield; /* VM-owned; bounded scheduling latency, no timeout. */
     ink_console console;
     char command[INK_CONSOLE_INPUT],path[512];
-    bool opening,queued,file_job,stop,pause,paused,closing,closed;
+    bool opening,queued,file_job,stop,pause,paused,closing,closed,input_ready;
 } ink_python_worker;
 esp_err_t ink_python_worker_start(ink_python_worker *s);
 bool ink_python_worker_submit(ink_python_worker *s,const char *text,bool file);

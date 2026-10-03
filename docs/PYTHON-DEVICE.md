@@ -16,7 +16,12 @@ folder and /sd/lib (.py modules/packages). Absolute paths stay below /sd; .inkpy
 firmware caches are excluded. os/uos: getcwd/chdir/listdir/mkdir/rmdir/remove/rename/
 stat. FatFs rename does not overwrite. Binary files can be opened in Python.
 io/json/sys/gc/math/core builtins are present; time has sleep(seconds)/ticks_ms().
-This custom port does not supply socket, machine, threading or input() bindings.
+Built-in input(prompt) waits for a complete keyboard line and returns a string
+on Enter (including an empty string). Stop/Close interrupt the wait; manual sleep
+preserves the pending line. No script arguments are supplied.
+This custom port does not supply socket, machine or threading bindings.
+The standard json.load/loads/dump/dumps API is reserved: SD json.py/json/ cannot
+override it.
 
 ## Wi-Fi and HTTP
 
@@ -52,3 +57,8 @@ may fail; catch OSError and retry when appropriate.
 Host check: bash scripts/test-python-native.sh reuses device-generated headers.
 Files/imports/JSON/Unicode and abort/reopen cleanup are tested; network is deliberately
 stubbed there. Wi-Fi/TLS/sleep require an X4 Pro.
+
+Stage 30 smoke script: fixtures/python-device-test.py. Leave SSID empty to test
+input, files and JSON offline, or edit credentials for optional HTTP. It writes
+only its named test files. Wi-Fi prompts are explicitly out of scope; scripts
+connect with inkpy.wifi. Device testing of input and JSON correction is pending.

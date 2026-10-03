@@ -4,7 +4,7 @@ void ink_console_init(ink_console *c)
 { memset(c,0,sizeof(*c)); c->count=1; }
 bool ink_console_key(ink_console *c,int key)
 {
-    if(c->busy || c->menu) return false;
+    if((c->busy&&!c->waiting) || c->menu) return false;
     c->full=false;
     if(key==INK_KEY_ENTER) {
         c->busy=true; c->page=0; return true;
@@ -59,7 +59,7 @@ void ink_console_completed(ink_console *c,bool more)
         ink_console_output(c,"Input full; block cleared\n",26);
         more=false; c->full=true;
     }
-    c->busy=false; c->more=more;
+    c->busy=false; c->waiting=false; c->more=more;
     if(more) c->input[c->used++]='\n';
     else c->used=0;
     c->input[c->used]=0;

@@ -78,3 +78,18 @@ the ui/reader warning if it fails. No Python lifecycle fix was made.
 Check new-file save and console-created files immediately appear after app exit;
 full-width keys at both edges; icon Power controls in all contexts; nested SD font
 selection and dictionary chooser; repeated Close/Open and sleep/wake.
+
+## Stage 29 user results / Stage 30 corrections
+Plain Markdown now works. Opening math crashes in preflight static initialization
+(ELF matches delivered Stage 29). TTF font selection works; cpfont does not.
+Python SD read/write/append and Wi-Fi/HTTP return 200 on-device. json.load and
+json.loads are missing in user import; builtin SD override protection is added
+with host regression, but exact SD-side cause remains unconfirmed.
+
+USB sleep preserves Python state, but browser/SD behaves incorrectly afterward.
+Battery sleep does not wake on short Power and long Power cold-boots. GPIO rail
+retention is now applied; test both power sources and file access after wake.
+No SD remount is attempted because open streams must remain valid. User explicitly
+accepts scripted Wi-Fi credentials; no connection prompt is needed. input() is
+whole-line, no keystroke API or script arguments. Allocation problem has not
+recurred, without a worker-lifetime fix.

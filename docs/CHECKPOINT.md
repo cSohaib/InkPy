@@ -1,5 +1,42 @@
 # InkPy checkpoint
 
+## Stage 30: math guard, whole-line input, JSON and sleep rails (2026-10-03)
+
+Device feedback: plain Markdown, TTF, Wi-Fi/HTTP 200 and SD writes work. Math
+restarts; json.load/loads unavailable; battery sleep cold-boots while USB sleep
+resumes Python but breaks browser SD access. Wi-Fi prompt is explicitly dropped.
+
+serial-log3 matches Stage 29 ELF 393626bab. Backtrace reaches __cxa_guard_acquire
+from preflight's function-local unordered_set before formula layout. Replaced
+it with a fixed constexpr command table; final ELF has no guard for that table.
+Underlying abort condition/memory pressure is not proven; device retest required.
+
+Built-in input() now accepts one complete keyboard line on Enter, retaining Stop,
+Close and cooperative manual sleep. Worker waits without exposing keystrokes to
+Python; empty strings work. Console input is bounded by the existing 4096-byte
+buffer. JSON is registered as a non-extensible built-in: SD json.py/json/ cannot
+hide its standard API. Host tests demonstrate this override protection; actual
+cause of the user's missing attributes is not confirmed without SD inspection.
+
+Sleep holds GPIO1 keep-alive HIGH and GPIO5 SD-enable at its current LOW level;
+SD bus and power wake pins opt out of GPIO sleep selection. Holds are released
+on every resume/error path. Existing open files and VM remain in place; no remount
+that could invalidate streams. Hardware clue/source: CrossPoint PR3215,
+https://github.com/crosspoint-reader/crosspoint-reader/pull/3215 (deep-sleep case;
+InkPy applies its retention principle to light sleep). No hardware result claimed.
+
+Validation: regenerated Python headers; native-profile host files/JSON/load/loads,
+input values/empty/EOF/Stop/reopen pass; console input-key test passes; mixed
+Markdown/math reader host check passes. Native ESP32-S3 build and image validation
+pass. A damaged restored WPA archive was regenerated from existing objects.
+Application 2,586,944 bytes; SHA256 ac4d52a990ee16dd39723e1a12e839e1066c1f72175b88e6b5a2c72d66823a70.
+Evidence: results/stage30; test script fixtures/python-device-test.py.
+
+Next bounded task: device math ($x+1$ first), input(), JSON and repeated sleep/wake
+with USB and battery, including SD/browser/editor access. If failing, collect serial
+sleep/wake or math backtrace. Python worker resources still remain after Close;
+full worker release and EPUB remain deferred. Pause after this firmware delivery.
+
 ## Stage 29: icon UI, SD selectors and reader preflight (2026-10-03)
 
 Browser actions move to the bottom; app exit reloads the current folder. Shared

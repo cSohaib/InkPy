@@ -23,3 +23,8 @@ void ink_python_poll(void);
 
 /* Match the pinned upstream ESP32 port: IDF uses the windowed Xtensa ABI. */
 #define MICROPY_NLR_SETJMP (1)
+
+#define MICROPY_PY_BUILTINS_INPUT (1)
+struct _vstr_t;
+int ink_python_readline(struct _vstr_t *line,const char *prompt);
+#define mp_hal_readline ink_python_readline

@@ -1,0 +1,11 @@
+ESP32-S3 native build and 0x7e0000 partition fit: pass.
+Esptool checksum/hash: valid (image.txt).
+Mixed Markdown/math reader and fallback/H2/paging: pass.
+Python native profile SD files/imports, json.load/loads/dump/dumps: pass.
+SD json.py and json/ override regression: pass.
+input complete/empty/numeric/EOF and Stop/reopen: pass (host callback).
+Console input keyboard, delete/Enter/empty and busy guard: pass.
+Math preflight guard symbol removed: verified (math-symbols.txt).
+Device Stage 30 testing: pending. Sleep rail retention: build checked only.
+Application bytes: 2586944
+SHA256: ac4d52a990ee16dd39723e1a12e839e1066c1f72175b88e6b5a2c72d66823a70

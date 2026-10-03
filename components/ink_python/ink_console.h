@@ -12,7 +12,7 @@ typedef struct {
     char lines[INK_CONSOLE_LINES][INK_CONSOLE_COLUMNS*4+1];
     unsigned first,count,column,page,line_used,utf8_used,utf8_needed;
     char utf8[4];
-    bool busy,more,full,menu;
+    bool busy,more,full,menu,waiting;
 } ink_console;
 void ink_console_init(ink_console *c);
 /* True on Enter: adapter copies input to its single-slot command queue. */

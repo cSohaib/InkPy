@@ -1,10 +1,10 @@
-# Stage 29 icon UI exploratory firmware
+# Stage 30 math/input/JSON/sleep exploratory firmware
 
 The non-EPUB feature set is integrated: browser/text/editor, Python console/scripts,
 Markdown/math, StarDict, Unicode fonts/selection, Power controls and differential
 refresh. EPUB remains deferred. The user tested an earlier image on an unlocked
-X4 Pro; Stage 27 boots on that device. Stage 29 has passed compilation/host checks;
-its UI and cache changes have not yet been physically tested.
+X4 Pro; Stage 27 boots on that device. Stage 29 plain Markdown, TTF, Python file writes and Wi-Fi/HTTP have now
+worked on-device. Stage 30 corrections are build/host checked, not device verified.
 
 Use the same X4 Pro application-image web installer that worked previously.
 firmware.bin is an **application-only ESP32-S3 image**, without bootloader or
@@ -24,17 +24,18 @@ usage before app_main. Stage 26 replaces four large table initializers; this
 fix passed the original crash on-device, exposing main-task allocation failure.
 Stage 27 defers heavy math-table allocation and now boots on-device. Stage 29
 initializes math at the first formula, after reader cache preflight, and logs
-cache filesystem errors. The reported cache failure still needs device retesting.
+cache filesystem errors. Plain Markdown now opens on-device; math separately crashes at preflight
+initialization, which Stage 30 simplifies.
 
 ## Build identification
 
 - ESP-IDF v5.5.5: b774170ff46c393eeb5e495ea37936038d3f4f4f, pinned submodules.
 - Xtensa GCC 14.2.0, esp-14.2.0_20260121; ESP32-S3, 16 MiB DIO.
 - Browser ON, diagnostics OFF; 32 KiB main stack.
-- Application: 2,588,752 bytes; slot 8,257,536 bytes, 69% free.
-- SHA-256: 465acbd753700638caee293bd8322af8e44390aa5e6935abb7a6fcfecd4ac67c.
+- Application: 2,586,944 bytes; slot 8,257,536 bytes, 69% free.
+- SHA-256: ac4d52a990ee16dd39723e1a12e839e1066c1f72175b88e6b5a2c72d66823a70.
 - Build: bash scripts/build-browser.sh; output build-browser/firmware.bin.
-- Evidence: results/stage29/image.txt, valid esptool checksum and validation hash.
+- Evidence: results/stage30/image.txt, valid esptool checksum and validation hash.
 
 ## Physical checks and limits
 
@@ -58,3 +59,8 @@ Stage 29 retains the existing Python worker resources on Close. The reported
 later console allocation failure and full resource-release requirement remain
 unresolved; no fix is claimed for either here. UI error detail is logged to serial
 while the screen displays a circled cross. SD resources are unchanged.
+
+Stage 30 removes the first-formula guarded whitelist initializer, adds whole-line
+input(), reserves the standard JSON module against SD overrides, and holds battery
+and SD rail outputs through light sleep. All require device retesting. Existing SD
+math assets remain unchanged. Test script: fixtures/python-device-test.py.

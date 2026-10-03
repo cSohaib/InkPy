@@ -17,3 +17,6 @@ trap 'python3 -c "import shutil,sys; shutil.rmtree(sys.argv[1])" "$gen"' EXIT
 make -s -C "$root/main/python_port" -f generate.mk MICROPYTHON_TOP="$deps" \
     BUILD="$gen" PACKAGE_DIR="$root/generated-python/embed"
 cp "$deps/extmod/modjson.c" "$root/generated-python/embed/extmod/modjson.c"
+
+mkdir -p "$root/generated-python/embed/shared/readline"
+cp "$deps/shared/readline/readline.h" "$root/generated-python/embed/shared/readline/readline.h"

@@ -29,6 +29,14 @@ esp_err_t ink_sleep(void)
     ESP_RETURN_ON_ERROR(ink_light_sleep(true), TAG, "light off");
     esp_err_t e = ink_touch_enable(false);
     if (e != ESP_OK) goto restore;
+    /* Preserve the battery keep-alive and active-low SD power enable. Do not
+     * remount: editor/reader/Python may own open streams across light sleep. */
+    gpio_sleep_sel_dis(PIN_RAIL); gpio_sleep_sel_dis(PIN_SD_ENABLE);
+    gpio_sleep_sel_dis(PIN_POWER);
+    gpio_sleep_sel_dis(PIN_SD_CLK); gpio_sleep_sel_dis(PIN_SD_CMD);
+    gpio_sleep_sel_dis(PIN_SD_D0);
+    e = gpio_hold_en(PIN_RAIL); if(e != ESP_OK) goto restore;
+    e = gpio_hold_en(PIN_SD_ENABLE); if(e != ESP_OK) goto restore;
     /* Finish the entering press before arming an active-low wake source. */
     wait_power_released();
     e = esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
@@ -46,6 +54,7 @@ esp_err_t ink_sleep(void)
     if (e == ESP_OK) wait_power_released();
 
 restore:
+    gpio_hold_dis(PIN_RAIL); gpio_hold_dis(PIN_SD_ENABLE);
     gpio_wakeup_disable(PIN_POWER);
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
     esp_err_t touch = ink_touch_enable(true);

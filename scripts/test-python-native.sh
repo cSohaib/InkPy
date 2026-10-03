@@ -4,6 +4,10 @@ cd "$(dirname "$0")/.."
 # Reuses device-generated headers; no upstream regeneration or download.
 mkdir -p prototypes/python/build/native-sd
 cp fixtures/python-files.py prototypes/python/build/native-sd/test.py
+# A user module named json must not hide the standard JSON API.
+printf 'shadow = True\n' > prototypes/python/build/native-sd/json.py
+mkdir -p prototypes/python/build/native-sd/json
+printf 'shadow = True\n' > prototypes/python/build/native-sd/json/__init__.py
 printf 'answer = 42\n' > prototypes/python/build/native-sd/local_helper.py
 root="$PWD/prototypes/python/build/native-sd"
 mapfile -t vendor < <(find generated-python/embed/py generated-python/embed/port generated-python/embed/shared -name '*.c' ! -name mphalport.c)

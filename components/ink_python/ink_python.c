@@ -17,6 +17,17 @@ static FILE *source_file;
 static bool (*control_callback)(void *);
 static void (*output_callback)(void *,const char *,size_t);
 static void *callback_context;
+static int (*input_callback)(void *,char *,size_t);
+void ink_python_input_callback(int (*read_line)(void *,char *,size_t))
+{ input_callback=read_line; }
+int ink_python_readline(vstr_t *line,const char *prompt)
+{
+    (void)prompt; char value[4096];
+    int n=input_callback?input_callback(callback_context,value,sizeof(value)):-1;
+    if(n<0) return 4; /* EOF: upstream input() raises EOFError. */
+    if((size_t)n>=sizeof(value)) mp_raise_ValueError(MP_ERROR_TEXT("input too long"));
+    vstr_add_strn(line,value,(size_t)n); return 0;
+}
 void ink_python_callbacks(bool (*control)(void *),
     void (*output)(void *,const char *,size_t),void *context)
 {

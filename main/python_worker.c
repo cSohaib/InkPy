@@ -27,10 +27,31 @@ static bool control(void *context)
 }
 static void output(void *context,const char *bytes,size_t n)
 { ink_python_worker *s=context; lock(s); ink_console_output(&s->console,bytes,n); s->revision++; unlock(s); }
+static int input_line(void *context,char *value,size_t capacity)
+{
+    ink_python_worker *s=context;
+    lock(s); s->console.waiting=true; s->input_ready=false;
+    s->console.used=0; s->console.input[0]=0; s->console.more=false;
+    s->console.page=0; s->revision++; unlock(s);
+    for(;;) {
+        ink_python_poll(); /* Stop/Close abort; sleep pauses without losing the line. */
+        lock(s);
+        if(s->input_ready) {
+            size_t n=s->console.used;
+            if(n>=capacity) n=capacity-1;
+            memcpy(value,s->console.input,n); value[n]=0;
+            ink_console_output(&s->console,value,n); ink_console_output(&s->console,"\n",1);
+            s->console.used=0; s->console.input[0]=0;
+            s->console.waiting=false; s->input_ready=false; s->revision++;
+            unlock(s); return (int)n;
+        }
+        unlock(s); vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
 static void worker(void *context)
 {
     ink_python_worker *s=context; int stack_top;
-    ink_python_callbacks(control,output,s);
+    ink_python_callbacks(control,output,s); ink_python_input_callback(input_line);
     for(;;) {
         lock(s); bool opening=s->opening; s->opening=false; unlock(s);
         if(!opening) { ulTaskNotifyTake(pdTRUE,portMAX_DELAY); continue; }
@@ -114,15 +135,19 @@ void ink_python_worker_tap(ink_python_worker *s,unsigned x,unsigned y)
     lock(s); int action=INK_CONSOLE_NONE; bool submit=false;
     if(!s->closing&&!s->closed) {
         if(s->console.menu) action=ink_console_tap(&s->console,x,y);
-        else if(!s->console.busy) {
+        else if(!s->console.busy||s->console.waiting) {
             int key=ink_keyboard_tap(&s->console.keyboard,x,y>=INK_CONSOLE_KEYBOARD_OFFSET?y-INK_CONSOLE_KEYBOARD_OFFSET:0);
             if(ink_console_key(&s->console,key)) {
-                memcpy(s->command,s->console.input,s->console.used+1);
-                const char *line=strrchr(s->command,'\n'); line=line?line+1:s->command;
-                ink_console_output(&s->console,s->console.more?"... ":">>> ",4);
-                ink_console_output(&s->console,line,strlen(line));
-                ink_console_output(&s->console,"\n",1);
-                s->file_job=false; s->queued=true; submit=true;
+                if(s->console.waiting) {
+                    s->input_ready=true; s->console.waiting=false;
+                } else {
+                    memcpy(s->command,s->console.input,s->console.used+1);
+                    const char *line=strrchr(s->command,'\n'); line=line?line+1:s->command;
+                    ink_console_output(&s->console,s->console.more?"... ":">>> ",4);
+                    ink_console_output(&s->console,line,strlen(line));
+                    ink_console_output(&s->console,"\n",1);
+                    s->file_job=false; s->queued=true; submit=true;
+                }
             }
         }
         s->revision++;
