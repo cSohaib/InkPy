@@ -30,6 +30,7 @@ Keep layout separate from document parsing so a later restricted EPUB importer c
 “ChatGPT-style math” describes the intended use, not a fixed compatibility specification. The proposed acceptance corpus defines representative notation; actual supported coverage must be established by the rendering prototype. Delimiters alone do not make mathematical layout trivial.
 
 ## Interaction and implementation references
+- [OpenAI chat experiment](examples/README.md): SD Python agent using the Responses API.
 - [StarDict lookup](docs/STARDICT.md): dictionary files, supported formats and popup/selection behavior.
 - [MicroPython embedding](docs/MICROPYTHON.md): Stage 10 run commands, Python keyboard and current limits.
 - [Keyboard and New file](docs/NEW-FILE.md): Stage 9 filename entry and empty-file creation.

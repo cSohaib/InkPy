@@ -1,5 +1,34 @@
 # InkPy checkpoint
 
+## Stage 32: SD Python OpenAI chat experiment (2026-10-04)
+
+User confirms the markdown-math fixture now works on-device. Wider ChatGPT math
+command coverage is requested for a future stage (including bar, mu, sigma,
+min and scalable delimiters); no renderer change in this experiment.
+
+Added examples/agent.py and examples/README.md. Runs on Stage 31 firmware with
+existing input(), JSON, Wi-Fi and HTTP; no firmware changes/build/delivery.
+Editable Wi-Fi/API credentials, gpt-4.1-mini, Responses POST, concise plain-text
+instructions and 256 output tokens. Each request includes all successful turns
+plus its new prompt; failed prompts roll back. History lives only in VM RAM.
+User explicitly allows temporary SD files to keep this simple: reserved
+/sd/.openai-response.json is deleted after a request, on normal exit and next
+startup. Hard Close/reset may leave this last response until next run; no saved
+conversation is restored. API store:false; no remote conversation object.
+
+Verified official Responses/manual-history docs and model endpoint support:
+https://developers.openai.com/api/docs/guides/conversation-state
+https://developers.openai.com/api/docs/guides/text
+https://developers.openai.com/api/docs/models/gpt-4.1-mini
+Parse raw output message/content/output_text rather than SDK-only output_text.
+
+Validation: python scripts/test-agent.py passes offline mocked two successful
+turns plus HTTP failure, whole-history replay, error rollback and file cleanup.
+No live OpenAI call or physical agent test; user must configure credentials and
+correct device clock for HTTPS. Long chats may exhaust the Python heap.
+Next bounded task: expand math command coverage after this experiment; native
+Python worker resource release and EPUB remain deferred. Commit and pause.
+
 ## Stage 31: preserve internal RAM during math (2026-10-03)
 
 User confirms Stage 30 input(), JSON and sleep/wake work on-device. $x+1$ still
