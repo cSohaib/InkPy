@@ -1,5 +1,35 @@
 # InkPy checkpoint
 
+## Stage 31: preserve internal RAM during math (2026-10-03)
+
+User confirms Stage 30 input(), JSON and sleep/wake work on-device. $x+1$ still
+crashes. serial-log4 matches Stage 30 ELF 5b199a2cb; the original preflight guard
+is passed. New trace: lock_init_generic -> recursive FILE lock -> fopen ->
+FT_Stream_Open -> FT_New_Face -> face_for -> CharBox/Raster drawing. SDK abort
+branch is a failed internal RTOS mutex allocation; exact free/largest blocks were
+not captured on-device.
+
+Browser profile malloc/new/realloc now prefers PSRAM at every nonzero size
+(CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=0, formerly 256). This is a firmware-wide
+ordinary-allocation preference, including math's small map/string/font nodes;
+explicit RTOS/DMA/internal allocations remain internal and the 64 KiB reserve
+is unchanged. Using the SDK policy avoids replacing upstream allocators or
+transient process-wide allocator changes while other tasks run.
+
+Math logs internal free/largest and PSRAM free before/after initialization and
+font open. A best-effort 2 KiB largest internal block check before font opening
+returns through the existing formula-source fallback rather than calling fopen
+when already critically low. This is not an atomic guarantee against every OOM.
+Render errors are logged to serial. SDK source checked: heap/heap_caps.c,
+freertos/heap_idf.c and newlib/src/locks.c at pinned ESP-IDF v5.5.5.
+
+Mixed Markdown/math host reader passes. Native build/partition fit and image checksum/hash pass.
+Application 2,587,392 bytes; SHA256 04ad4881ded7c563fca72fa5c132b27e096e6186d8017493afe5dbacd5606325.
+Evidence: results/stage31; physical allocation measurements and LaTeX
+acceptance still need device testing. Next: $x+1$, then mixed formulas and Python
+opening after math; send new serial math heap snapshots/backtrace if it fails.
+Python worker resource release and EPUB remain deferred. Pause after delivery.
+
 ## Stage 30: math guard, whole-line input, JSON and sleep rails (2026-10-03)
 
 Device feedback: plain Markdown, TTF, Wi-Fi/HTTP 200 and SD writes work. Math

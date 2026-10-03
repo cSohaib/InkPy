@@ -1,10 +1,11 @@
-# Stage 30 math/input/JSON/sleep exploratory firmware
+# Stage 31 PSRAM allocation exploratory firmware
 
 The non-EPUB feature set is integrated: browser/text/editor, Python console/scripts,
 Markdown/math, StarDict, Unicode fonts/selection, Power controls and differential
 refresh. EPUB remains deferred. The user tested an earlier image on an unlocked
 X4 Pro; Stage 27 boots on that device. Stage 29 plain Markdown, TTF, Python file writes and Wi-Fi/HTTP have now
-worked on-device. Stage 30 corrections are build/host checked, not device verified.
+worked on-device. Stage 30 input(), JSON and sleep/wake are also confirmed on-device.
+Stage 31 math allocation corrections are build/host checked, not device verified.
 
 Use the same X4 Pro application-image web installer that worked previously.
 firmware.bin is an **application-only ESP32-S3 image**, without bootloader or
@@ -32,10 +33,10 @@ initialization, which Stage 30 simplifies.
 - ESP-IDF v5.5.5: b774170ff46c393eeb5e495ea37936038d3f4f4f, pinned submodules.
 - Xtensa GCC 14.2.0, esp-14.2.0_20260121; ESP32-S3, 16 MiB DIO.
 - Browser ON, diagnostics OFF; 32 KiB main stack.
-- Application: 2,586,944 bytes; slot 8,257,536 bytes, 69% free.
-- SHA-256: ac4d52a990ee16dd39723e1a12e839e1066c1f72175b88e6b5a2c72d66823a70.
+- Application: 2,587,392 bytes; slot 8,257,536 bytes, 69% free.
+- SHA-256: 04ad4881ded7c563fca72fa5c132b27e096e6186d8017493afe5dbacd5606325.
 - Build: bash scripts/build-browser.sh; output build-browser/firmware.bin.
-- Evidence: results/stage30/image.txt, valid esptool checksum and validation hash.
+- Evidence: results/stage31/image.txt, valid esptool checksum and validation hash.
 
 ## Physical checks and limits
 
@@ -64,3 +65,10 @@ Stage 30 removes the first-formula guarded whitelist initializer, adds whole-lin
 input(), reserves the standard JSON module against SD overrides, and holds battery
 and SD rail outputs through light sleep. All require device retesting. Existing SD
 math assets remain unchanged. Test script: fixtures/python-device-test.py.
+
+Stage 31 ordinary malloc/new/realloc allocations prefer PSRAM at every size,
+including small math-library objects. Explicit RTOS/DMA/internal allocations and
+the 64 KiB internal reserve remain unchanged. Heap metrics are logged around math
+initialization/font open; critically low font-open headroom uses source fallback.
+Device math acceptance and actual heap savings remain unmeasured. Test math and
+then Python; the broader allocation policy also merits a Wi-Fi/HTTP regression.

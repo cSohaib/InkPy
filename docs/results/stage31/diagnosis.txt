@@ -1,0 +1,18 @@
+serial-log4: delivered Stage 30 ELF SHA256 prefix 5b199a2cb.
+Decoded with the matching Stage 30 ELF before rebuilding:
+0x40376ddb lock_init_generic (newlib/src/locks.c:77)
+0x40376fc6 __retarget_lock_init_recursive
+0x4214a4a3 __sfp
+0x4214a56b _fopen_r
+0x4214a615 fopen
+0x420762f3 FT_Stream_Open
+0x42075917 FT_New_Face
+0x4204506a face_for
+0x420451a9 Raster::drawChar
+0x42045f95 tex::CharBox::draw
+0x420457e2 ink_math_render
+SDK branch: xQueueCreateMutex returns NULL -> abort.
+RTOS heap capabilities: MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT.
+Old ordinary allocation policy prefers internal for <=256 bytes.
+New browser policy prefers PSRAM for nonzero sizes; reserve still 65536 bytes.
+No live internal/PSRAM metrics available from this supplied crash log.

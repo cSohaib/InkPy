@@ -12,6 +12,10 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#ifdef ESP_PLATFORM
+#include "esp_heap_caps.h"
+#include "esp_log.h"
+#endif
 
 using namespace tex;
 std::string tex::RES_BASE;
@@ -21,6 +25,17 @@ bool ready, initialized_once;
 struct FaceEntry { std::string path; FT_Face face = nullptr; unsigned age = 0; };
 FaceEntry faces[4];
 unsigned clock_age;
+void memory_report(const char *phase) {
+#ifdef ESP_PLATFORM
+    const unsigned caps=MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT;
+    ESP_LOGI("math", "%s: internal free=%u largest=%u PSRAM free=%u", phase,
+        (unsigned)heap_caps_get_free_size(caps),
+        (unsigned)heap_caps_get_largest_free_block(caps),
+        (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT));
+#else
+    (void)phase;
+#endif
+}
 void require(bool ok, const char *message) { if (!ok) throw std::runtime_error(message); }
 FT_Face face_for(const std::string& path) {
     for (auto& e : faces) if (e.face && e.path == path) { e.age = ++clock_age; return e.face; }
@@ -28,8 +43,15 @@ FT_Face face_for(const std::string& path) {
         [](const FaceEntry& a, const FaceEntry& b) { return a.age < b.age; });
     if (e->face) FT_Done_Face(e->face);
     e->face = nullptr; e->age = 0;
+    memory_report("before font open");
+#ifdef ESP_PLATFORM
+    /* Newlib fopen aborts if it cannot allocate its internal RTOS locks. */
+    require(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT)>=2048,
+        "insufficient internal RAM for font file locks");
+#endif
     if (FT_New_Face(library, path.c_str(), 0, &e->face))
         throw std::runtime_error("font cannot be opened: " + path);
+    memory_report("after font open");
     e->path = path; e->age = ++clock_age;
     return e->face;
 }
@@ -198,15 +220,15 @@ void inkpy_init_formula_def();
 extern "C" int ink_math_init(const char *resources,char *error,size_t n) {
     try {
         require(!initialized_once,"initialize once per process");
-        initialized_once=true;
+        initialized_once=true; memory_report("before init");
         inkpy_init_builtin_symbols(); inkpy_init_formula_mappings();
         inkpy_init_formula_def(); inkpy_init_macro_commands();
         require(!FT_Init_FreeType(&library),"FreeType initialization failed");
         RES_BASE=resources;
         NewCommandMacro::_init_(); DefaultTeXFont::_init_();
         Formula::_init_(); TextRenderingBox::_init_();
-        ready=true; return 0;
-    } catch(const std::exception& e) { std::snprintf(error,n,"%s",e.what()); return -1; }
+        ready=true; memory_report("after init"); return 0;
+    } catch(const std::exception& e) { memory_report("init failed"); std::snprintf(error,n,"%s",e.what()); return -1; }
 }
 extern "C" int ink_math_render(const char *source,int display,int pixels,
                                uint8_t *bitmap,ink_math_result *result) {

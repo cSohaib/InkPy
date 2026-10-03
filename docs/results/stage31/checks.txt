@@ -1,0 +1,7 @@
+Native ESP32-S3 build: pass.
+Effective generated sdkconfig: malloc alwaysinternal=0; reserve_internal=65536.
+Mixed Markdown/math/H2/paging/fallback/binary host reader: pass.
+Esptool image checksum and validation hash: valid (image.txt).
+Application bytes: 2587392
+SHA256: 04ad4881ded7c563fca72fa5c132b27e096e6186d8017493afe5dbacd5606325
+Device math, internal/PSRAM metrics and Python/network regression: pending.

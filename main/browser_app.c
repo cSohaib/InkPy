@@ -35,6 +35,7 @@ static int render_math(const char *source,int display,unsigned pixels,uint8_t *b
     }
     if(!math_ready) { *w=*h=*baseline=0; return -1; }
     ink_math_result r; int status=ink_math_render(source,display,(int)pixels,bitmap,&r);
+    if(status) ESP_LOGW("reader","math render: %s",r.error);
     *w=(unsigned)r.width; *h=(unsigned)r.height; *baseline=(unsigned)r.baseline; return status;
 }
 static void indexing_progress(void) { vTaskDelay(1); }

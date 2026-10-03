@@ -93,3 +93,12 @@ No SD remount is attempted because open streams must remain valid. User explicit
 accepts scripted Wi-Fi credentials; no connection prompt is needed. input() is
 whole-line, no keystroke API or script arguments. Allocation problem has not
 recurred, without a worker-lifetime fix.
+
+## Stage 30 acceptance / Stage 31 math allocation
+User confirms input(), JSON load and sleep/wake now work. Math still aborts:
+serial-log4 is Stage 30 ELF 5b199a2cb and reaches glyph drawing. Newlib cannot
+allocate a recursive FILE mutex while FreeType opens a math font. Browser malloc
+policy now prefers PSRAM for small ordinary allocations; RTOS/DMA/internal
+allocations retain their capabilities. Heap snapshots and font-open headroom
+checks were added. Retest small math, mixed formulas and Python after the reader.
+No successful Stage 31 device result is claimed.
