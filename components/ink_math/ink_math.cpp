@@ -189,10 +189,17 @@ sptr<Font> Font::_create(const std::string&,int style,float size) {
 sptr<TextLayout> TextLayout::create(const std::wstring&,const sptr<Font>&) {
     throw std::runtime_error("Unicode text layout outside prototype");
 }
+// Generated upstream overlays: allocate heavy tables only after SDK startup.
+void inkpy_init_macro_commands();
+void inkpy_init_builtin_symbols();
+void inkpy_init_formula_mappings();
+void inkpy_init_formula_def();
 extern "C" int ink_math_init(const char *resources,char *error,size_t n) {
     try {
         require(!initialized_once,"initialize once per process");
         initialized_once=true;
+        inkpy_init_builtin_symbols(); inkpy_init_formula_mappings();
+        inkpy_init_formula_def(); inkpy_init_macro_commands();
         require(!FT_Init_FreeType(&library),"FreeType initialization failed");
         RES_BASE=resources;
         NewCommandMacro::_init_(); DefaultTeXFont::_init_();
@@ -232,4 +239,5 @@ extern "C" void ink_math_shutdown(void) {
     for(auto& e:faces) if(e.face) { FT_Done_Face(e.face); e.face=nullptr; }
     if(library) { FT_Done_FreeType(library); library=nullptr; }
 }
+
 

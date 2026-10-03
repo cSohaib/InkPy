@@ -1,4 +1,4 @@
-# Stage 26 startup-fixed exploratory firmware
+# Stage 27 deferred-math exploratory firmware
 
 The non-EPUB feature set is integrated: browser/text/editor, Python console/scripts,
 Markdown/math, StarDict, Unicode fonts/selection, Power controls and differential
@@ -19,15 +19,17 @@ Python API: [PYTHON-DEVICE.md](PYTHON-DEVICE.md).
 
 Stage 25 rolled back on-device due to excessive math-library constructor stack
 usage before app_main. Stage 26 replaces four large table initializers; this
-fix has passed build/host checks and awaits physical verification.
+fix passed the original crash on-device, exposing main-task allocation failure.
+Stage 27 defers heavy math-table allocation until reader initialization; build
+and host checks pass, with device verification pending.
 
 ## Build identification
 
 - ESP-IDF v5.5.5: b774170ff46c393eeb5e495ea37936038d3f4f4f, pinned submodules.
 - Xtensa GCC 14.2.0, esp-14.2.0_20260121; ESP32-S3, 16 MiB DIO.
 - Browser ON, diagnostics OFF; 32 KiB main stack.
-- Application: 2,588,912 bytes; slot 8,257,536 bytes, 66% free.
-- SHA-256: 110ed8d8d8d15833af4b6368db149edb1fd3f2ebcee36fafcd5f5e915f9ff904.
+- Application: 2,583,904 bytes; slot 8,257,536 bytes, 66% free.
+- SHA-256: a36fdfeeae8e9c1968b97889b828f96b9d679e8008a24fa2cab073c166ce1b9c.
 - Build: bash scripts/build-browser.sh; output build-browser/firmware.bin.
 - Evidence: results/stage25/final-check.txt, valid esptool checksum and validation hash.
 

@@ -1,5 +1,21 @@
 # InkPy checkpoint
 
+## Stage 27: defer math allocation (2026-10-03)
+
+serial-log2 confirms Stage 26 passes the constructor-stack crash but aborts in
+esp_startup_start_app at app_startup.c:86: main-task creation returns failure.
+The four heavy math maps still allocated before the scheduler/main task and
+internal DMA reservation. They now remain empty through global construction;
+explicit generated init functions populate them once inside ink_math_init,
+only when Markdown math is first opened. Incremental insertion is retained.
+
+Native build/image validation and rebuilt mixed Markdown/math host reader pass.
+This fixes the identified early-allocation pressure; hardware startup/remaining
+heap capacity are not yet measured. Rollback/boot confirmation stay unchanged.
+Current application: 2,583,904 bytes; SHA-256 a36fdfeeae8e9c1968b97889b828f96b9d679e8008a24fa2cab073c166ce1b9c.
+Evidence: results/stage27/startup.txt. Next: device startup, console/reader,
+sleep/wake; capture a new boot log if another initialization failure appears.
+
 ## Stage 26: startup rollback fix (2026-10-03)
 
 User OTA dump confirms app0 sequence 9 VALID, app1 sequence 10 ABORTED,

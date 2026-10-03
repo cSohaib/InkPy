@@ -28,9 +28,9 @@ file(READ "${MT}/core/macro_def.cpp" macro_source)
 string(REPLACE "{ L##code, m(argc, name) }" "result.emplace(L##code, m(argc, name))" macro_source "${macro_source}")
 string(REPLACE "{ L##code, m(argc, posOpts, name) }" "result.emplace(L##code, m(argc, posOpts, name))" macro_source "${macro_source}")
 string(REPLACE "map<wstring, MacroInfo*> MacroInfo::_commands{"
-    "map<wstring, MacroInfo*> MacroInfo::_commands = [] {\n  map<wstring, MacroInfo*> result;" macro_source "${macro_source}")
+    "map<wstring, MacroInfo*> MacroInfo::_commands;\nvoid inkpy_init_macro_commands() {\n  auto &result = MacroInfo::_commands;" macro_source "${macro_source}")
 string(REGEX REPLACE "(mac\\([^\n]+\\))," "\\1;" macro_source "${macro_source}")
-string(REPLACE "\n};" "\n  return result;\n}();" macro_source "${macro_source}")
+string(REPLACE "\n};" "\n}" macro_source "${macro_source}")
 file(WRITE "${OVERLAY}/core/macro_def.cpp" "${macro_source}")
 list(REMOVE_ITEM MT_SOURCES "${MT}/core/macro_def.cpp")
 list(APPEND MT_SOURCES "${OVERLAY}/core/macro_def.cpp" "${MT}/render.cpp")
@@ -47,6 +47,9 @@ file(MAKE_DIRECTORY "${OVERLAY}/utils")
 file(WRITE "${OVERLAY}/utils/utf.cpp" "${utf_source}")
 list(REMOVE_ITEM MT_SOURCES "${MT}/utils/utf.cpp")
 list(APPEND MT_SOURCES "${OVERLAY}/utils/utf.cpp")
+# Keep the four allocating tables empty during global construction. Their
+# explicit init functions run once from ink_math_init, after ESP-IDF creates
+# system tasks and reserves its internal/DMA pool.
 # The upstream symbol initializer_list creates ~40 KiB of temporary
 # string/shared_ptr pairs on ESP-IDF's pre-scheduler startup stack. Use a
 # constant descriptor table and one insertion at a time instead. Keep every
@@ -64,7 +67,7 @@ string(REPLACE "{ #name, sptr < SymbolAtom>(new SymbolAtom(#name, type, true)) }
 string(REPLACE "${symbols_begin}"
     "namespace {\nstruct SymbolSpec { const char *name; AtomType type; bool delimiter; };\nconstexpr SymbolSpec symbol_specs[] = {"
     symbols_source "${symbols_source}")
-string(APPEND symbols_source "\n}\nmap<string, sptr<SymbolAtom>> SymbolAtom::_symbols = [] {\n  map<string, sptr<SymbolAtom>> result;\n  for (const auto &s : symbol_specs)\n    result.emplace(s.name, sptr<SymbolAtom>(new SymbolAtom(s.name, s.type, s.delimiter)));\n  return result;\n}();\n")
+string(APPEND symbols_source "\n}\nmap<string, sptr<SymbolAtom>> SymbolAtom::_symbols;\nvoid inkpy_init_builtin_symbols() {\n  auto &result = SymbolAtom::_symbols;\n  for (const auto &s : symbol_specs)\n    result.emplace(s.name, sptr<SymbolAtom>(new SymbolAtom(s.name, s.type, s.delimiter)));\n}\n")
 file(MAKE_DIRECTORY "${OVERLAY}/res/builtin")
 file(WRITE "${OVERLAY}/res/builtin/tex_symbols.res.cpp" "${symbols_source}")
 list(REMOVE_ITEM MT_SOURCES "${MT}/res/builtin/tex_symbols.res.cpp")
@@ -95,7 +98,7 @@ foreach(table formula_mappings formula_def)
     string(REPLACE "${table_begin}"
         "namespace {\nstruct Entry { ${key_type} key; ${value_type} value; };\nconstexpr Entry entries[] = {"
         table_source "${table_source}")
-    string(APPEND table_source "\n}\n${table_type} ${table_name} = [] {\n  ${table_type} result;\n  for (const auto &e : entries) result.emplace(e.key, e.value);\n  return result;\n}();\n")
+    string(APPEND table_source "\n}\n${table_type} ${table_name};\nvoid inkpy_init_${table}() {\n  auto &result = ${table_name};\n  for (const auto &e : entries) result.emplace(e.key, e.value);\n}\n")
     file(WRITE "${OVERLAY}/${table_path}" "${table_source}")
     list(REMOVE_ITEM MT_SOURCES "${MT}/${table_path}")
     list(APPEND MT_SOURCES "${OVERLAY}/${table_path}")
