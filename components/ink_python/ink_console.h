@@ -9,8 +9,9 @@ typedef struct {
     ink_keyboard keyboard;
     char input[INK_CONSOLE_INPUT];
     size_t used;
-    char lines[INK_CONSOLE_LINES][INK_CONSOLE_COLUMNS+1];
-    unsigned first,count,column,page;
+    char lines[INK_CONSOLE_LINES][INK_CONSOLE_COLUMNS*4+1];
+    unsigned first,count,column,page,line_used,utf8_used,utf8_needed;
+    char utf8[4];
     bool busy,more,full,menu;
 } ink_console;
 void ink_console_init(ink_console *c);

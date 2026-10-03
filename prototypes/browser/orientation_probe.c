@@ -2,6 +2,8 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include "../../components/ink_math/ink_view.h"
+bool ink_view_landscape;
 int main(void)
 {
     uint8_t original[PANEL_BYTES],rotated[PANEL_BYTES];
@@ -16,5 +18,14 @@ int main(void)
         assert(ux==y && uy==PANEL_WIDTH-1-x);
     }
     ink_frame_rotate_180(rotated); assert(!memcmp(original,rotated,sizeof(rotated)));
+    for(unsigned mode=0;mode<2;mode++) {
+        ink_view_landscape=mode!=0;
+        memset(rotated,255,sizeof(rotated));
+        unsigned width=mode?800:480,height=mode?480:800;
+        ink_view_pixel(rotated,32,64,width,height); ink_frame_rotate_180(rotated);
+        unsigned px=mode?32:64,py=mode?64:447;
+        assert(!(rotated[py*100+px/8]&(0x80>>(px%8))));
+    }
     puts("PASS: all 384000 pixels rotate 180 degrees; touch coordinates agree; two rotations restore every byte");
+    puts("PASS: portrait and landscape viewport coordinates match the physical frame");
 }

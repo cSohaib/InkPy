@@ -38,3 +38,19 @@ target_include_directories(dict-ui PRIVATE "${CORE}" "../../components/ink_reade
 target_include_directories(dict-ui SYSTEM PRIVATE "${FT}/include")
 target_compile_options(dict-ui PRIVATE -Wall -Wextra -Werror -UNDEBUG)
 target_link_libraries(dict-ui PRIVATE md4c math-vendor)
+add_executable(font-ui "../browser/font_probe.c" "../../components/ink_math/ink_font.c"
+    "../../components/ink_browser/browser_draw.c" "../../components/ink_browser/ink_power.c"
+    "../../components/ink_browser/ink_keyboard.c" "../../components/ink_python/ink_console.c")
+target_include_directories(font-ui PRIVATE "../../components/ink_math" "../../components/ink_browser" "../../components/ink_python")
+target_include_directories(font-ui SYSTEM PRIVATE "${FT}/include")
+target_compile_definitions(font-ui PRIVATE INK_USE_FONTS=1)
+target_compile_options(font-ui PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_link_libraries(font-ui PRIVATE math-vendor)
+add_executable(reader-font device.c "../../components/ink_reader/ink_reader.c"
+    "../../components/ink_dict/ink_dict.c" "../../components/ink_dict/ink_dict_gzip.c"
+    "../../components/ink_math/ink_font.c" "${CORE}/ink_layout.c" "${CORE}/md_budget.c" "${INK_MATH_ROOT}/ink_math.cpp")
+target_include_directories(reader-font PRIVATE "${CORE}" "${INK_MATH_ROOT}" "../../components/ink_reader" "../../components/ink_dict")
+target_include_directories(reader-font SYSTEM PRIVATE "${FT}/include")
+target_compile_definitions(reader-font PRIVATE INK_USE_FONTS=1)
+target_compile_options(reader-font PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_link_libraries(reader-font PRIVATE md4c math-vendor)

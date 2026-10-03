@@ -4,10 +4,10 @@ Minimal firmware exclusively for the Xteink X4 Pro. The device browser, text
 editor, MicroPython console/script execution and Markdown reader with inline/display
 math now compile together into an ESP32-S3 application image. Device execution of
 the new integrations remains untested. See [the checkpoint](docs/CHECKPOINT.md)
-and [downloaded firmware version](docs/FIRMWARE.md); the existing download remains
-Stage 20 while integration continues. StarDict word lookup/dictionary selection
-are integrated too; selectable fonts, partial refresh
-and several power controls are still pending.
+and [downloaded firmware version](docs/FIRMWARE.md). Stage 25 includes StarDict,
+Unicode fonts/selection, differential refresh, Power controls and Python SD
+files/imports plus Wi-Fi/HTTP. EPUB remains deferred. This exploratory build is
+ready for physical testing; source/build checks do not establish hardware behavior.
 
 ## Confirmed scope
 - Markdown reader with embedded LaTeX mathematics: inline `$…$` and display `$$…$$`, including multiline display blocks. Target the mathematical notation used in ChatGPT Markdown responses, not full LaTeX documents or packages.

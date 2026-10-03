@@ -1,9 +1,51 @@
 # InkPy checkpoint
 
-Updated: 2026-10-03. Stage 24: StarDict engine, tap lookup and dictionary chooser.
+Updated: 2026-10-03. Stage 25: remaining non-EPUB integration.
 Committed stage boundary: pause before starting further implementation.
 
-## Current stage: 24 delivered
+## Current stage: 25 delivered
+- User requested the full non-EPUB remainder in this batch, overriding the usual
+  small-stage scope. Pause after commit/delivery; EPUB remains explicitly excluded.
+- `ink_math/ink_font.c` adds shared FreeType UTF-8 drawing, bundled DejaVu Sans
+  Mono 2.37 (343,140 bytes, retained licence), and up to 31 SD faces in `/sd/fonts`.
+  Power is the font selector. Fixed cells preserve hit geometry; unsupported
+  glyphs fall back. Editor/viewer/console preserve UTF-8, including split output.
+- Power orientation/calendar editor with +/- fields, validation, PCF8563 write/
+  restart, TLS system clock update. CW2017 percentage/charging requires a running
+  gauge and verified resident OEM profile; errors show unavailable. No profile
+  writes. Power settings last the session; dictionary choice persists.
+- Landscape Markdown reflows at native 800x480, keeps nearest numeric page;
+  remaining screens keep compact fixed hit grids with unstretched glyphs.
+- Routine display updates use pinned FreeInk differential B/W sequences on all
+  three panels, OLD-plane sync and UC8279 +120 gate partial window. Full only at
+  first paint/first redraw after controller sleep or manual Refresh screen.
+  No periodic clear/custom LUT; independent input capture retained.
+- Native Python open/io, .py imports, os/uos, JSON and small time module. Script-
+  folder cwd and `/sd/lib` import path; eight tracked streams. Paths stay on SD,
+  firmware caches excluded. Stop/Close clean handles/readers/listings before reset.
+  SD file slots raised to 32 for retained fonts/dictionaries plus VM streams.
+- `inkpy.wifi/wifi_status/wifi_off/http`: Python-only Wi-Fi and streamed HTTP/HTTPS
+  GET/POST/PUT/DELETE to SD, headers/body, checked roots/hostname with RTC date.
+  RAM credentials, exclusive temporary/no-overwrite rename, abort/error cleanup.
+  Polls between operations, 500ms socket timeouts; SDK DNS/handshake delays unmeasured.
+- Sleep stops Wi-Fi after VM pause, reconnects before resume; remote requests may
+  expire. No runtime limit/forced deletion or socket/machine/thread/input() API.
+- Host files/imports/JSON/abort/reopen, Unicode/Power/orientation, reader/math/
+  dictionaries/browser/text and 8 MiB editor checks pass. Native product build and
+  checksum/hash pass; previews inspected. Evidence: `docs/results/stage25/`.
+- Download updated to Stage 25 app-only image: 2,767,840 bytes; SHA-256
+  `0c670413d9c6bad52b20f714ad8bb691643654b531e73b94bdcd433b7e85e182`.
+  Math resource archive supplied for manual SD copy. No device flashed, no map/
+  bootloader change; existing recovery retained. FIRMWARE.md/PYTHON-DEVICE.md usage.
+- FreeInk 111fdcc7f0176c3ee38391a160ee296bf492dbd8 partial/gauge source rechecked:
+  https://github.com/Free-Ink/freeink-sdk/tree/111fdcc7f0176c3ee38391a160ee296bf492dbd8
+  Dependency revisions unchanged. Font source: DejaVu 2.37, system package font,
+  exact committed bytes and licence; text face remains single-owner on UI task.
+- Remaining: EPUB, physical integration tests and polish. Exact next task: user
+  tries combined firmware, fix concrete issues; measure heap/stack, typing/ghosting,
+  gauge, Wi-Fi/TLS and Python Stop/Close/sleep. No host check establishes runtime.
+
+## Previous stage: 24 delivered
 - `components/ink_dict/` implements normal StarDict metadata/index/data/synonym
   parsing, disk-backed binary search, text-field extraction and paged definitions.
   Supports plain/gzip/dictzip, 32/64-bit records within native file-seek limits,

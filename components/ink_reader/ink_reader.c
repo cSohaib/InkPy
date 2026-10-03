@@ -7,6 +7,21 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#ifdef INK_USE_FONTS
+#include "ink_font.h"
+#include "ink_view.h"
+#endif
+static unsigned page_width(void) {
+#ifdef INK_USE_FONTS
+    return ink_view_landscape?800:480;
+#else
+    return 480;
+#endif
+}
+static unsigned page_height(void) { return page_width()==800?480:800; }
+#ifdef INK_USE_FONTS
+static bool page_drawing;
+#endif
 
 static int error(ink_reader *r,const char *s)
 { snprintf(r->error,sizeof(r->error),"%s",s); return -1; }
@@ -73,7 +88,7 @@ int ink_reader_open(ink_reader *r,const char *source,const char *root,ink_layout
     int status=-1;
     if(!r->draw||!r->pages||!r->chapters||(math&&!spool)) error(r,"Cannot open reader cache");
     else {
-        ink_layout_config cfg={.width=480,.height=800,.font_pixels=22,.read_bytes=1024,
+        ink_layout_config cfg={.width=page_width(),.height=page_height(),.font_pixels=22,.read_bytes=1024,
             .render_math=math,.bitmap_spool=spool,.progress=progress};
         status=ink_layout_run(input,r->draw,r->pages,r->chapters,&cfg,&r->stats);
         if(status) error(r,r->stats.error);
@@ -134,7 +149,7 @@ static int lookup_word(ink_reader *r,unsigned tap_x,unsigned tap_y)
         unsigned x=(unsigned)number(h,2),y=(unsigned)number(h+2,2),cell=(unsigned)number(h+4,2),style=(unsigned)number(h+6,2);
         unsigned level=(style>>8)&7,height=22+(level?2*(7-level):0);
         if(size>end-at||!cell||cell>480) return error(r,"Invalid word geometry");
-        bool continuation=(x==prev_end&&y==prev_y)||(x==16&&prev_end>=464-prev_cell&&y==prev_y+prev_height+8);
+        bool continuation=(x==prev_end&&y==prev_y)||(x==16&&prev_end>=page_width()-16-prev_cell&&y==prev_y+prev_height+8);
         if(used&&!continuation) { if(hit) goto found; used=0; overflow=false; }
         if(style==INK_BITMAP||(style&INK_MATH)) {
             if(hit) goto found;
@@ -209,11 +224,17 @@ bool ink_reader_tap(ink_reader *r,unsigned x,unsigned y)
 }
 static void pixel(uint8_t *f,unsigned x,unsigned y)
 {
+#ifdef INK_USE_FONTS
+    ink_view_pixel(f,x,y,page_drawing?page_width():480,page_drawing?page_height():800); return;
+#endif
     if(x>=480||y>=800) return;
     unsigned dx=799-y,dy=x; f[dy*100+dx/8]&=(uint8_t)~(0x80>>(dx%8));
 }
 static void text(uint8_t *f,unsigned x,unsigned y,const char *s,unsigned cell,unsigned height,unsigned style)
 {
+#ifdef INK_USE_FONTS
+    ink_font_text(f,x,y,s,cell,height,style,page_drawing?page_width()-16:464,pixel); return;
+#endif
     unsigned shift=0;
     for(;*s;s++) {
         unsigned char c=(unsigned char)*s;
@@ -238,6 +259,9 @@ static void box(uint8_t *f,unsigned x,unsigned y,unsigned w,unsigned h)
 }
 int ink_reader_draw(ink_reader *r,uint8_t frame[48000])
 {
+#ifdef INK_USE_FONTS
+    page_drawing=r->view==INK_READER_PAGE;
+#endif
     memset(frame,255,48000);
     if(r->page) {
         unsigned char p[32]; if(page_record(r,p)) return -1;
@@ -249,12 +273,12 @@ int ink_reader_draw(ink_reader *r,uint8_t frame[48000])
             at+=20;
             unsigned x=(unsigned)number(h,2),y=(unsigned)number(h+2,2),cell=(unsigned)number(h+4,2),style=(unsigned)number(h+6,2);
             uint64_t size=number(h+8,4);
-            if(!size||size>end-at||x>=480||y>=800||!cell) return error(r,"Invalid page run");
+            if(!size||size>end-at||x>=page_width()||y>=page_height()||!cell) return error(r,"Invalid page run");
             if(style==INK_BITMAP) {
                 unsigned char b[2],row[60];
                 if(size<2||cell>480||fread(b,1,2,r->draw)!=2) return error(r,"Invalid formula bitmap");
                 unsigned height=(unsigned)number(b,2),stride=(cell+7)/8;
-                if(!height||height>800-y||cell>480-x||size!=2+(uint64_t)stride*height) return error(r,"Formula outside page");
+                if(!height||height>page_height()-y||cell>page_width()-x||size!=2+(uint64_t)stride*height) return error(r,"Formula outside page");
                 for(unsigned dy=0;dy<height;dy++) {
                     if(fread(row,1,stride,r->draw)!=stride) return error(r,"Truncated formula bitmap");
                     for(unsigned dx=0;dx<cell;dx++) if(row[dx/8]&(0x80>>(dx%8))) pixel(frame,x+dx,y+dy);

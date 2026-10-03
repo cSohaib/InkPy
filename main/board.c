@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/time.h>
 #include "driver/gpio.h"
 #include "driver/i2c_master.h"
 #include "driver/ledc.h"
@@ -217,11 +218,58 @@ esp_err_t ink_rtc_read(struct tm *out)
     esp_err_t e=rtc_read(out); xSemaphoreGive(i2c_lock); return e;
 }
 
+esp_err_t ink_rtc_set(const struct tm *t)
+{
+    if (!rtc || t->tm_year<100 || t->tm_year>199 || t->tm_mon<0 || t->tm_mon>11 ||
+        t->tm_mday<1 || t->tm_mday>31 || t->tm_hour<0 || t->tm_hour>23 ||
+        t->tm_min<0 || t->tm_min>59 || t->tm_sec<0 || t->tm_sec>59 || t->tm_wday<0 || t->tm_wday>6)
+        return ESP_ERR_INVALID_ARG;
+    const int values[]={t->tm_sec,t->tm_min,t->tm_hour,t->tm_mday,t->tm_wday,t->tm_mon+1,t->tm_year-100};
+    uint8_t data[8]={2};
+    for(unsigned i=0;i<7;i++) data[i+1]=(uint8_t)((values[i]/10)*16+values[i]%10);
+    xSemaphoreTake(i2c_lock,portMAX_DELAY);
+    /* PCF8563 STOP freezes the divider during the calendar write. Always restart. */
+    uint8_t stop[]={0,0x20},start[]={0,0};
+    esp_err_t e=i2c_master_transmit(rtc,stop,2,20);
+    if(e==ESP_OK) e=i2c_master_transmit(rtc,data,sizeof(data),20);
+    esp_err_t resume=i2c_master_transmit(rtc,start,2,20);
+    xSemaphoreGive(i2c_lock);
+    if(e==ESP_OK&&resume==ESP_OK) {
+        struct tm copy=*t; struct timeval now={.tv_sec=mktime(&copy)}; settimeofday(&now,NULL);
+    }
+    return e==ESP_OK?resume:e;
+}
+
+esp_err_t ink_battery_read(unsigned *percent,bool *charging)
+{
+    if(!gauge) return ESP_ERR_INVALID_STATE;
+    xSemaphoreTake(i2c_lock,portMAX_DELAY);
+    uint8_t mode,version,soc,flag,reg=8;
+    esp_err_t e=i2c_master_transmit_receive(gauge,&reg,1,&mode,1,20);
+    reg=0; if(e==ESP_OK) e=i2c_master_transmit_receive(gauge,&reg,1,&version,1,20);
+    reg=11; if(e==ESP_OK) e=i2c_master_transmit_receive(gauge,&reg,1,&flag,1,20);
+    reg=4; if(e==ESP_OK) e=i2c_master_transmit_receive(gauge,&reg,1,&soc,1,20);
+    /* Verify the resident X4 Pro OEM profile, without modifying gauge state. */
+    static const uint8_t profile[80]={
+        0x50,0,0,0,0,0,0,0,0xaa,0xbf,0xb5,0xb4,0xa4,0x9c,0xeb,0xe2,
+        0xdf,0xe5,0xca,0xa0,0x8a,0x62,0x53,0x48,0x40,0x3a,0x32,0xb1,0xae,0xda,0xb5,0xff,
+        0xff,0xff,0xe8,0xdb,0xd9,0xd6,0xd4,0xd2,0xd0,0xcb,0xc3,0xbc,0x9e,0x87,0x7b,0x71,
+        0x72,0x7c,0x8c,0xa3,0xb7,0xc8,0xa5,0x4f,0,0,0xab,0x02,0,0,0,0,
+        0,0,0x64,0,0,0,0,0,0,0,0,0,0,0,0,0x23};
+    uint8_t resident[80]; reg=0x10;
+    if(e==ESP_OK) e=i2c_master_transmit_receive(gauge,&reg,1,resident,sizeof(resident),20);
+    if(e==ESP_OK&&memcmp(resident,profile,sizeof(profile))) e=ESP_ERR_INVALID_STATE;
+    xSemaphoreGive(i2c_lock);
+    if(e!=ESP_OK) return e;
+    if(mode!=0 || (version&0xfd)!=0x0d || !(flag&0x80) || soc>100) return ESP_ERR_INVALID_STATE;
+    *percent=soc; *charging=gpio_get_level(PIN_CHARGING)!=0; return ESP_OK;
+}
+
 esp_err_t ink_sd_mount(void)
 {
     if (card) return ESP_OK;
     const esp_vfs_fat_sdmmc_mount_config_t mount = {
-        .format_if_mount_failed = false, .max_files = 16, .allocation_unit_size = 16 * 1024,
+        .format_if_mount_failed = false, .max_files = 32, .allocation_unit_size = 16 * 1024,
     };
     uint8_t *sector = heap_caps_malloc(512, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
     if (!sector) return ESP_ERR_NO_MEM;

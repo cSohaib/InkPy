@@ -25,17 +25,30 @@ static void newline(ink_console *c)
     if(c->count<INK_CONSOLE_LINES) c->count++;
     else c->first=(c->first+1)%INK_CONSOLE_LINES;
     unsigned last=(c->first+c->count-1)%INK_CONSOLE_LINES;
-    memset(c->lines[last],0,sizeof(c->lines[last])); c->column=0;
+    memset(c->lines[last],0,sizeof(c->lines[last])); c->column=0; c->line_used=0;
+}
+static void output_glyph(ink_console *c,const char *bytes,unsigned length)
+{
+    if(c->column==INK_CONSOLE_COLUMNS) newline(c);
+    unsigned last=(c->first+c->count-1)%INK_CONSOLE_LINES;
+    memcpy(c->lines[last]+c->line_used,bytes,length); c->line_used+=length; c->column++;
 }
 void ink_console_output(ink_console *c,const char *bytes,size_t length)
 {
     for(size_t i=0;i<length;i++) {
         unsigned char ch=(unsigned char)bytes[i];
+        if(c->utf8_used) {
+            if((ch&0xc0)==0x80) {
+                c->utf8[c->utf8_used++]=(char)ch;
+                if(c->utf8_used==c->utf8_needed) { output_glyph(c,c->utf8,c->utf8_used); c->utf8_used=0; }
+                continue;
+            }
+            output_glyph(c,"?",1); c->utf8_used=0;
+        }
+        if(ch>=0xc2&&ch<=0xf4) { c->utf8[0]=(char)ch; c->utf8_used=1; c->utf8_needed=ch<0xe0?2:ch<0xf0?3:4; continue; }
         if(ch=='\r') continue;
         if(ch=='\n') { newline(c); continue; }
-        if(c->column==INK_CONSOLE_COLUMNS) newline(c);
-        unsigned last=(c->first+c->count-1)%INK_CONSOLE_LINES;
-        c->lines[last][c->column++]=(ch>=32 && ch<=126)?(char)ch:'?';
+        char glyph=ch>=32&&ch<=126?(char)ch:'?'; output_glyph(c,&glyph,1);
     }
     unsigned pages=(c->count-1)/INK_CONSOLE_PAGE_ROWS;
     if(c->page>pages) c->page=pages;

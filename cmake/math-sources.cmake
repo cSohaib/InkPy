@@ -43,7 +43,7 @@ list(APPEND MT_SOURCES "${OVERLAY}/utils/utf.cpp")
 # Only required FreeType objects, not the full upstream archive. gzip supports
 # the SFNT loader's link requirements; no external zlib library is linked.
 set(FT_SOURCES)
-foreach(src base/ftbase base/ftinit base/ftsystem base/ftdebug base/ftglyph
+foreach(src base/ftbase base/ftinit base/ftsystem base/ftdebug base/ftglyph base/ftsynth
             base/ftbitmap base/ftbbox base/ftmm sfnt/sfnt truetype/truetype raster/raster
             psnames/psnames gzip/ftgzip)
     list(APPEND FT_SOURCES "${FT}/src/${src}.c")

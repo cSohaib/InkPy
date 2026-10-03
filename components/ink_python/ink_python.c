@@ -8,6 +8,10 @@
 #include "py/repl.h"
 #include "py/runtime.h"
 #include "py/stackctrl.h"
+#ifdef INK_PY_NATIVE
+#include "native.h"
+void ink_python_listing_close(void);
+#endif
 
 static FILE *source_file;
 static bool (*control_callback)(void *);
@@ -31,6 +35,9 @@ void ink_python_init(void *heap,size_t bytes,void *stack_top)
 {
     mp_embed_init(heap,bytes,stack_top);
     mp_stack_set_limit(32*1024); /* Provisional budget; device worker reserves 48 KiB. */
+#ifdef INK_PY_NATIVE
+    mp_obj_list_append(mp_sys_path,mp_obj_new_str("/sd/lib",7));
+#endif
 }
 static mp_uint_t read_byte(void *data)
 {
@@ -55,6 +62,9 @@ int ink_python_file(const char *path)
     nlr_buf_t nlr;
     nlr_set_abort(&nlr);
     if(nlr_push(&nlr)==0) {
+#ifdef INK_PY_NATIVE
+        ink_python_directory(path);
+#endif
         source_file=fopen(path,"rb");
         if(!source_file) mp_raise_OSError(errno);
         mp_reader_t reader={source_file,read_byte,close_source};
@@ -79,4 +89,10 @@ int ink_python_text(const char *source,bool repl)
     mp_obj_print_exception(&mp_plat_print,(mp_obj_t)nlr.ret_val); return 1;
 }
 bool ink_python_more(const char *source) { return mp_repl_continue_with_input(source); }
-void ink_python_close(void) { close_source(NULL); mp_embed_deinit(); }
+void ink_python_close(void) {
+    close_source(NULL);
+#ifdef INK_PY_NATIVE
+    ink_python_network_close(); ink_python_listing_close(); ink_python_files_reset();
+#endif
+    mp_embed_deinit();
+}

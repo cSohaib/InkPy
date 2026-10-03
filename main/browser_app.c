@@ -8,6 +8,9 @@
 #include "ink_power.h"
 #include "ink_reader.h"
 #include "ink_math.h"
+#include "ink_font.h"
+#include "ink_view.h"
+#include "python_port/native.h"
 #include <sys/stat.h>
 #include "sdkconfig.h"
 #include <stdio.h>
@@ -33,6 +36,54 @@ static ink_python_worker python;
 static ink_console console;
 static bool editor_active,console_active,python_started,paused,closed;
 static ink_power power_menu={.brightness=20,.warmth=50};
+static bool full_refresh;
+static void font_names(void)
+{
+    power_menu.font_count=ink_font_count();
+    for(unsigned i=0;i<6;i++) snprintf(power_menu.font_names[i],96,"%s",ink_font_name(power_menu.font_first+i));
+}
+static void power_header(void)
+{
+    struct tm t;
+    if(ink_rtc_read(&t)==ESP_OK) strftime(power_menu.time,sizeof(power_menu.time),"%Y-%m-%d %H:%M",&t);
+    else power_menu.time[0]=0;
+    unsigned percent; bool charging;
+    if(ink_battery_read(&percent,&charging)==ESP_OK)
+        snprintf(power_menu.battery,sizeof(power_menu.battery),"Battery: %u%%%s",percent,charging?" charging":"");
+    else strcpy(power_menu.battery,"Battery: unavailable");
+}
+static void power_action(int action)
+{
+    if(action==INK_POWER_LIGHT&&ink_light_set(power_menu.brightness,power_menu.warmth,power_menu.on)!=ESP_OK)
+        strcpy(power_menu.message,"Light update failed");
+    else if(action==INK_POWER_REFRESH) full_refresh=true;
+    else if(action==INK_POWER_FONTS) font_names();
+    else if(action==INK_POWER_FONT_SELECT) {
+        if(ink_font_select(power_menu.font_choice)) strcpy(power_menu.message,"Cannot load this font");
+        else { power_menu.view=0; strcpy(power_menu.message,"Font selected"); }
+    } else if(action==INK_POWER_TIME) {
+        struct tm t={.tm_year=126,.tm_mon=0,.tm_mday=1}; ink_rtc_read(&t);
+        int fields[]={t.tm_year+1900,t.tm_mon+1,t.tm_mday,t.tm_hour,t.tm_min};
+        memcpy(power_menu.calendar,fields,sizeof(fields));
+    } else if(action==INK_POWER_TIME_SAVE) {
+        int *c=power_menu.calendar;
+        struct tm t={.tm_year=c[0]-1900,.tm_mon=c[1]-1,.tm_mday=c[2],.tm_hour=c[3],.tm_min=c[4],.tm_isdst=-1};
+        struct tm normalized=t; mktime(&normalized);
+        if(normalized.tm_year!=t.tm_year||normalized.tm_mon!=t.tm_mon||normalized.tm_mday!=t.tm_mday) strcpy(power_menu.message,"Invalid date");
+        else { t.tm_wday=normalized.tm_wday;
+            if(ink_rtc_set(&t)!=ESP_OK) strcpy(power_menu.message,"Cannot set time");
+            else { power_menu.view=0; power_header(); }
+        }
+    } else if(action==INK_POWER_ORIENTATION) {
+        ink_view_landscape=power_menu.landscape;
+        if(reader_active) {
+            unsigned page=reader.page; ink_reader_close(&reader);
+            if(ink_reader_open(&reader,browser.selected,browser.root,math_ready?render_math:NULL,indexing_progress)) {
+                reader_active=false; notice(reader.error);
+            } else { reader.dictionary=&dictionary; reader.page=page>reader.stats.pages?(unsigned)reader.stats.pages:page; }
+        }
+    }
+}
 static uint32_t milliseconds(void) { return (uint32_t)(esp_timer_get_time()/1000); }
 static void draw(uint8_t *frame)
 {
@@ -86,7 +137,7 @@ static void open_requests(void)
 }
 static void home(bool long_press)
 {
-    if(power_menu.open) power_menu.open=false;
+    if(power_menu.open) { if(power_menu.view) power_menu.view=0; else power_menu.open=false; }
     else if(reader_active) ink_reader_home(&reader);
     else if(console_active) ink_python_worker_home(&python,long_press);
     else if(editor_active) {
@@ -98,7 +149,8 @@ static bool dispatch(const ink_event *event)
     unsigned x,y;
     switch(event->kind) {
     case INK_EVENT_PREV: case INK_EVENT_NEXT:
-        if(power_menu.open||event->press!=INK_PRESS_SHORT) return false;
+        if(event->press!=INK_PRESS_SHORT) return false;
+        if(power_menu.open) { ink_power_page(&power_menu,event->kind==INK_EVENT_PREV?-1:1); font_names(); return true; }
         if(editor_active) ink_editor_page(&editor,event->kind==INK_EVENT_PREV?-1:1);
         else if(reader_active) ink_reader_page(&reader,event->kind==INK_EVENT_PREV?-1:1);
         else if(console_active) ink_python_worker_page(&python,event->kind==INK_EVENT_PREV?-1:1);
@@ -108,14 +160,16 @@ static bool dispatch(const ink_event *event)
     case INK_EVENT_TOUCH:
         if(event->x>=800||event->y>=480) return false;
         ink_panel_to_ui(event->x,event->y,&x,&y);
+        if(power_menu.landscape) {
+            x=event->x; y=event->y;
+            if(!(reader_active&&!power_menu.open&&reader.view==INK_READER_PAGE)) { x=x*480/800; y=y*800/480; }
+        }
         if(event->press==INK_PRESS_LONG) {
             if(!power_menu.open&&!editor_active&&!console_active&&!reader_active) return ink_browser_long_press(&browser,x,y);
             return false;
         }
         if(power_menu.open) {
-            if(ink_power_tap(&power_menu,x,y)==INK_POWER_LIGHT &&
-               ink_light_set(power_menu.brightness,power_menu.warmth,power_menu.on)!=ESP_OK)
-                snprintf(power_menu.message,sizeof(power_menu.message),"Light update failed");
+            power_action(ink_power_tap(&power_menu,x,y));
         } else if(editor_active) {
             if(ink_editor_tap(&editor,x,y)) { editor_active=false; ink_browser_home(&browser); }
         } else if(reader_active) {
@@ -125,11 +179,9 @@ static bool dispatch(const ink_event *event)
         return true;
     case INK_EVENT_POWER:
         if(event->press==INK_PRESS_SHORT) {
-            power_menu.open=!power_menu.open; power_menu.message[0]=0;
+            power_menu.open=!power_menu.open; power_menu.view=0; power_menu.message[0]=0;
             if(power_menu.open) {
-                struct tm time;
-                if(ink_rtc_read(&time)==ESP_OK) strftime(power_menu.time,sizeof(power_menu.time),"%Y-%m-%d %H:%M",&time);
-                else power_menu.time[0]=0;
+                power_header();
             }
             return true;
         }
@@ -151,6 +203,7 @@ void app_main(void)
     if(e!=ESP_OK) { ESP_LOGE(tag,"display: %s",esp_err_to_name(e)); return; }
     e=ink_sd_mount(); ESP_LOGI(tag,"SD: %s",esp_err_to_name(e));
     ink_browser_init(&browser,"/sd");
+    if(ink_font_init()) { ESP_LOGE(tag,"default font failed"); return; }
     ink_dict_init(&dictionary,"/sd",indexing_progress);
     uint8_t *frame=heap_caps_malloc(PANEL_BYTES,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
     if(!frame) { ESP_LOGE(tag,"frame allocation failed"); return; }
@@ -196,7 +249,9 @@ void app_main(void)
                     snprintf(editor.error,sizeof(editor.error),"Cannot flush before sleep"); dirty=true;
                 } else {
                     ink_capture_pause();
-                    e=ink_sleep(); ESP_LOGI(tag,"sleep: %s",esp_err_to_name(e));
+                    int network=ink_python_network_sleep(true);
+                    e=network?ESP_FAIL:ink_sleep(); ESP_LOGI(tag,"sleep: %s",esp_err_to_name(e));
+                    if(ink_python_network_sleep(false)) ESP_LOGW(tag,"Wi-Fi resume failed");
                     ink_capture_resume();
                 }
                 if(console_active) ink_python_worker_pause(&python,false);
@@ -210,7 +265,8 @@ void app_main(void)
         }
         if(dirty&&now-last_draw>=250) {
             draw(frame);
-            if(ink_display_frame(frame)!=ESP_OK) { ESP_LOGE(tag,"display failed"); break; }
+            if(ink_display_update(frame,full_refresh)!=ESP_OK) { ESP_LOGE(tag,"display failed"); break; }
+            full_refresh=false;
             last_draw=milliseconds(); dirty=false;
         }
     }

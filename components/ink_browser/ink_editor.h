@@ -9,7 +9,7 @@ typedef struct {
     char path[512],temporary[INK_EDITOR_PATH],error[80];
     uint64_t size,gap_start,gap_end,offset,next;
     uint64_t cells[INK_EDITOR_ROWS][INK_EDITOR_COLUMNS+1];
-    char lines[INK_EDITOR_ROWS][INK_EDITOR_COLUMNS+1];
+    char lines[INK_EDITOR_ROWS][INK_EDITOR_COLUMNS*4+1];
     unsigned rows,cursor_row,cursor_column;
     bool menu,dirty,has_next;
     ink_keyboard keyboard;

@@ -1,0 +1,2 @@
+OK: 8 MiB edit preserves tail, fixed-size editor, gap growth, pages, four-space Tab
+OK: 8 MiB edit preserves tail, fixed-size editor, gap growth, pages, four-space Tab

@@ -63,7 +63,7 @@ static int layout(ink_editor *e,uint64_t start)
     memset(e->lines,0,sizeof(e->lines)); e->rows=0;
     e->cursor_row=e->cursor_column=0;
     for(unsigned row=0;row<INK_EDITOR_ROWS;row++) {
-        unsigned col=0; e->rows=row+1;
+        unsigned col=0,used=0; e->rows=row+1;
         while(col<INK_EDITOR_COLUMNS) {
             e->cells[row][col]=at;
             if(at==e->gap_start) { e->cursor_row=row; e->cursor_column=col; }
@@ -71,10 +71,12 @@ static int layout(ink_editor *e,uint64_t start)
             if(c==EOF) break;
             uint64_t before=at++;
             if(c=='\n' || c=='\r') { if(c=='\r' && byte(&r,at)=='\n') at++; break; }
-            if(c>=128) { while((byte(&r,at)&0xc0)==0x80) at++; c='?'; }
+            if(c>=128) { while((byte(&r,at)&0xc0)==0x80) at++; }
             unsigned count=c=='\t'?4-col%4:1;
             while(count-- && col<INK_EDITOR_COLUMNS) {
-                e->cells[row][col]=before; e->lines[row][col++]=c=='\t'?' ':(char)c;
+                e->cells[row][col++]=before;
+                if(c=='\t') e->lines[row][used++]=' ';
+                else for(uint64_t i=before;i<at;i++) e->lines[row][used++]=(char)byte(&r,i);
             }
         }
         e->cells[row][col]=at;

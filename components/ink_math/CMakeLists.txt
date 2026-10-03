@@ -4,8 +4,9 @@ if(CMAKE_BUILD_EARLY_EXPANSION)
 endif()
 set(DEPS "${PROJECT_DIR}/prototypes/math/.deps")
 include("${PROJECT_DIR}/cmake/math-sources.cmake")
-idf_component_register(SRCS "ink_math.cpp" ${MATH_VENDOR_SOURCES}
+idf_component_register(SRCS "ink_math.cpp" "ink_font.c" ${MATH_VENDOR_SOURCES}
     INCLUDE_DIRS "."
+    EMBED_FILES "InkPyMono.ttf"
     REQUIRES newlib)
 set_target_properties(${COMPONENT_LIB} PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
 target_include_directories(${COMPONENT_LIB} SYSTEM PRIVATE

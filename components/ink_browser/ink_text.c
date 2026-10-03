@@ -6,7 +6,7 @@
 
 static int error(ink_text_view *v,const char *message)
 { snprintf(v->error,sizeof(v->error),"%s",message); return -1; }
-/* Validate one UTF-8 codepoint. The interim ASCII font uses '?' for others. */
+/* Validate one UTF-8 codepoint; the UI preserves its Unicode value. */
 static int codepoint(FILE *f)
 {
     int c=fgetc(f); if(c==EOF || c<128) return c;
@@ -20,7 +20,14 @@ static int codepoint(FILE *f)
         value=(value<<6)|(c&63);
     }
     if(value<min || value>0x10ffff || (value>=0xd800 && value<=0xdfff)) return -2;
-    return '?';
+    return (int)value;
+}
+static unsigned encode(char *out,unsigned cp)
+{
+    if(cp<128) { out[0]=(char)cp; return 1; }
+    unsigned n=cp<0x800?2:cp<0x10000?3:4;
+    for(unsigned i=n-1;i;i--) { out[i]=(char)(0x80|(cp&63)); cp>>=6; }
+    out[0]=(char)((n==2?0xc0:n==3?0xe0:0xf0)|cp); return n;
 }
 static void after_cr(FILE *f)
 { int c=fgetc(f); if(c!=EOF && c!='\n') ungetc(c,f); }
@@ -37,7 +44,7 @@ static int load(ink_text_view *v,const char *path,uint64_t offset,unsigned page)
     }
     for(unsigned row=0;row<INK_TEXT_ROWS;++row) {
         int peek=fgetc(f); if(peek==EOF) break; ungetc(peek,f);
-        unsigned col=0; v->rows=row+1;
+        unsigned col=0,used=0; v->rows=row+1;
         while(col<INK_TEXT_COLUMNS) {
             int cp=codepoint(f);
             if(cp==EOF) break;
@@ -48,8 +55,8 @@ static int load(ink_text_view *v,const char *path,uint64_t offset,unsigned page)
             if(cp=='\n') break;
             if(cp=='\t') {
                 unsigned stop=col+4-col%4;
-                while(col<stop) v->lines[row][col++]=' ';
-            } else v->lines[row][col++]=(char)cp;
+                while(col<stop) { v->lines[row][used++]=' '; col++; }
+            } else { used+=encode(v->lines[row]+used,(unsigned)cp); col++; }
         }
         /* A newline following a full-width line is its terminator, not a blank row. */
         if(col==INK_TEXT_COLUMNS) {

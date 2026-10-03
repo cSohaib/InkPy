@@ -1,0 +1,3 @@
+Product application: 2767840 bytes; SHA256 0c670413d9c6bad52b20f714ad8bb691643654b531e73b94bdcd433b7e85e182
+inkpy.bin binary size 0x2a3be0 bytes. Smallest app partition is 0x7e0000 bytes. 0x53c420 bytes (66%) free.
+Bootloader binary size 0x5170 bytes. 0x2e90 bytes (36%) free.

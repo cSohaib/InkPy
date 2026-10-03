@@ -5,15 +5,25 @@
 #include "../ink_python/ink_console.h"
 #include <stdio.h>
 #include <string.h>
+#ifdef INK_USE_FONTS
+#include "ink_font.h"
+#include "ink_view.h"
+#endif
 
 static void pixel(uint8_t *frame,unsigned x,unsigned y)
 {
+#ifdef INK_USE_FONTS
+    ink_view_pixel(frame,x,y,480,800); return;
+#endif
     if(x>=480 || y>=800) return;
     unsigned dx=799-y,dy=x;
     frame[dy*100+dx/8]&=(uint8_t)~(0x80>>(dx%8));
 }
 static void text_size(uint8_t *frame,unsigned x,unsigned y,const char *s,unsigned scale)
 {
+#ifdef INK_USE_FONTS
+    ink_font_text(frame,x,y,s,9*scale,16*scale,0,464,pixel); return;
+#endif
     unsigned columns=0;
     for(;*s && columns<25;++s) {
         unsigned char c=(unsigned char)*s;
@@ -29,6 +39,14 @@ static void text_size(uint8_t *frame,unsigned x,unsigned y,const char *s,unsigne
 }
 static void text(uint8_t *frame,unsigned x,unsigned y,const char *s)
 { text_size(frame,x,y,s,2); }
+static void text_grid(uint8_t *frame,unsigned x,unsigned y,const char *s)
+{
+#ifdef INK_USE_FONTS
+    ink_font_text(frame,x,y,s,18,32,256,464,pixel);
+#else
+    text(frame,x,y,s);
+#endif
+}
 static void box(uint8_t *frame,unsigned x,unsigned y,unsigned w,unsigned h)
 {
     for(unsigned i=0;i<w;++i) { pixel(frame,x+i,y); pixel(frame,x+i,y+h-1); }
@@ -40,7 +58,7 @@ static void new_file(const ink_browser *b,uint8_t *frame)
     box(frame,16,96,448,64);
     size_t length=strlen(b->new_name);
     const char *visible=b->new_name+(length>23?length-23:0);
-    text(frame,24,108,visible);
+    text_grid(frame,24,108,visible);
     unsigned cursor=24+(unsigned)strlen(visible)*18;
     for(unsigned y=110;y<140;++y) pixel(frame,cursor,y);
     text(frame,16,180,b->message);
@@ -68,15 +86,34 @@ void ink_power_draw(const ink_power *p,uint8_t frame[48000])
 {
     memset(frame,0xff,48000);
     text(frame,16,8,p->time[0]?p->time:"Time: unavailable");
-    text(frame,16,48,"Battery: unavailable");
+    text(frame,16,48,p->battery[0]?p->battery:"Battery: unavailable");
+    if(p->view==1) {
+        for(unsigned i=0;i<6&&p->font_first+i<p->font_count;i++) {
+            box(frame,32,128+i*64,416,64); text_size(frame,48,150+i*64,p->font_names[i],1);
+        }
+        box(frame,32,576,416,64); text(frame,48,592,"Back");
+        text_size(frame,16,704,"Side buttons: more fonts",1);
+        text_size(frame,16,736,p->message,1); return;
+    }
+    if(p->view==2) {
+        const char *fields[]={"Year","Month","Day","Hour","Minute"};
+        for(unsigned i=0;i<5;i++) {
+            unsigned y=128+i*64; char label[32]; snprintf(label,sizeof(label),"%s %d",fields[i],p->calendar[i]);
+            box(frame,32,y,416,64); text_size(frame,48,y+22,label,1);
+            box(frame,288,y,80,64); box(frame,368,y,80,64); text(frame,320,y+16,"-"); text(frame,400,y+16,"+");
+        }
+        box(frame,32,512,416,64); text(frame,48,528,"Save time");
+        box(frame,32,576,416,64); text(frame,48,592,"Cancel");
+        text_size(frame,16,736,p->message,1); return;
+    }
     const char *labels[]={"Brightness","Warmth",p->on?"Light: on":"Light: off",
-        p->night?"Night mode: on":"Night mode: off","Orientation","Time settings",
+        p->night?"Night mode: on":"Night mode: off",p->landscape?"Landscape":"Portrait","Time settings",
         "Font selector","Refresh screen","Close"};
     for(unsigned row=0;row<9;row++) {
         unsigned y=128+row*64; box(frame,32,y,416,64);
         if(row<2) {
             char label[20]; snprintf(label,sizeof(label),"%s %u",labels[row],row==0?p->brightness:p->warmth);
-            text_size(frame,48,y+22,label,1);
+            text_size(frame,48,y+16,label,p->landscape?2:1);
             box(frame,288,y,80,64); box(frame,368,y,80,64);
             text(frame,320,y+16,"-"); text(frame,400,y+16,"+");
         } else text(frame,48,y+16,labels[row]);
@@ -98,7 +135,7 @@ void ink_console_draw(const ink_console *c,uint8_t frame[48000])
     }
     char status[32]; snprintf(status,sizeof(status),"%s  History %u",c->busy?"Running":c->more?"...":">>>",c->page+1);
     text(frame,16,48,status);
-    for(unsigned row=0;row<INK_CONSOLE_PAGE_ROWS;row++) text(frame,16,92+row*34,ink_console_line(c,row));
+    for(unsigned row=0;row<INK_CONSOLE_PAGE_ROWS;row++) text_grid(frame,16,92+row*34,ink_console_line(c,row));
     box(frame,16,342,448,48);
     const char *visible=c->input+(c->used>23?c->used-23:0);
     char line[24]; size_t i=0;
@@ -115,7 +152,7 @@ void ink_editor_draw(const ink_editor *e,uint8_t frame[48000])
         const char *labels[]={"Save","Discard","Cancel"};
         for(unsigned i=0;i<3;i++) { box(frame,32,180+i*64,416,64); text(frame,48,196+i*64,labels[i]); }
     } else {
-        for(unsigned row=0;row<e->rows;row++) text(frame,16,64+row*34,e->lines[row]);
+        for(unsigned row=0;row<e->rows;row++) text_grid(frame,16,64+row*34,e->lines[row]);
         unsigned x=16+e->cursor_column*18,y=64+e->cursor_row*34;
         for(unsigned i=0;i<32;i++) pixel(frame,x,y+i);
         keyboard_draw_at(&e->keyboard,frame,INK_EDITOR_KEYBOARD_OFFSET);

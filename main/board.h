@@ -17,6 +17,8 @@ esp_err_t ink_touch_read(ink_touch_t *out, bool *fresh);
 esp_err_t ink_light_set(unsigned brightness, unsigned warmth, bool on);
 esp_err_t ink_light_sleep(bool sleeping);
 esp_err_t ink_rtc_read(struct tm *out);
+esp_err_t ink_rtc_set(const struct tm *time);
+esp_err_t ink_battery_read(unsigned *percent,bool *charging);
 esp_err_t ink_sd_mount(void);
 esp_err_t ink_sd_probe(void); /* Exclusive temporary file; never replaces a user file. */
 void ink_board_report(void);
@@ -25,9 +27,9 @@ typedef enum { INK_SSD1677, INK_UC8179, INK_UC8279 } ink_panel_t;
 esp_err_t ink_display_init(void);
 ink_panel_t ink_display_panel(void);
 esp_err_t ink_display_frame(const uint8_t frame[48000]);
+esp_err_t ink_display_update(const uint8_t frame[48000],bool full);
 esp_err_t ink_display_sleep(void); /* Preserve physical pixels; next draw reinitializes RAM. */
 
 /* Blocks the diagnostic task in state-preserving light sleep until one Power
  * press. Future Python integration MUST quiesce VM/storage/network first. */
 esp_err_t ink_sleep(void);
-

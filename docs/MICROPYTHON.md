@@ -1,5 +1,9 @@
 # MicroPython embedding (host and first device port)
 
+Stage 25 native SD files/imports and Wi-Fi/HTTP APIs:
+[PYTHON-DEVICE.md](PYTHON-DEVICE.md). Sections below record earlier stages and
+their then-current limits.
+
 ## Stage 21: FreeRTOS/native ESP32-S3 port
 
 With the pinned IDF environment active: `bash scripts/build-python.sh`.

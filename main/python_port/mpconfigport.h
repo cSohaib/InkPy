@@ -10,10 +10,13 @@ void ink_python_poll(void);
 #define MICROPY_STACK_CHECK (1)
 #define MICROPY_FLOAT_IMPL (MICROPY_FLOAT_IMPL_DOUBLE)
 #define MICROPY_LONGINT_IMPL (MICROPY_LONGINT_IMPL_MPZ)
-#define MICROPY_ENABLE_EXTERNAL_IMPORT (0)
+#define MICROPY_ENABLE_EXTERNAL_IMPORT (1)
+#define MICROPY_HAS_FILE_READER (1)
+#define MICROPY_ENABLE_FINALISER (1)
 #define MICROPY_PY_SYS (1)
 #define MICROPY_PY_SYS_PLATFORM "inkpy"
-#define MICROPY_PY_IO (0)
+#define MICROPY_PY_IO (1)
+#define MICROPY_PY_JSON (1)
 /* Embed's helper header has no Xtensa register type. Actual collection uses
  * python_gc.c's upstream ESP32 register-window spilling strategy, not setjmp. */
 #define MICROPY_GCREGS_SETJMP (1)

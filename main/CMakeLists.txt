@@ -15,8 +15,10 @@ if(INKPY_PYTHON_DIAGNOSTIC OR INKPY_BROWSER)
     file(GLOB python_vendor "${embed}/py/*.c" "${embed}/port/*.c")
     list(REMOVE_ITEM python_vendor "${embed}/port/mphalport.c")
     list(APPEND extra_sources "python_worker.c" "python_gc.c"
+        "python_network.c" "python_port/files.c" "python_port/bindings.c" "${embed}/extmod/modjson.c"
         "../components/ink_python/ink_python.c" "../components/ink_python/ink_console.c"
         ${python_vendor})
+    list(APPEND extra_requires esp_wifi esp_netif esp_event esp_http_client mbedtls nvs_flash)
     if(INKPY_PYTHON_DIAGNOSTIC)
         list(APPEND extra_sources "../components/ink_browser/ink_keyboard.c")
     endif()
@@ -37,6 +39,9 @@ idf_component_register(SRCS ${app_source} "board.c" "display.c" "input.c" "sleep
              esp_driver_sdmmc fatfs sdmmc esp_timer esp_hw_support esp_system
              esp_psram app_update ${extra_requires})
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wall -Wextra -Werror)
+if(INKPY_BROWSER)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE INK_USE_FONTS=1)
+endif()
 if(INKPY_PYTHON_DIAGNOSTIC OR INKPY_BROWSER)
     target_include_directories(${COMPONENT_LIB} PRIVATE "python_port" "${embed}"
         "${embed}/port" "../components/ink_python")
@@ -44,6 +49,7 @@ if(INKPY_PYTHON_DIAGNOSTIC OR INKPY_BROWSER)
     set_source_files_properties(${python_vendor} PROPERTIES COMPILE_OPTIONS "-Wno-error;-Wno-unused-parameter")
     # ESP-IDF owns __assert_func; omit embed's fallback implementation only.
     set_source_files_properties("${embed}/port/embed_util.c" PROPERTIES COMPILE_DEFINITIONS NDEBUG)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE INK_PY_NATIVE=1)
     set_source_files_properties(python_gc.c PROPERTIES COMPILE_OPTIONS "-fno-optimize-sibling-calls")
 endif()
 

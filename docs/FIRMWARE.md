@@ -1,62 +1,46 @@
-# Stage 20 firmware checkpoint
+# Stage 25 exploratory firmware
 
-The user confirms an unlocked X4 Pro and reports a successful Stage 19 installation
-through CrossPoint's web installer. Stage 19.1 corrects upside-down orientation and
-adds successful-first-boot confirmation plus reset/slot/sleep logging; see
-[the hardware feedback and fixes](BOOT-FIX.md). Sleep caused a return to CrossPoint
-on the previous image; the underlying reset cause remains unknown. This updated
-image still needs hardware checking. Do not install on USB-locked devices.
+The non-EPUB feature set is integrated: browser/text/editor, Python console/scripts,
+Markdown/math, StarDict, Unicode fonts/selection, Power controls and differential
+refresh. EPUB remains deferred. The user tested an earlier image on an unlocked
+X4 Pro; this combined build has passed compilation/host checks, not device tests.
 
-`firmware.bin` is an ESP32-S3 **application image** for the X4 Pro. It does not
-contain a bootloader or partition table and is not a merged full-flash image.
-This revised image has compiled and passed checksum/hash validation; its predecessor
-was tested by the user, but these corrections still need physical verification.
-Use the X4 Pro custom application-image installer, retaining the existing bootloader.
+Use the same X4 Pro application-image web installer that worked previously.
+firmware.bin is an **application-only ESP32-S3 image**, without bootloader or
+partition table. Keep the existing recovery route and partition map. No flashing
+was performed here; other generated build outputs are not supplied for installation.
 
-Stage 20 incorporates device feedback: dot-files/folders hidden, InkPy title removed,
-clean editor with bottom keyboard and filename only in its Save/Discard/Cancel menu.
-Power menu now opens over every existing device screen, preserves its state, and
-offers brightness/warmth +/-5, light toggle, night mode and Refresh screen. Date/time
-appears here when RTC is valid; battery readout is explicitly unavailable. Orientation,
-time-setting and fonts remain pending controls. Routine fast/partial refresh is
-still pending: all current updates use the full-refresh driver. Manual Refresh
-screen closes the menu and refreshes the underlying view without saving or navigating.
-
-Included: filename browser/folders/paging, New file with arbitrary extension,
-plain-text viewer, long-press Edit/Execute menu, disk-backed editor with keyboard,
-tap cursor and Home Save/Discard/Cancel, long Home discard, light toggle and sleep.
-
-Pending on device: Markdown/math reader, Python Console/Execute, StarDict, fonts,
-orientation/time-setting/font controls, validated battery service, fast refresh and EPUB.
-Console/Execute currently show a pending screen. All draws already use the
-existing full-refresh panel driver; a manual refresh-menu control is now present.
-
-## Source progress after this downloadable image
-
-Stage 22 source/builds connect Python Console/Execute and queue touch/button
-input independently during refresh. Stage 23 also connects Markdown/math and reader
-page/chapter navigation. Stage 24 adds StarDict lookup and dictionary selection.
-The download described here remains Stage 20;
-it has not been replaced by the integration build. Rebuilding the latest source
-therefore produces a different image from the hash below. See MICROPYTHON.md and
-results/stage22 for current build evidence and physical-test limitations.
+Extract inkpy-sd-resources.zip and copy its inkpy folder onto the microSD root.
+Math fonts belong at inkpy/math/fonts/; missing assets preserve formula source.
+The bundled text font needs no SD assets. Optional text fonts: SD-root fonts/.
+StarDict companions: dictionaries/, supplied by the user. Resources include font
+licences/hash manifest. TrueType outlines work; CFF OTF faces are unsupported.
+Python API: [PYTHON-DEVICE.md](PYTHON-DEVICE.md).
 
 ## Build identification
 
-- SDK: ESP-IDF v5.5.5, `b774170ff46c393eeb5e495ea37936038d3f4f4f`, clean pinned submodules.
-- Compiler: Xtensa GCC 14.2.0, esp-14.2.0_20260121.
-- Build: browser ON, math diagnostic OFF; 20 KiB main-task stack.
-- Image: 371504 bytes; configured app slot 8257536 bytes, 95% free.
-- SHA-256: `cc65982b9f36a9c6c0a8b41fbc67a45af897f45d13e005c5c878d62ab071a932`.
+- ESP-IDF v5.5.5: b774170ff46c393eeb5e495ea37936038d3f4f4f, pinned submodules.
+- Xtensa GCC 14.2.0, esp-14.2.0_20260121; ESP32-S3, 16 MiB DIO.
+- Browser ON, diagnostics OFF; 32 KiB main stack.
+- Application: 2,767,840 bytes; slot 8,257,536 bytes, 66% free.
+- SHA-256: 0c670413d9c6bad52b20f714ad8bb691643654b531e73b94bdcd433b7e85e182.
+- Build: bash scripts/build-browser.sh; output build-browser/firmware.bin.
+- Evidence: results/stage25, valid esptool checksum and validation hash.
 
-With the pinned SDK installed and its `export.sh` sourced:
-```
-bash scripts/build-browser.sh
-```
-Output: `build-browser/firmware.bin` (identical to `inkpy.bin`), ELF/map and
-bootloader/partition build outputs. The script builds only; it never flashes.
+## Physical checks and limits
 
-Stage 20 download limits: panel refresh blocks its input loop; SD latency, battery behavior,
-sleep, touch, panel variants and editor stack margin need physical checking.
-Device Save uses a backup/replacement sequence because FatFs does not overwrite
-rename destinations. Power-loss recovery and stale backup cleanup are deferred.
+Check touch/alignment, typing, Power controls, reader/math/translation, Python
+files/imports, Wi-Fi/TLS, Stop/Close and sleep/wake. Runtime heap/stack/current draw
+and refresh quality remain unmeasured. Three panel paths are source/build checked,
+not physically tested. Full refresh only at first paint/first redraw after controller
+sleep, or manual Refresh screen; normal draws are differential. Some ghosting is
+expected without periodic clears. Landscape Markdown reflows at 800x480; other
+screens retain compact fixed hit grids, with unstretched glyphs. Reflow retains
+nearest numeric page. Power settings are session-only; dictionary choice persists.
+
+RTC writes update system time for TLS. Battery readout requires a running CW2017
+and verified resident OEM profile; failures show unavailable, with no profile writes.
+Wi-Fi starts only from Python and stops on Close. Sleep pauses Python and stops/
+restarts Wi-Fi; remote connections may expire. SDK DNS/handshake delays still need
+measurement. No task deletion or script runtime limit. Editor Save still uses
+backup/replacement; power-loss/stale-backup cleanup and cache optimizations are polish.

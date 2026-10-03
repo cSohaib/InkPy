@@ -17,6 +17,7 @@ static const char *TAG = "display";
 static spi_device_handle_t spi;
 static ink_panel_t panel;
 static bool sleeping, ready;
+static bool baseline;
 static DMA_ATTR uint8_t transfer[4000];
 #define TRY(call) ESP_RETURN_ON_ERROR((call), TAG, "%s", #call)
 
@@ -177,6 +178,7 @@ static esp_err_t initialize_controller(void)
         if (panel == INK_UC8179) { CMD(0xe3, 0x22); }
     }
     sleeping = false;
+    baseline = false;
     return ESP_OK;
 }
 
@@ -218,32 +220,47 @@ static esp_err_t plane(uint8_t c, const uint8_t *frame)
     return e;
 }
 
-esp_err_t ink_display_frame(const uint8_t frame[PANEL_BYTES])
+esp_err_t ink_display_update(const uint8_t frame[PANEL_BYTES], bool full)
 {
     if (!ready) return ESP_ERR_INVALID_STATE;
     if (sleeping) TRY(initialize_controller());
+    bool fast = baseline && !full;
     int64_t start = esp_timer_get_time();
     if (panel == INK_SSD1677) {
-        TRY(ssd_area()); TRY(plane(0x24, frame)); TRY(plane(0x26, frame));
-        CMD(0x21, 0x40); CMD(0x3c, 0xc0); CMD(0x22, 0xf7);
+        TRY(ssd_area()); TRY(plane(0x24, frame));
+        if (!fast) TRY(plane(0x26, frame));
+        uint8_t ctrl1=fast?0x00:0x40, ctrl2=fast?0xfc:0xf7;
+        TRY(command(0x21,&ctrl1,1)); CMD(0x3c, 0xc0); TRY(command(0x22,&ctrl2,1));
         TRY(command(0x20, NULL, 0)); TRY(wait_idle(true));
+        TRY(ssd_area()); TRY(plane(0x24, frame)); TRY(plane(0x26, frame));
+        /* Stock partial leaves rails on; power down after syncing OLD. */
+        if (fast) { CMD(0x3c,0x80); CMD(0x22,0x03); TRY(command(0x20,NULL,0)); delay_ms(200); TRY(wait_idle(false)); }
     } else {
-        TRY(plane(0x13, frame)); TRY(plane(0x10, NULL));
+        TRY(plane(0x13, frame)); if (!fast) TRY(plane(0x10, NULL));
         if (panel == INK_UC8179) { CMD(0x50, 0x29, 0x07); }
-        else { CMD(0x50, 0x97); }
-        CMD(0xe0, 0x02); CMD(0xe5, 0x1e);
+        else { uint8_t cdi=fast?0xd7:0x97; TRY(command(0x50,&cdi,1)); }
+        CMD(0xe0, 0x02); uint8_t temp=fast?0x5a:0x1e; TRY(command(0xe5,&temp,1));
+        if (fast) { CMD(0x03,0x20); CMD(0xe1,0x02); }
         if (panel == INK_UC8179) { CMD(0x00, 0x1f, 0x0a); }
         TRY(command(0x04, NULL, 0)); TRY(wait_idle(false));
         /* UC8279 reloads MTP on PON, so its PSR must be written AFTER PON. */
+        if (fast) {
+            TRY(command(0x91,NULL,0));
+            if (panel == INK_UC8279) { CMD(0x90,0,0,0x03,0x1f,0,0x78,0x02,0x57,0x01); }
+        }
         if (panel == INK_UC8279) { CMD(0x00, 0x17, 0x4d); }
         TRY(command(0x12, NULL, 0)); TRY(wait_idle(true));
+        if (fast) TRY(command(0x92,NULL,0));
         if (panel == INK_UC8179) { CMD(0x50, 0xa9, 0x07); }
         TRY(plane(0x10, frame));
         TRY(command(0x02, NULL, 0)); TRY(wait_idle(false));
     }
-    ESP_LOGI(TAG, "full refresh %lld ms", (long long)((esp_timer_get_time() - start) / 1000));
+    baseline = true;
+    ESP_LOGI(TAG, "%s refresh %lld ms", fast?"partial":"full", (long long)((esp_timer_get_time() - start) / 1000));
     return ESP_OK;
 }
+esp_err_t ink_display_frame(const uint8_t frame[PANEL_BYTES])
+{ return ink_display_update(frame,true); }
 
 esp_err_t ink_display_sleep(void)
 {
