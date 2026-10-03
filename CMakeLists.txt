@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
 option(INKPY_MATH_DIAGNOSTIC "Build the isolated math diagnostic" OFF)
 option(INKPY_BROWSER "Build the minimal file browser" OFF)
+option(INKPY_PYTHON_DIAGNOSTIC "Build the isolated FreeRTOS MicroPython diagnostic" OFF)
+if(INKPY_PYTHON_DIAGNOSTIC AND (INKPY_BROWSER OR INKPY_MATH_DIAGNOSTIC))
+    message(FATAL_ERROR "Select Python diagnostic alone")
+endif()
 if(INKPY_BROWSER AND INKPY_MATH_DIAGNOSTIC)
     message(FATAL_ERROR "Select browser or math diagnostic, not both")
 endif()
@@ -12,6 +16,6 @@ endif()
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 idf_build_set_property(INKPY_MATH_DIAGNOSTIC "${INKPY_MATH_DIAGNOSTIC}")
 idf_build_set_property(INKPY_BROWSER "${INKPY_BROWSER}")
+idf_build_set_property(INKPY_PYTHON_DIAGNOSTIC "${INKPY_PYTHON_DIAGNOSTIC}")
 project(inkpy)
-
 

@@ -1,0 +1,11 @@
+420087d4 T gc_collect
+420191c8 T gc_helper_collect_regs_and_stack
+42008574 T ink_python_file
+420085f0 T ink_python_text
+420083f8 T ink_python_worker_close
+420083c8 T ink_python_worker_pause
+42008424 T ink_python_worker_reopen
+42008204 T ink_python_worker_start
+42008378 T ink_python_worker_stop
+4200b1b4 T mp_compile
+4200d9d8 T nlr_jump_abort

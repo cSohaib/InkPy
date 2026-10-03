@@ -30,7 +30,7 @@ void mp_hal_stdout_tx_strn_cooked(const char *str,size_t len)
 void ink_python_init(void *heap,size_t bytes,void *stack_top)
 {
     mp_embed_init(heap,bytes,stack_top);
-    mp_stack_set_limit(32*1024); /* Provisional host C-stack budget. */
+    mp_stack_set_limit(32*1024); /* Provisional budget; device worker reserves 48 KiB. */
 }
 static mp_uint_t read_byte(void *data)
 {

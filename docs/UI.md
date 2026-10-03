@@ -10,6 +10,10 @@ Routine display updates should use a fast/partial refresh; full refresh is expli
 available through Refresh screen in the Power menu. Manual cleanup is the preferred
 default. Automatic full refresh every 20 updates is an optional alternative, not
 a confirmed requirement. Hardware initialization/recovery may require a full refresh.
+Touch/button capture must continue during display refresh. Queue discrete key/tap
+events and consume them in order; do not wait for rendering before listening for
+the next tap. Coalesce drawing, not input. Fast repeated keyboard taps must remain
+separate characters. Current blocking renderer does not meet this requirement yet.
 
 ## Home: file browser
 - Filename list, no thumbnails.

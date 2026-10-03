@@ -1,6 +1,6 @@
 # InkPy checkpoint
 
-Updated: 2026-10-03 (Luxembourg). Stage 20 device-feedback UI patch; see docs/FIRMWARE.md.
+Updated: 2026-10-03 (Luxembourg). Stage 21 FreeRTOS MicroPython port compiles; see docs/MICROPYTHON.md.
 Committed stage boundary: pause before starting further implementation.
 
 ## Read first
@@ -304,6 +304,24 @@ runtime acceptance stays pending; never call these ports device-validated.
 - Stage boundary: commit and pause. Preserve unrelated Python run.sh mode change.
 
 ## Exact next bounded stage
+Stage 21 delivered separate native ESP32-S3 embedding/worker and serial diagnostic.
+Reuse pinned MicroPython 19e685eca906a5a602135a485976253e705297d0; separate generated
+package/config, unchanged host package. FreeRTOS single-owner VM, bounded command
+and output model, cooperative pause/Stop/Close, cleanup acknowledgment and reopen.
+256 KiB PSRAM heap, 48 KiB internal stack; heap/task reserved after Close, no script
+continues and globals discarded. Upstream ESP32 GC register spilling adapted with
+MIT notice; native Xtensa NLR/uncatchable abort linked. Fixed IDF assertion-handler
+collision. Native build/image integrity and linked symbols checked; no hardware
+execution, GC/stack measurements or runtime pause/stop claim. Product firmware.bin
+unchanged, no new intermediate image supplied at user's request.
+Recorded new requirement: capture/queue all taps/buttons during display refresh,
+preserve event order/repeated letters; coalesce drawings only. Blocking display
+still drops input. This stage focuses on Python, input/display task split deferred.
+Next Stage 22: connect Console/Execute and keyboard/Home controls to FreeRTOS
+adapter; arbitrate SD and require pause acknowledgment before sleep. Keep output
+refresh throttled and render snapshots outside locks. User will test after features
+are integrated; do not ask them to flash each development checkpoint.
+
 Stage 20 follows new hardware feedback instead of the previously planned VM worker.
 Hidden files/folders filtered; InkPy title removed; editor filename only in its
 Save/Discard/Cancel menu; bottom keyboard with matching tap coordinates; footer
@@ -337,9 +355,9 @@ Audit details remain in docs/SAFETY-AUDIT.md: pinned image/SDK/pin checks,
 sanitizers, failure rollback, large-file/browser probes, static analyzer. Its
 installation hold reflected knowledge before the user's unlocked-device/test report.
 
-Stage 21: begin device MicroPython integration with a FreeRTOS VM worker and the
-existing console model/keyboard. Aim for a compiling device REPL command path,
-reusing the pinned host embedding and cooperative Stop/Close/pause protocol.
+Stage 22: integrate the device console UI using the Stage 21 FreeRTOS VM worker and
+existing console model/keyboard. Reuse the compiled embedding and cooperative
+Stop/Close/pause protocol.
 No runtime timeout, arbitrary task suspension/deletion or premature sleep while
 VM active. Keep networking, reader and editor polish out of this stage. No flash
 without a verified installation/recovery route for the actual device.

@@ -15,5 +15,7 @@ prototypes/reader/build/
 
 prototypes/browser/build/
 build-browser/
+build-python/
+generated-python/
 prototypes/python/.deps/
 prototypes/python/build/

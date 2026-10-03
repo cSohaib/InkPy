@@ -1,0 +1,7 @@
+Bootloader binary size 0x5170 bytes. 0x2e90 bytes (36%) free.
+Successfully created esp32s3 image.
+inkpy.bin binary size 0x4ad50 bytes. Smallest app partition is 0x7e0000 bytes. 0x7952b0 bytes (96%) free.
+Pinned IDF v5.5.5 / Xtensa GCC esp-14.2.0_20260121 build/link passed.
+Image bytes: 306512
+SHA-256: 4528a8a4cc0aaacbc1f33137dfd43c004389c15850b4b716db824270d6a7c0f6
+No hardware execution or flash. Diagnostic image only.
