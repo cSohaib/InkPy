@@ -1,0 +1,9 @@
+420220e8 T ink_capture_start
+420341d4 T ink_layout_run
+4203b2e0 T ink_math_render
+4200e684 T ink_python_worker_start
+42032b9c T ink_reader_draw
+4210d548 T ink_reader_home
+42032770 T ink_reader_open
+4210d4e0 T ink_reader_page
+420329f8 T ink_reader_tap

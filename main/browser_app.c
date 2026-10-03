@@ -6,6 +6,9 @@
 #include "ink_browser.h"
 #include "ink_editor.h"
 #include "ink_power.h"
+#include "ink_reader.h"
+#include "ink_math.h"
+#include <sys/stat.h>
 #include "sdkconfig.h"
 #include <stdio.h>
 #include "esp_heap_caps.h"
@@ -13,8 +16,17 @@
 #include "esp_timer.h"
 
 static ink_browser browser;
-_Static_assert(CONFIG_ESP_MAIN_TASK_STACK_SIZE>=16384,"Editor needs >=16 KiB main stack");
+_Static_assert(CONFIG_ESP_MAIN_TASK_STACK_SIZE>=32768,"Reader/math needs >=32 KiB main stack; use build-browser.sh");
 static ink_editor editor;
+static ink_reader reader;
+static bool reader_active,math_attempted,math_ready;
+static void notice(const char *text);
+static int render_math(const char *source,int display,unsigned pixels,uint8_t *bitmap,unsigned *w,unsigned *h,unsigned *baseline)
+{
+    ink_math_result r; int status=ink_math_render(source,display,(int)pixels,bitmap,&r);
+    *w=(unsigned)r.width; *h=(unsigned)r.height; *baseline=(unsigned)r.baseline; return status;
+}
+static void indexing_progress(void) { vTaskDelay(1); }
 static ink_python_worker python;
 static ink_console console;
 static bool editor_active,console_active,python_started,paused,closed;
@@ -25,6 +37,11 @@ static void draw(uint8_t *frame)
     if(power_menu.open) ink_power_draw(&power_menu,frame);
     else if(editor_active) ink_editor_draw(&editor,frame);
     else if(console_active) ink_console_draw(&console,frame);
+    else if(reader_active) {
+        if(ink_reader_draw(&reader,frame)) {
+            ink_reader_close(&reader); reader_active=false; notice(reader.error); ink_browser_draw(&browser,frame);
+        }
+    }
     else ink_browser_draw(&browser,frame);
     if(power_menu.night) for(unsigned i=0;i<PANEL_BYTES;i++) frame[i]^=255;
     ink_frame_rotate_180(frame);
@@ -33,7 +50,17 @@ static void notice(const char *text)
 { snprintf(browser.message,sizeof(browser.message),"%s",text); browser.view=INK_NOTICE; }
 static void open_requests(void)
 {
-    if(editor_active||console_active) return;
+    if(editor_active||console_active||reader_active) return;
+    if(browser.view==INK_OPEN_MARKDOWN) {
+        struct stat st;
+        if(!math_attempted&&!stat("/sd/inkpy/math",&st)&&S_ISDIR(st.st_mode)) {
+            char error[160]; math_attempted=true; math_ready=ink_math_init("/sd/inkpy/math",error,sizeof(error))==0;
+            if(!math_ready) ESP_LOGW("reader","math init: %s",error);
+        }
+        if(ink_reader_open(&reader,browser.selected,browser.root,math_ready?render_math:NULL,indexing_progress)) notice(reader.error);
+        else reader_active=true;
+        return;
+    }
     if(browser.view==INK_EDIT_TEXT) {
         if(ink_editor_open(&editor,browser.selected)) notice(editor.error);
         else editor_active=true;
@@ -54,6 +81,7 @@ static void open_requests(void)
 static void home(bool long_press)
 {
     if(power_menu.open) power_menu.open=false;
+    else if(reader_active) ink_reader_home(&reader);
     else if(console_active) ink_python_worker_home(&python,long_press);
     else if(editor_active) {
         if(ink_editor_home(&editor,long_press)) { editor_active=false; ink_browser_home(&browser); }
@@ -66,6 +94,7 @@ static bool dispatch(const ink_event *event)
     case INK_EVENT_PREV: case INK_EVENT_NEXT:
         if(power_menu.open||event->press!=INK_PRESS_SHORT) return false;
         if(editor_active) ink_editor_page(&editor,event->kind==INK_EVENT_PREV?-1:1);
+        else if(reader_active) ink_reader_page(&reader,event->kind==INK_EVENT_PREV?-1:1);
         else if(console_active) ink_python_worker_page(&python,event->kind==INK_EVENT_PREV?-1:1);
         else ink_browser_page(&browser,event->kind==INK_EVENT_PREV?-1:1);
         return true;
@@ -74,7 +103,7 @@ static bool dispatch(const ink_event *event)
         if(event->x>=800||event->y>=480) return false;
         ink_panel_to_ui(event->x,event->y,&x,&y);
         if(event->press==INK_PRESS_LONG) {
-            if(!power_menu.open&&!editor_active&&!console_active) return ink_browser_long_press(&browser,x,y);
+            if(!power_menu.open&&!editor_active&&!console_active&&!reader_active) return ink_browser_long_press(&browser,x,y);
             return false;
         }
         if(power_menu.open) {
@@ -83,6 +112,8 @@ static bool dispatch(const ink_event *event)
                 snprintf(power_menu.message,sizeof(power_menu.message),"Light update failed");
         } else if(editor_active) {
             if(ink_editor_tap(&editor,x,y)) { editor_active=false; ink_browser_home(&browser); }
+        } else if(reader_active) {
+            if(ink_reader_tap(&reader,x,y)) { ink_reader_close(&reader); reader_active=false; ink_browser_home(&browser); }
         } else if(console_active) ink_python_worker_tap(&python,x,y);
         else ink_browser_tap(&browser,x,y);
         return true;
@@ -176,6 +207,7 @@ void app_main(void)
             last_draw=milliseconds(); dirty=false;
         }
     }
+    if(reader_active) ink_reader_close(&reader);
     if(editor_active) ink_editor_discard(&editor);
     if(console_active) ink_python_worker_close(&python);
     ink_capture_pause(); heap_caps_free(frame);

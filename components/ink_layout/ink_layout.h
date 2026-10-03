@@ -14,6 +14,8 @@ typedef int (*ink_layout_math)(const char *source, int display, unsigned pixels,
 typedef struct {
     unsigned width, height, font_pixels, read_bytes;
     ink_layout_math render_math;
+    FILE *bitmap_spool; /* Optional caller-owned seekable scratch file. */
+    void (*progress)(void); /* Optional cooperative scheduling during indexing. */
 } ink_layout_config;
 typedef struct {
     uint64_t source_bytes, pages, chapters, literal_blocks, runs, formulas, math_fallbacks;

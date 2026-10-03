@@ -19,3 +19,8 @@ target_include_directories(reader-math PRIVATE "${CORE}" "${INK_MATH_ROOT}")
 target_compile_definitions(reader-math PRIVATE INK_READER_MATH _FILE_OFFSET_BITS=64)
 target_compile_options(reader-math PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(reader-math PRIVATE md4c math-vendor)
+add_executable(reader-device device.c "../../components/ink_reader/ink_reader.c"
+    "${CORE}/ink_layout.c" "${CORE}/md_budget.c" "${INK_MATH_ROOT}/ink_math.cpp")
+target_include_directories(reader-device PRIVATE "${CORE}" "${INK_MATH_ROOT}" "../../components/ink_reader")
+target_compile_options(reader-device PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_link_libraries(reader-device PRIVATE md4c math-vendor)

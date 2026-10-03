@@ -189,6 +189,8 @@ static int block_enter(MD_BLOCKTYPE t,void *detail,void *user)
     if (t==MD_BLOCK_H) {
         l->head=((MD_BLOCK_H_DETAIL*)detail)->level;
         if (l->head==2) {
+            /* Fixed chapter behavior: an H2 begins a new page. */
+            end_page(l);
             ++l->chapter; l->title_active=true; l->title_cut=false; l->title_located=false;
             l->title_n=0; memset(l->title,0,sizeof(l->title));
         }
@@ -343,6 +345,7 @@ static void start_literal(Layout *l)
 static int peek(Layout *l)
 {
     if (l->read_at==l->read_n) {
+        if(l->cfg.progress) l->cfg.progress();
         l->read_n=fread(l->read,1,l->cfg.read_bytes,l->input); l->read_at=0;
         if (!l->read_n) { if (ferror(l->input)) fail(l,"source read failed",l->position); return EOF; }
     }
@@ -426,9 +429,9 @@ int ink_layout_run(FILE *source,FILE *draw,FILE *pages,FILE *chapters,
     unsigned char bom[3]; size_t n=fread(bom,1,3,source);
     l->position=n==3 && !memcmp(bom,"\xef\xbb\xbf",3)?3:0;
     if (fseeko(source,(off_t)l->position,SEEK_SET)) fail(l,"source must be seekable",0);
-    if(config->render_math && !(l->bitmaps=tmpfile())) fail(l,"bitmap spool creation failed",0);
+    if(config->render_math && !(l->bitmaps=config->bitmap_spool?config->bitmap_spool:tmpfile())) fail(l,"bitmap spool creation failed",0);
     if (!l->failed) scan(l);
-    if(l->bitmaps) fclose(l->bitmaps);
+    if(l->bitmaps&&!config->bitmap_spool) fclose(l->bitmaps);
     if (fflush(draw)||fflush(pages)||fflush(chapters)) fail(l,"cache flush failed",l->position);
     stats->source_bytes=l->position; stats->parser_peak_bytes=ink_md_peak();
     int result=l->failed?-1:0; free(l); return result;

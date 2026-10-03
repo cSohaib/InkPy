@@ -1,0 +1,8 @@
+Product application: 1719248 bytes; SHA256 3b80aef363e2cec5ba66ae6c6db5d9028348d62a0e5cb96da5fa467ea48e322c
+Bootloader binary size 0x5170 bytes. 0x2e90 bytes (36%) free.
+inkpy.bin binary size 0x1a3bd0 bytes. Smallest app partition is 0x7e0000 bytes. 0x63c430 bytes (79%) free.
+Project build complete. To flash, run:
+Native compile/link and esptool checks only; no device execution or flashing.
+Profile: C++ exceptions/RTTI, 32 KiB main stack, generic allocations >256 bytes prefer PSRAM.
+SD max open files: 12 (source + three indexes + bitmap spool + cached font streams).
+Existing downloadable Stage 20 image remains unchanged.

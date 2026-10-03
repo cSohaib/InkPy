@@ -1,8 +1,12 @@
 # InkPy
 
-Minimal firmware exclusively for the Xteink X4 Pro. The hardware diagnostic and shared host/ESP32 math
-diagnostic and host-only Markdown pagination with inline/display math are implemented. The device browser, plain text viewer and editor compile into an ESP32-S3 application image; physical validation is pending. See [the firmware checkpoint](docs/FIRMWARE.md). Device Markdown reader and
-MicroPython runtime are not integrated yet. The host prototype supports creating/editing/saving files and executing Python through its console, with Stop/Close/pause controls.
+Minimal firmware exclusively for the Xteink X4 Pro. The device browser, text
+editor, MicroPython console/script execution and Markdown reader with inline/display
+math now compile together into an ESP32-S3 application image. Device execution of
+the new integrations remains untested. See [the checkpoint](docs/CHECKPOINT.md)
+and [downloaded firmware version](docs/FIRMWARE.md); the existing download remains
+Stage 20 while integration continues. StarDict, selectable fonts, partial refresh
+and several power controls are still pending.
 
 ## Confirmed scope
 - Markdown reader with embedded LaTeX mathematics: inline `$…$` and display `$$…$$`, including multiline display blocks. Target the mathematical notation used in ChatGPT Markdown responses, not full LaTeX documents or packages.

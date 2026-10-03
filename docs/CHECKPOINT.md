@@ -1,9 +1,39 @@
 # InkPy checkpoint
 
-Updated: 2026-10-03. Stage 22 larger batch: device console/Execute + independent input capture.
+Updated: 2026-10-03. Stage 23: Markdown/math reader connected to device browser.
 Committed stage boundary: pause before starting further implementation.
 
-## Current stage: 22 delivered
+## Current stage: 23 delivered
+- `components/ink_reader/` consumes existing streamed layout indexes on SD and
+  renders text/formula runs into the native panel frame. `.md` taps open it;
+  side buttons page, Home shows page/chapter and Go to chapter/Go to page/Close.
+  Power menu overlays reader and prompts; wake retains reader state.
+- H2 headings now start a new page: chapter selection and current page/chapter
+  agree. One fixed behavior, no chapter-layout setting. Chapters list pages by
+  side buttons; page entry uses a small numeric keypad. No swipes/status header.
+- Disposable cache is `/sd/.inkpy-reader`, guarded by an owner marker; indexes
+  regenerate per open and are removed on Close. Source remains read-only. Layout
+  receives caller-owned SD bitmap spool, avoiding unsupported `/tmp` assumptions.
+  A scheduling hook yields while indexing; indexing still blocks UI dispatch,
+  though input capture continues. Cancel/progress UI and reusable caches deferred.
+- Math uses the unchanged pinned MicroTeX/FreeType backend and `/sd/inkpy/math`
+  fonts from `scripts/prepare-math-sd.py`. Missing assets/unsupported notation
+  preserve formula source. Text currently uses scaled fixed ASCII bitmap glyphs,
+  with non-ASCII fallback and basic bold/italic; selectable text fonts remain pending.
+- Browser build verifies existing dependency pins and applies fixed exceptions/
+  RTTI, 32 KiB main stack, PSRAM allocation profile. SD open-file limit is 12 for
+  source/index/spool/font streams. No new upstream revision or SD transfer feature.
+- Product compiles/links; esptool checksum/hash and symbol checks passed. Portable
+  device-renderer workflow and existing 255 layout checks passed; page/menu previews
+  inspected. Evidence: `docs/results/stage23/`. Native VM/reader execution, memory
+  margin, physical touch, sleep and panel behavior remain unverified.
+- Download remains Stage 20. Full refresh remains current; StarDict/selectable
+  fonts, orientation/time-setting/battery, Python file/network bindings and EPUB
+  remain pending.
+- Next bounded task: StarDict word lookup and dictionary selection in the reader.
+  Preserve user preference for useful feature coverage before broad optimization.
+
+## Previous stage: 22 delivered
 - `main/browser_app.c` connects the native Python worker to Console/Execute,
   keyboard submission, history paging, Home Stop/Close/Cancel and long Home Close.
   Globals persist until Stop/Close; cleanup is acknowledged before browser return.
@@ -43,8 +73,8 @@ Stage 3 measurements in MATH-PROTOTYPE.md are historical host results.
 - Reader Home: Go to chapter / Go to page / Close, with current page and chapter.
   Markdown chapters are parsed H2 headings only; EPUB chapter handling comes later.
 - Time/date/battery visible only in power-menu header; no status bar elsewhere.
-- Power/editor/console menus are connected; reader menus remain a UI contract
-  until the existing reader is connected to the device.
+- Power/editor/console/reader menus are connected in source; physical checks
+  of the new integrations are pending.
 
 ## Stage 4 delivered
 - Shared C API and small C++ math backend moved from prototypes/math into

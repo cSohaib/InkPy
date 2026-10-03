@@ -83,3 +83,11 @@ Proposed: disable touch and side-button interaction while asleep; consume the wa
 Sleep suspends Python execution and waking resumes it; it must not kill or restart the script. The existing automatic-sleep exception while a script runs remains in effect. Manual Power sleep can suspend a running script.
 Implementation note: preserve the VM, stack and local variables, but wall-clock time still passes. Network connections and external I/O may time out across a long sleep; suspension does not freeze the outside world.
 Implementation must distinguish idle power saving, state-preserving sleep and deep sleep. An unchanged e-ink image does not imply that the processor is already sleeping.
+
+## Stage 23 source status
+Device `.md` opening now connects the shared reader/layout/math path. H2 headings
+start new pages; Home shows current page/chapter and the requested navigation.
+Chapter list side-paging and numeric page entry are implemented. Text uses the
+fixed bitmap font for now; StarDict tap lookup and selectable fonts are pending.
+First-open indexing captures input but dispatches it after indexing completes.
+Physical acceptance remains pending; full refresh is still the current driver.
