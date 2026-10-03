@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include "sdkconfig.h"
 #include <stdio.h>
+#include <string.h>
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -19,6 +20,7 @@ static ink_browser browser;
 _Static_assert(CONFIG_ESP_MAIN_TASK_STACK_SIZE>=32768,"Reader/math needs >=32 KiB main stack; use build-browser.sh");
 static ink_editor editor;
 static ink_reader reader;
+static ink_dict dictionary;
 static bool reader_active,math_attempted,math_ready;
 static void notice(const char *text);
 static int render_math(const char *source,int display,unsigned pixels,uint8_t *bitmap,unsigned *w,unsigned *h,unsigned *baseline)
@@ -58,10 +60,14 @@ static void open_requests(void)
             if(!math_ready) ESP_LOGW("reader","math init: %s",error);
         }
         if(ink_reader_open(&reader,browser.selected,browser.root,math_ready?render_math:NULL,indexing_progress)) notice(reader.error);
-        else reader_active=true;
+        else { reader.dictionary=&dictionary; reader_active=true; }
         return;
     }
     if(browser.view==INK_EDIT_TEXT) {
+        /* Release cached source streams before editing dictionary files. */
+        size_t dictionary_root=strlen(dictionary.root);
+        if(dictionary_root&&!strncmp(browser.selected,dictionary.root,dictionary_root)&&browser.selected[dictionary_root]=='/')
+            ink_dict_close(&dictionary);
         if(ink_editor_open(&editor,browser.selected)) notice(editor.error);
         else editor_active=true;
     } else if(browser.view==INK_OPEN_CONSOLE||browser.view==INK_EXECUTE_PYTHON) {
@@ -145,6 +151,7 @@ void app_main(void)
     if(e!=ESP_OK) { ESP_LOGE(tag,"display: %s",esp_err_to_name(e)); return; }
     e=ink_sd_mount(); ESP_LOGI(tag,"SD: %s",esp_err_to_name(e));
     ink_browser_init(&browser,"/sd");
+    ink_dict_init(&dictionary,"/sd",indexing_progress);
     uint8_t *frame=heap_caps_malloc(PANEL_BYTES,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
     if(!frame) { ESP_LOGE(tag,"frame allocation failed"); return; }
     e=ink_capture_start();
@@ -208,6 +215,7 @@ void app_main(void)
         }
     }
     if(reader_active) ink_reader_close(&reader);
+    ink_dict_close(&dictionary);
     if(editor_active) ink_editor_discard(&editor);
     if(console_active) ink_python_worker_close(&python);
     ink_capture_pause(); heap_caps_free(frame);

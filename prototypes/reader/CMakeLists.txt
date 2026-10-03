@@ -20,7 +20,21 @@ target_compile_definitions(reader-math PRIVATE INK_READER_MATH _FILE_OFFSET_BITS
 target_compile_options(reader-math PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(reader-math PRIVATE md4c math-vendor)
 add_executable(reader-device device.c "../../components/ink_reader/ink_reader.c"
+    "../../components/ink_dict/ink_dict.c" "../../components/ink_dict/ink_dict_gzip.c"
     "${CORE}/ink_layout.c" "${CORE}/md_budget.c" "${INK_MATH_ROOT}/ink_math.cpp")
-target_include_directories(reader-device PRIVATE "${CORE}" "${INK_MATH_ROOT}" "../../components/ink_reader")
+target_include_directories(reader-device PRIVATE "${CORE}" "${INK_MATH_ROOT}" "../../components/ink_reader" "../../components/ink_dict")
+target_include_directories(reader-device SYSTEM PRIVATE "${FT}/include")
 target_compile_options(reader-device PRIVATE -Wall -Wextra -Werror -UNDEBUG)
 target_link_libraries(reader-device PRIVATE md4c math-vendor)
+add_executable(dict-test "../../components/ink_dict/test.c" "../../components/ink_dict/ink_dict.c" "../../components/ink_dict/ink_dict_gzip.c")
+target_include_directories(dict-test PRIVATE "../../components/ink_dict")
+target_include_directories(dict-test SYSTEM PRIVATE "${FT}/include")
+target_compile_options(dict-test PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_link_libraries(dict-test PRIVATE math-vendor)
+add_executable(dict-ui dictionary-ui.c "../../components/ink_reader/ink_reader.c"
+    "../../components/ink_dict/ink_dict.c" "../../components/ink_dict/ink_dict_gzip.c"
+    "${CORE}/ink_layout.c" "${CORE}/md_budget.c")
+target_include_directories(dict-ui PRIVATE "${CORE}" "../../components/ink_reader" "../../components/ink_dict")
+target_include_directories(dict-ui SYSTEM PRIVATE "${FT}/include")
+target_compile_options(dict-ui PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_link_libraries(dict-ui PRIVATE md4c math-vendor)

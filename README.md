@@ -5,7 +5,8 @@ editor, MicroPython console/script execution and Markdown reader with inline/dis
 math now compile together into an ESP32-S3 application image. Device execution of
 the new integrations remains untested. See [the checkpoint](docs/CHECKPOINT.md)
 and [downloaded firmware version](docs/FIRMWARE.md); the existing download remains
-Stage 20 while integration continues. StarDict, selectable fonts, partial refresh
+Stage 20 while integration continues. StarDict word lookup/dictionary selection
+are integrated too; selectable fonts, partial refresh
 and several power controls are still pending.
 
 ## Confirmed scope
@@ -29,6 +30,7 @@ Keep layout separate from document parsing so a later restricted EPUB importer c
 “ChatGPT-style math” describes the intended use, not a fixed compatibility specification. The proposed acceptance corpus defines representative notation; actual supported coverage must be established by the rendering prototype. Delimiters alone do not make mathematical layout trivial.
 
 ## Interaction and implementation references
+- [StarDict lookup](docs/STARDICT.md): dictionary files, supported formats and popup/selection behavior.
 - [MicroPython embedding](docs/MICROPYTHON.md): Stage 10 run commands, Python keyboard and current limits.
 - [Keyboard and New file](docs/NEW-FILE.md): Stage 9 filename entry and empty-file creation.
 - [Plain text viewer](docs/TEXT-VIEWER.md): Stage 8 paging and current limits.

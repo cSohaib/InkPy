@@ -1,0 +1,8 @@
+Product application: 1732224 bytes; SHA256 25216ab7b716a2f8a5bf98f8b4507698eab479f0de002e444dce9e46e05862d7
+Bootloader binary size 0x5170 bytes. 0x2e90 bytes (36%) free.
+inkpy.bin binary size 0x1a6e80 bytes. Smallest app partition is 0x7e0000 bytes. 0x639180 bytes (79%) free.
+Project build complete. To flash, run:
+Own code: warnings as errors. Dictionary gzip uses already pinned FreeType, no new dependency.
+SD open file slots: 16 for reader, fonts, dictionary/index, definition/page streams.
+Native compile/link and image checks only; no device execution or flashing.
+Existing downloadable Stage 20 image remains unchanged.

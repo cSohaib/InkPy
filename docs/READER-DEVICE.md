@@ -27,7 +27,8 @@ Power remains available over reader/prompts; manual Refresh redraws the reader.
 Text currently uses the fixed ASCII bitmap font, scaled to layout metrics, with
 basic bold/italic and a placeholder for non-ASCII characters. Math uses font
 rasterization and layout from the existing backend. Images remain layout markers,
-not decoded image assets. StarDict tapping and selectable text fonts are pending.
+not decoded image assets. Stage 24 adds [StarDict tapping and selection](STARDICT.md);
+selectable text fonts are still pending.
 Indexing is synchronous: capture runs and queues events while indexing yields,
 but UI dispatch waits for completion. Reusable caches, indexing progress/cancel,
 partial refresh and typography refinement are deferred.

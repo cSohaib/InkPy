@@ -89,8 +89,18 @@ int ink_reader_open(ink_reader *r,const char *source,const char *root,ink_layout
 }
 bool ink_reader_page(ink_reader *r,int direction)
 {
-    r->error[0]=0;
-    if(r->view==INK_READER_CHAPTERS) {
+    if(r->view!=INK_READER_DEFINITION&&r->view!=INK_READER_DICTIONARIES) r->error[0]=0;
+    if(r->view==INK_READER_DEFINITION) {
+        if(r->dictionary) ink_dict_page(r->dictionary,direction);
+    } else if(r->view==INK_READER_DICTIONARIES) {
+        ink_dict *d=r->dictionary;
+        if(d) {
+            unsigned first=d->first;
+            if(direction>0&&first+INK_DICT_ROWS<d->total) first+=INK_DICT_ROWS;
+            if(direction<0) first=first>=INK_DICT_ROWS?first-INK_DICT_ROWS:0;
+            ink_dict_catalog(d,first);
+        }
+    } else if(r->view==INK_READER_CHAPTERS) {
         if(direction>0&&r->chapter_first+8<=r->stats.chapters) r->chapter_first+=8;
         if(direction<0&&r->chapter_first>8) r->chapter_first-=8;
     } else if(r->view==INK_READER_PAGE) {
@@ -100,10 +110,83 @@ bool ink_reader_page(ink_reader *r,int direction)
     return true;
 }
 void ink_reader_home(ink_reader *r)
-{ r->view=r->view==INK_READER_PAGE?INK_READER_MENU:INK_READER_PAGE; r->error[0]=0; }
+{
+    if(r->view==INK_READER_DICTIONARIES) { r->view=INK_READER_DEFINITION; return; }
+    r->view=r->view==INK_READER_PAGE?INK_READER_MENU:INK_READER_PAGE; r->error[0]=0;
+}
+static bool word_character(uint32_t cp)
+{
+    return (cp>='a'&&cp<='z')||(cp>='A'&&cp<='Z')||(cp>='0'&&cp<='9')||cp=='_'||cp=='\''||cp=='-'||
+        (cp>=128&&cp!=160&&!(cp>=0x2000&&cp<=0x206f));
+}
+static int lookup_word(ink_reader *r,unsigned tap_x,unsigned tap_y)
+{
+    if(!r->page) return 0;
+    unsigned char page[32]; if(page_record(r,page)) return -1;
+    uint64_t at=number(page,8),end=number(page+8,8);
+    if(at>end||seek_record(r->draw,at,1)) return error(r,"Cannot read tapped word");
+    char word[256]; unsigned used=0,prev_end=0,prev_y=0,prev_height=0,prev_cell=0;
+    bool hit=false,overflow=false;
+    while(at<end) {
+        unsigned char h[20];
+        if(end-at<20||fread(h,1,20,r->draw)!=20) return error(r,"Invalid word run");
+        at+=20; uint64_t size=number(h+8,4);
+        unsigned x=(unsigned)number(h,2),y=(unsigned)number(h+2,2),cell=(unsigned)number(h+4,2),style=(unsigned)number(h+6,2);
+        unsigned level=(style>>8)&7,height=22+(level?2*(7-level):0);
+        if(size>end-at||!cell||cell>480) return error(r,"Invalid word geometry");
+        bool continuation=(x==prev_end&&y==prev_y)||(x==16&&prev_end>=464-prev_cell&&y==prev_y+prev_height+8);
+        if(used&&!continuation) { if(hit) goto found; used=0; overflow=false; }
+        if(style==INK_BITMAP||(style&INK_MATH)) {
+            if(hit) goto found;
+            used=0; overflow=false;
+            if(size>LONG_MAX||fseek(r->draw,(long)size,SEEK_CUR)) return error(r,"Cannot skip formula");
+        } else {
+            char payload[513];
+            if(size>512||fread(payload,1,(size_t)size,r->draw)!=size) return error(r,"Cannot read tapped word");
+            unsigned i=0;
+            while(i<size) {
+                unsigned start=i; unsigned char c=(unsigned char)payload[i++]; uint32_t cp=c;
+                unsigned n=c<128?0:(c&0xe0)==0xc0?1:(c&0xf0)==0xe0?2:3;
+                if(n) { cp=c&((1u<<(6-n))-1); if(n>size-i) return error(r,"Invalid word UTF-8");
+                    while(n--) cp=(cp<<6)|((unsigned char)payload[i++]&63); }
+                bool punctuation=cp=='\''||cp=='-';
+                if(word_character(cp)&&(!punctuation||used)) {
+                    if(used+i-start<sizeof(word)) { memcpy(word+used,payload+start,i-start); used+=i-start; }
+                    else overflow=true;
+                    hit|=tap_x>=x&&tap_x<x+cell&&tap_y>=y&&tap_y<y+height;
+                } else { if(hit) goto found; used=0; overflow=false; }
+                x+=cell;
+            }
+        }
+        prev_end=x; prev_y=y; prev_height=height; prev_cell=cell; at+=size;
+    }
+    if(!hit) return 0;
+found:
+    while(used&&(word[used-1]=='\''||word[used-1]=='-')) used--;
+    if(!used) return 0;
+    word[used]=0; r->view=INK_READER_DEFINITION;
+    snprintf(r->word,sizeof(r->word),"%s",word);
+    if(overflow) { r->word[0]=0; return error(r,"Tapped word exceeds 255 bytes"); }
+    if(r->dictionary) {
+        if(ink_dict_lookup(r->dictionary,word)<0) error(r,r->dictionary->error);
+    }
+    else error(r,"No dictionaries found");
+    return 1;
+}
 bool ink_reader_tap(ink_reader *r,unsigned x,unsigned y)
 {
-    if(r->view==INK_READER_MENU&&x>=32&&x<448&&y>=180&&y<372) {
+    if(r->view==INK_READER_PAGE) { r->error[0]=0; lookup_word(r,x,y); }
+    else if(r->view==INK_READER_DEFINITION&&y>=704&&y<768) {
+        if(x>=16&&x<328) { r->view=INK_READER_DICTIONARIES; if(r->dictionary) ink_dict_catalog(r->dictionary,0); }
+        else if(x>=328&&x<464) r->view=INK_READER_PAGE;
+    } else if(r->view==INK_READER_DICTIONARIES&&r->dictionary&&x>=16&&x<464&&y>=120&&y<632) {
+        ink_dict *d=r->dictionary; unsigned row=(y-120)/64;
+        if(row<d->count) {
+            if(ink_dict_select(d,d->rows[row].path)) error(r,d->error);
+            else if(r->word[0]) { r->error[0]=0; if(ink_dict_lookup(d,r->word)<0) error(r,d->error); }
+            r->view=INK_READER_DEFINITION;
+        }
+    } else if(r->view==INK_READER_MENU&&x>=32&&x<448&&y>=180&&y<372) {
         unsigned row=(y-180)/64;
         if(row==2) return true;
         r->view=row?INK_READER_GOTO:INK_READER_CHAPTERS; r->digits[0]=0; r->chapter_first=1;
@@ -187,6 +270,26 @@ int ink_reader_draw(ink_reader *r,uint8_t frame[48000])
     }
     if(r->view!=INK_READER_PAGE) {
         memset(frame,255,48000); char line[64];
+        if(r->view==INK_READER_DEFINITION||r->view==INK_READER_DICTIONARIES) {
+            ink_dict *d=r->dictionary; label(frame,16,16,r->word);
+            if(r->view==INK_READER_DICTIONARIES) {
+                label(frame,16,64,"Choose dictionary");
+                if(!d||!d->total) label(frame,16,120,"No dictionaries found");
+                if(d) for(unsigned i=0;i<d->count;i++) { box(frame,16,120+i*64,448,64); label(frame,24,136+i*64,d->rows[i].name); }
+            } else {
+                label(frame,16,64,d&&d->name[0]?d->name:"No dictionary selected");
+                if(r->error[0]) label(frame,16,144,r->error);
+                else if(d&&d->error[0]) {
+                    for(unsigned row=0;row<5;row++) { char part[25]; size_t at=(size_t)row*24,n=strlen(d->error);
+                        if(at>=n) break;
+                        snprintf(part,sizeof(part),"%.*s",24,d->error+at); label(frame,16,144+row*36,part); }
+                } else if(d) for(unsigned row=0;row<INK_DICT_LINES;row++) label(frame,16,144+row*32,d->lines[row]);
+                if(d&&d->pages&&!r->error[0]&&!d->error[0]) { snprintf(line,sizeof(line),"%u / %u",d->page+1,d->pages); label(frame,16,664,line); }
+                box(frame,16,704,312,64); text(frame,24,722,"Change dictionary",16,28,0);
+                box(frame,328,704,136,64); label(frame,344,720,"Close");
+            }
+            return 0;
+        }
         snprintf(line,sizeof(line),"Page %u / %u",r->page,(unsigned)r->stats.pages); label(frame,16,16,line);
         label(frame,16,64,r->title);
         if(r->view==INK_READER_MENU) {

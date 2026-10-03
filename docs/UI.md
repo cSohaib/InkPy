@@ -91,3 +91,12 @@ Chapter list side-paging and numeric page entry are implemented. Text uses the
 fixed bitmap font for now; StarDict tap lookup and selectable fonts are pending.
 First-open indexing captures input but dispatches it after indexing completes.
 Physical acceptance remains pending; full refresh is still the current driver.
+
+## Stage 24 source status
+StarDict tap lookup, paged definitions and dictionary chooser are connected.
+The chooser is only opened through Change dictionary in the lookup popup;
+selection is retained on SD, retries the word and preserves the reader page.
+Home dismisses chooser to definition, then definition to book. No dictionaries,
+missing words and invalid data still leave Change dictionary available.
+Preparation is synchronous/yielding with capture active; typography and physical
+accuracy remain subject to later font integration/device testing.

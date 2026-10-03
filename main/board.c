@@ -221,7 +221,7 @@ esp_err_t ink_sd_mount(void)
 {
     if (card) return ESP_OK;
     const esp_vfs_fat_sdmmc_mount_config_t mount = {
-        .format_if_mount_failed = false, .max_files = 12, .allocation_unit_size = 16 * 1024,
+        .format_if_mount_failed = false, .max_files = 16, .allocation_unit_size = 16 * 1024,
     };
     uint8_t *sector = heap_caps_malloc(512, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
     if (!sector) return ESP_ERR_NO_MEM;

@@ -35,7 +35,8 @@ existing full-refresh panel driver; a manual refresh-menu control is now present
 
 Stage 22 source/builds connect Python Console/Execute and queue touch/button
 input independently during refresh. Stage 23 also connects Markdown/math and reader
-page/chapter navigation. The download described here remains Stage 20;
+page/chapter navigation. Stage 24 adds StarDict lookup and dictionary selection.
+The download described here remains Stage 20;
 it has not been replaced by the integration build. Rebuilding the latest source
 therefore produces a different image from the hash below. See MICROPYTHON.md and
 results/stage22 for current build evidence and physical-test limitations.

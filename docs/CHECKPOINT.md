@@ -1,9 +1,35 @@
 # InkPy checkpoint
 
-Updated: 2026-10-03. Stage 23: Markdown/math reader connected to device browser.
+Updated: 2026-10-03. Stage 24: StarDict engine, tap lookup and dictionary chooser.
 Committed stage boundary: pause before starting further implementation.
 
-## Current stage: 23 delivered
+## Current stage: 24 delivered
+- `components/ink_dict/` implements normal StarDict metadata/index/data/synonym
+  parsing, disk-backed binary search, text-field extraction and paged definitions.
+  Supports plain/gzip/dictzip, 32/64-bit records within native file-seek limits,
+  duplicate keys/aliases, UTF-8 and HTML/XDXF text. Media/locale fields are labelled
+  omitted, not executed/rendered as another feature. No new dependency revision.
+- Reader taps identify words across styled and wrapped runs; lookup popup has
+  Change dictionary and Close. Only this popup opens the paged chooser. Switching
+  retries the word; Home dismisses the topmost modal and book page is retained.
+- Dictionaries live under `/sd/dictionaries` (nested folders supported); hidden
+  owner-marked `/sd/.inkpy-dict` stores expanded data/offsets/definitions/selection.
+  Choice survives reboot; active data is reused across books during the boot.
+  Source files remain read-only. Cached handles are released before editing in
+  the dictionary folder. SD file slots raised to 16 for simultaneous streams.
+- Preparation and long definitions are bounded-memory streaming operations, with
+  cooperative yielding. First preparation still blocks UI dispatch while capture
+  queues events. Persistent prepared-cache reuse/progress/cancel are deferred.
+- Dictionary engine/UI host tests and reader/math regression passed; native
+  combined product builds, image checks and symbol verification passed. Popup/
+  chooser previews inspected. Evidence: `docs/results/stage24/`; instructions and
+  format limits: `docs/STARDICT.md`. Hardware runtime/taps/resources unverified.
+- Download remains Stage 20. Text glyph coverage/fonts, partial refresh, remaining
+  power controls, Python file/network bindings and EPUB remain pending.
+- Next bounded task: proper text fonts and Power-menu font selection, improving
+  reader and dictionary glyph coverage without adding theme/language settings.
+
+## Previous stage: 23 delivered
 - `components/ink_reader/` consumes existing streamed layout indexes on SD and
   renders text/formula runs into the native panel frame. `.md` taps open it;
   side buttons page, Home shows page/chapter and Go to chapter/Go to page/Close.
