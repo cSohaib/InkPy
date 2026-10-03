@@ -1,0 +1,76 @@
+Stage 26 validation, 2026-10-03
+## Stage 26: startup rollback fix (2026-10-03)
+
+User OTA dump confirms app0 sequence 9 VALID, app1 sequence 10 ABORTED,
+with both CRCs valid. The USB log confirms the delivered Stage 25 image starts,
+then crashes in MicroTeX's symbol-table global constructor before app_main.
+The old image subsequently boots. PSRAM detection/test passes.
+
+The symbol map initializer_list creates roughly 40 KiB of temporary objects on
+the pre-scheduler stack; its overflow corrupts heap metadata. Shared CMake
+overlays now build symbols, formula mappings, predefined formulas and macro
+commands incrementally. Constant descriptor tables stay in flash; map entries
+and first-key-wins semantics are preserved. Upstream source cache is untouched.
+The symbol constructor entry frame is now 80 bytes. Inspecting all global and
+static-initialization entry frames in the new ELF finds a maximum of 2,048 bytes
+(direct frames, not cumulative call-stack measurements).
+
+Native build and application checksum/hash validation pass. Rebuilt host reader
+passes mixed Markdown/math, fallback, H2 navigation, paging and Close checks.
+OTA confirmation timing, rollback, bootloader and partition table are unchanged.
+New application: 2,588,912 bytes; SHA-256 110ed8d8d8d15833af4b6368db149edb1fd3f2ebcee36fafcd5f5e915f9ff904.
+Evidence: results/stage26/boot-fix.txt. Next: install this application with the
+existing web installer and verify native UI/console, then sleep/wake. If it still
+rolls back, capture the new USB log; on-device success is not yet observed.
+
+
+Host reader: PASS device renderer, formula bitmaps/fallback, H2 navigation, page entry/paging, Close cleanup, missing assets fallback, binary rejection.
+
+esptool.py v4.12.0
+File size: 2588912 (bytes)
+
+ESP32S3 image header
+====================
+Image version: 1
+Entry point: 0x403756dc
+Segments: 7
+Flash size: 16MB
+Flash freq: 80m
+Flash mode: DIO
+
+ESP32S3 extended image header
+=============================
+WP pin: 0xee (disabled)
+Flash pins drive settings: clk_drv: 0x0, q_drv: 0x0, d_drv: 0x0, cs0_drv: 0x0, hd_drv: 0x0, wp_drv: 0x0
+Chip ID: 9 (ESP32-S3)
+Minimal chip revision: v0.0, (legacy min_rev = 0)
+Maximal chip revision: v0.99
+
+Segments information
+====================
+Segment   Length   Load addr   File offs  Memory types
+-------  -------  ----------  ----------  ------------
+      0  0xe8060  0x3c180020  0x00000018  DROM
+      1  0x06b00  0x3fc9ca00  0x000e8080  BYTE_ACCESSIBLE, MEM_INTERNAL, DRAM
+      2  0x01488  0x40374000  0x000eeb88  MEM_INTERNAL, IRAM
+      3  0x170b10  0x42000020  0x000f0018  IROM
+      4  0x1750c  0x40375488  0x00260b30  MEM_INTERNAL, IRAM
+      5  0x00020  0x50000000  0x00278044  RTC_DATA
+      6  0x00058  0x600fe000  0x0027806c  RTC_DRAM, RTC_IRAM
+
+ESP32S3 image footer
+====================
+Checksum: 0xb5 (valid)
+Validation hash: e38fcb666dd741f3348e05a60729b7345b8c358d85e667da68b02cef241b54d6 (valid)
+
+Application information
+=======================
+Project name: inkpy
+App version: 224330b-dirty
+Compile time: Oct  3 2026 13:24:09
+ELF file SHA256: 702b5a5dbfe04ef7b667277cc9aee1f872c2bf0590e3e0086db26120acc60232
+ESP-IDF: v5.5.5-dirty
+Minimal eFuse block revision: 0.0
+Maximal eFuse block revision: 1.99
+MMU page size: 64 KB
+Secure version: 0

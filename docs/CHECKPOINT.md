@@ -1,6 +1,30 @@
 # InkPy checkpoint
 
-Updated: 2026-10-03. Stage 25: remaining non-EPUB integration.
+## Stage 26: startup rollback fix (2026-10-03)
+
+User OTA dump confirms app0 sequence 9 VALID, app1 sequence 10 ABORTED,
+with both CRCs valid. The USB log confirms the delivered Stage 25 image starts,
+then crashes in MicroTeX's symbol-table global constructor before app_main.
+The old image subsequently boots. PSRAM detection/test passes.
+
+The symbol map initializer_list creates roughly 40 KiB of temporary objects on
+the pre-scheduler stack; its overflow corrupts heap metadata. Shared CMake
+overlays now build symbols, formula mappings, predefined formulas and macro
+commands incrementally. Constant descriptor tables stay in flash; map entries
+and first-key-wins semantics are preserved. Upstream source cache is untouched.
+The symbol constructor entry frame is now 80 bytes. Inspecting all global and
+static-initialization entry frames in the new ELF finds a maximum of 2,048 bytes
+(direct frames, not cumulative call-stack measurements).
+
+Native build and application checksum/hash validation pass. Rebuilt host reader
+passes mixed Markdown/math, fallback, H2 navigation, paging and Close checks.
+OTA confirmation timing, rollback, bootloader and partition table are unchanged.
+New application: 2,588,912 bytes; SHA-256 110ed8d8d8d15833af4b6368db149edb1fd3f2ebcee36fafcd5f5e915f9ff904.
+Evidence: results/stage26/boot-fix.txt. Next: install this application with the
+existing web installer and verify native UI/console, then sleep/wake. If it still
+rolls back, capture the new USB log; on-device success is not yet observed.
+
+Previous checkpoint — Stage 25: remaining non-EPUB integration.
 Committed stage boundary: pause before starting further implementation.
 
 Final pre-test check (2026-10-03): rebuilt the committed Stage 25 application;
@@ -9,7 +33,7 @@ SD ZIP CRC and all 30 manifest resource hashes pass; reader/math/navigation chec
 also pass using the exact supplied SD math tree. No functional code changes.
 Current download SHA-256: 15969001175f5f592be4c9ebad02c4c64cb7c39eb2a43b1c5f09db3b6b35eec2.
 The rebuilt image remains 2,767,840 bytes. Earlier Stage 25 hash below is historical.
-Evidence: results/stage25/final-check.txt. Ready for exploratory device testing;
+Evidence: results/stage25/final-check.txt. Historical pre-test assessment; superseded by Stage 26 above;
 physical timing/heap/panel/Wi-Fi/sleep acceptance remains pending.
 
 ## Current stage: 25 delivered

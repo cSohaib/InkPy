@@ -52,3 +52,14 @@ logs through the web tool's serial monitor where available; do not erase flash o
 replace the bootloader to suppress fallback. Once confirmed valid, automatic
 first-boot fallback no longer applies; ordinary USB recovery remains necessary.
 The new image still needs these hardware checks. No claim that sleep reset is fixed.
+
+
+## Stage 26: confirmed startup crash
+
+The uploaded OTA records and USB log establish rollback of Stage 25 before
+app_main, after heap corruption in the MicroTeX symbol constructor. Shared
+CMake overlays replace four large initializer-list tables with incremental
+insertion, preserving entries and leaving the cached upstream source intact.
+The symbol constructor frame is now 80 bytes. Build/image/host reader checks
+pass; device verification remains pending. See results/stage26/boot-fix.txt and
+the current checkpoint for evidence and the new application hash.

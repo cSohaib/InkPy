@@ -1,4 +1,4 @@
-# Stage 25 exploratory firmware
+# Stage 26 startup-fixed exploratory firmware
 
 The non-EPUB feature set is integrated: browser/text/editor, Python console/scripts,
 Markdown/math, StarDict, Unicode fonts/selection, Power controls and differential
@@ -17,13 +17,17 @@ StarDict companions: dictionaries/, supplied by the user. Resources include font
 licences/hash manifest. TrueType outlines work; CFF OTF faces are unsupported.
 Python API: [PYTHON-DEVICE.md](PYTHON-DEVICE.md).
 
+Stage 25 rolled back on-device due to excessive math-library constructor stack
+usage before app_main. Stage 26 replaces four large table initializers; this
+fix has passed build/host checks and awaits physical verification.
+
 ## Build identification
 
 - ESP-IDF v5.5.5: b774170ff46c393eeb5e495ea37936038d3f4f4f, pinned submodules.
 - Xtensa GCC 14.2.0, esp-14.2.0_20260121; ESP32-S3, 16 MiB DIO.
 - Browser ON, diagnostics OFF; 32 KiB main stack.
-- Application: 2,767,840 bytes; slot 8,257,536 bytes, 66% free.
-- SHA-256: 15969001175f5f592be4c9ebad02c4c64cb7c39eb2a43b1c5f09db3b6b35eec2.
+- Application: 2,588,912 bytes; slot 8,257,536 bytes, 66% free.
+- SHA-256: 110ed8d8d8d15833af4b6368db149edb1fd3f2ebcee36fafcd5f5e915f9ff904.
 - Build: bash scripts/build-browser.sh; output build-browser/firmware.bin.
 - Evidence: results/stage25/final-check.txt, valid esptool checksum and validation hash.
 
