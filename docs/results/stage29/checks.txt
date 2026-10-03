@@ -1,0 +1,13 @@
+Stage 29 checks
+Native ESP-IDF ESP32-S3 build: pass; application fits 0x7e0000 slot.
+Image checksum and validation hash: valid (image.txt).
+Browser paging/folders/Home/binary/execute: pass.
+New file extension, keyboard, save and browser reload regression: pass.
+Editor 8 MiB tail preservation, gap growth, paging and backups: pass.
+Mixed Markdown/math H2/paging/fallback/binary/missing assets: pass.
+StarDict catalog, formats, Unicode, fields, persistence and reader UI: pass.
+Font/Power controls and Unicode host preview: pass.
+Browser, console and Power icon previews inspected.
+Physical Stage 29 testing: pending. Python lifetime fix: not included.
+Firmware bytes: 2588752
+SHA256: 465acbd753700638caee293bd8322af8e44390aa5e6935abb7a6fcfecd4ac67c

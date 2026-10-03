@@ -2,7 +2,8 @@
 Updated 2026-10-03. User-confirmed requirements unless explicitly marked proposed or open.
 
 ## General
-No swipe, slide, drag-to-scroll or touchpad navigation gestures anywhere. Side buttons page through content. One fixed UI with hardcoded text and one keyboard layout. The power menu below is the complete requested settings surface; night mode and orientation are now explicitly in scope.
+No swipe, slide, drag-to-scroll or touchpad navigation gestures anywhere. Side buttons page through content. One fixed UI with icon controls and one keyboard layout. User content, filenames,
+chapter titles, numeric values and Python output remain text. The power menu below is the complete requested settings surface; night mode and orientation are now explicitly in scope.
 Brightness and warmth use only + and - buttons; no sliders. Press durations, debounce and double-click timing are fixed implementation constants, not user settings. A long press must suppress its short-press action; a double power press must suppress the single-press menu.
 No screen displays an InkPy title/header. Power menu is global: accessible from
 the browser, editor, reader, console and their prompts, without losing their state.
@@ -19,14 +20,14 @@ FIFO while rendering remains blocking; physical fast-typing verification is pend
 ## Home: file browser
 - Filename list, no thumbnails.
 - Hide dot-prefixed files and folders; do not delete or modify them.
-- Two buttons at the top: New file and Python console.
+- Two icon buttons at the bottom: New file and Python console.
 - New file accepts a freely entered filename and extension: .py, .md, .txt, another extension, or no extension. It creates a text file; do not append or force .txt.
 - Tap a folder to enter it. Side buttons change list pages.
 - Home goes to the parent folder; at the root it does nothing.
 - Tap a .md file to render Markdown. Tap another text file to open plain text. A binary file produces an error.
 - Long-press a file: exactly Edit and Execute.
 - Edit opens any valid text file in the editor regardless of extension; reject binary files.
-- Execute runs a Python script; otherwise show exactly "not executable".
+- Execute runs a Python script; otherwise show the error icon (serial diagnostic: "not executable").
 - No implicit execution when tapping .py.
 
 Proposed defaults: creating a file opens its editor; reject invalid filesystem names and existing names without overwriting. File tap uses a read-only plain-text view, with side paging and Home returning to the browser. Extension comparison is case-insensitive. Execute initially accepts .py and lets MicroPython report syntax/runtime errors; whether extensionless Python scripts should also be executable remains open. Do not infer that every text file is Python.
@@ -41,7 +42,7 @@ Text validation must inspect content, not only the extension. Proposed encoding 
 - Normal editing displays neither filename nor "Home: save or discard" footer.
   Keyboard sits at the bottom. Filename may remain in Save/Discard/Cancel prompt.
 Proposed: Save writes successfully then closes; on failure remain in the editor with changes intact. Discard closes without replacing the original. Cancel resumes editing. Prompt text and layout must make the destructive long-press rule predictable.
-A single onscreen keyboard is shared with filename entry and the Python console. Its exact layout is not chosen yet.
+A single onscreen keyboard is shared with filename entry and the Python console. It spans the full screen width and prioritizes Python input.
 
 ## Python console
 - Side buttons page through the current session's history; no slides.
@@ -61,7 +62,7 @@ Console history needs SD-backed paging or an explicit retention policy, not unli
 - Home menu: Go to chapter / Go to page / Close.
 - This menu also shows the current page number and current chapter.
 - Markdown chapters are level-two headings (`##`, equivalent to `<h2>`), not all heading levels. H1 and H3–H6 do not create chapter entries. Use parsed heading levels, including Setext H2; headings inside code are not chapters.
-Proposed: page numbers are one-based and belong to the current font/orientation layout. Before the first H2, or in documents without H2, show "No chapter". The current chapter is the last H2 at or before the page's reading-position source offset; retain duplicate titles as separate entries. Keep reading position by source offset when reflowing. If no dictionary is selected or found, still show the lookup popup and Change dictionary control. Modal Home/back behaviour should dismiss the topmost popup first.
+Proposed: page numbers are one-based and belong to the current font/orientation layout. Before the first H2, or in documents without H2, leave the chapter title blank. The current chapter is the last H2 at or before the page's reading-position source offset; retain duplicate titles as separate entries. Keep reading position by source offset when reflowing. If no dictionary is selected or found, still show the lookup popup and Change dictionary control. Modal Home/back behaviour should dismiss the topmost popup first.
 
 ## Sleep and power
 - Auto-sleep after five minutes of inactivity, except while a Python script is running.
@@ -100,3 +101,11 @@ Home dismisses chooser to definition, then definition to book. No dictionaries,
 missing words and invalid data still leave Change dictionary available.
 Preparation is synchronous/yielding with capture active; typography and physical
 accuracy remain subject to later font integration/device testing.
+
+## Stage 29 UI
+Console has no title, history-page labels or Home-help footer. Editor close
+retains the filename in its icon menu. App exit rereads the browser folder.
+Errors show a circle containing a cross; details remain in serial diagnostics.
+Power uses sun, warmth, lamp, moon, rotation, clock, font and refresh icons, plus
+close. Brightness/warmth remain +/- with numeric values. Time uses numeric fields.
+Fonts rescan fonts/ when opened; dictionary choice remains inside word lookup.

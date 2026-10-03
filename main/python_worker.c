@@ -115,7 +115,7 @@ void ink_python_worker_tap(ink_python_worker *s,unsigned x,unsigned y)
     if(!s->closing&&!s->closed) {
         if(s->console.menu) action=ink_console_tap(&s->console,x,y);
         else if(!s->console.busy) {
-            int key=ink_keyboard_tap(&s->console.keyboard,x,y);
+            int key=ink_keyboard_tap(&s->console.keyboard,x,y>=INK_CONSOLE_KEYBOARD_OFFSET?y-INK_CONSOLE_KEYBOARD_OFFSET:0);
             if(ink_console_key(&s->console,key)) {
                 memcpy(s->command,s->console.input,s->console.used+1);
                 const char *line=strrchr(s->command,'\n'); line=line?line+1:s->command;

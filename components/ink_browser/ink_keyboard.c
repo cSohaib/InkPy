@@ -16,7 +16,7 @@ int ink_keyboard_key(const ink_keyboard *k,unsigned row,unsigned column)
 }
 int ink_keyboard_tap(ink_keyboard *k,unsigned x,unsigned y)
 {
-    if(x<INK_KB_X || x>=INK_KB_X+10*INK_KB_WIDTH || y<INK_KB_Y || y>=INK_KB_Y+5*INK_KB_HEIGHT) return 0;
+    if(x>=INK_KB_X+10*INK_KB_WIDTH || y<INK_KB_Y || y>=INK_KB_Y+5*INK_KB_HEIGHT) return 0;
     unsigned row=(y-INK_KB_Y)/INK_KB_HEIGHT;
     unsigned col=(x-INK_KB_X)/(INK_KB_WIDTH*(row==4?2:1));
     int key=ink_keyboard_key(k,row,col);

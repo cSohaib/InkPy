@@ -52,7 +52,7 @@ bool ink_browser_page(ink_browser *b,int direction)
 }
 bool ink_browser_home(ink_browser *b)
 {
-    if(b->view!=INK_FILES) { b->view=INK_FILES; return true; }
+    if(b->view!=INK_FILES) { ink_browser_reload(b); return true; }
     if(!strcmp(b->folder,b->root)) return false;
     char *slash=strrchr(b->folder,'/');
     if(slash && (size_t)(slash-b->folder)>=strlen(b->root)) *slash=0;
@@ -111,14 +111,14 @@ bool ink_browser_tap(ink_browser *b,unsigned x,unsigned y)
     if(b->view==INK_NEW_FILE) return filename_tap(b,x,y);
     if(b->view==INK_OPEN_TEXT) return false;
     if(b->view!=INK_FILES) return ink_browser_home(b);
-    if(y>=48 && y<92) {
+    if(y>=INK_BROWSER_ACTION_Y && y<800) {
         if(x<240) {
             b->new_name[0]=b->message[0]=0; b->keyboard=(ink_keyboard){0}; b->view=INK_NEW_FILE;
         } else { b->selected[0]=0; b->view=INK_OPEN_CONSOLE; }
         return true;
     }
-    if(y<148 || y>=148+42*INK_BROWSER_ROWS) return false;
-    unsigned row=(y-148)/42; if(row>=b->count) return false;
+    if(y<INK_BROWSER_LIST_Y || y>=INK_BROWSER_LIST_Y+42*INK_BROWSER_ROWS) return false;
+    unsigned row=(y-INK_BROWSER_LIST_Y)/42; if(row>=b->count) return false;
     if(join(b->selected,sizeof(b->selected),b->folder,b->rows[row].name)) {
         notice(b,"Path is too long"); return true;
     }
@@ -145,8 +145,8 @@ bool ink_browser_tap(ink_browser *b,unsigned x,unsigned y)
 }
 bool ink_browser_long_press(ink_browser *b,unsigned x,unsigned y)
 {
-    if(b->view!=INK_FILES || x>=480 || y<148 || y>=148+42*INK_BROWSER_ROWS) return false;
-    unsigned row=(y-148)/42;
+    if(b->view!=INK_FILES || x>=480 || y<INK_BROWSER_LIST_Y || y>=INK_BROWSER_LIST_Y+42*INK_BROWSER_ROWS) return false;
+    unsigned row=(y-INK_BROWSER_LIST_Y)/42;
     if(row>=b->count || b->rows[row].directory) return false;
     if(join(b->selected,sizeof(b->selected),b->folder,b->rows[row].name)) {
         notice(b,"Path is too long"); return true;

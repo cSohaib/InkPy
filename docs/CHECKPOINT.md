@@ -1,5 +1,26 @@
 # InkPy checkpoint
 
+## Stage 29: icon UI, SD selectors and reader preflight (2026-10-03)
+
+Browser actions move to the bottom; app exit reloads the current folder. Shared
+keyboard spans 480 pixels. Console titles, history labels and help footer removed;
+Power, app menus and errors use fixed line icons. Reader retains page numbers,
+chapter titles, words and dictionary content. Binary errors use a circled cross.
+Fonts rescan /sd/fonts, including family subfolders (four levels, 31 external
+faces). Supported: TTF and TrueType-outline OTF, not CrossPoint cpfont/CFF.
+Existing recursive StarDict catalog uses /sd/dictionaries and its chooser.
+
+Reader cache directory is stat-checked before mkdir; exact errno is logged.
+Math initialization moves to first formula rendering, after cache creation. This
+is a targeted attempt at the reported failure, not a confirmed device fix.
+Python worker lifetime/allocation problem is unchanged and remains next work.
+
+Browser/new-file/editor, mixed reader/math and dictionary host checks pass.
+Icon previews inspected; native ESP32-S3 build, partition fit and image validation
+pass. Application: 2,588,752 bytes; SHA-256
+465acbd753700638caee293bd8322af8e44390aa5e6935abb7a6fcfecd4ac67c.
+Evidence: results/stage29. Device acceptance remains pending.
+
 ## Stage 28: device observations, documentation only (2026-10-03)
 
 User confirms Stage 27 boots and Console evaluates 1+1. Markdown cache creation

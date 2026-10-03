@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "ink_text.h"
 #include "ink_keyboard.h"
-enum { INK_BROWSER_ROWS=14, INK_BROWSER_PATH=512 };
+enum { INK_BROWSER_LIST_Y=64, INK_BROWSER_ACTION_Y=728, INK_BROWSER_ROWS=14, INK_BROWSER_PATH=512 };
 typedef enum { INK_FILES, INK_OPEN_MARKDOWN, INK_OPEN_TEXT, INK_NEW_FILE, INK_NOTICE,
     INK_FILE_MENU, INK_OPEN_CONSOLE, INK_EXECUTE_PYTHON, INK_EDIT_TEXT } ink_browser_view;
 typedef struct { char name[256]; bool directory; } ink_browser_entry;

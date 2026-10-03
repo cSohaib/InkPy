@@ -1,7 +1,7 @@
 # Device test notes — 2026-10-03
 
-Stage 27 device results supplied by the user. Investigation/documentation only;
-no firmware or configuration changes requested or made in this stage.
+Stage 27 device results supplied by the user. Original Stage 28 investigation
+below is retained; Stage 29 changes are recorded separately.
 
 ## Confirmed observations
 - Stage 27 boots on the X4 Pro; the previous startup/rollback blocker is passed.
@@ -67,3 +67,14 @@ format files as a speculative repair.
 No firmware rebuilt/delivered for this documentation-only checkpoint. Current
 application remains Stage 27, 2,583,904 bytes, SHA-256
 `a36fdfeeae8e9c1968b97889b828f96b9d679e8008a24fa2cab073c166ce1b9c`.
+
+## Stage 29 retest
+Cache preflight now checks the directory before mkdir and reports errno in serial
+logs. Math is deferred until the first rendered formula, after cache creation.
+This removes one plausible source of early memory pressure, without establishing
+the actual reported cause. Retest Markdown with and without math assets; capture
+the ui/reader warning if it fails. No Python lifecycle fix was made.
+
+Check new-file save and console-created files immediately appear after app exit;
+full-width keys at both edges; icon Power controls in all contexts; nested SD font
+selection and dictionary chooser; repeated Close/Open and sleep/wake.

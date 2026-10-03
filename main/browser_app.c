@@ -28,6 +28,12 @@ static bool reader_active,math_attempted,math_ready;
 static void notice(const char *text);
 static int render_math(const char *source,int display,unsigned pixels,uint8_t *bitmap,unsigned *w,unsigned *h,unsigned *baseline)
 {
+    if(!math_attempted) {
+        char error[160]; math_attempted=true;
+        math_ready=ink_math_init("/sd/inkpy/math",error,sizeof(error))==0;
+        if(!math_ready) ESP_LOGW("reader","math init: %s",error);
+    }
+    if(!math_ready) { *w=*h=*baseline=0; return -1; }
     ink_math_result r; int status=ink_math_render(source,display,(int)pixels,bitmap,&r);
     *w=(unsigned)r.width; *h=(unsigned)r.height; *baseline=(unsigned)r.baseline; return status;
 }
@@ -49,18 +55,18 @@ static void power_header(void)
     else power_menu.time[0]=0;
     unsigned percent; bool charging;
     if(ink_battery_read(&percent,&charging)==ESP_OK)
-        snprintf(power_menu.battery,sizeof(power_menu.battery),"Battery: %u%%%s",percent,charging?" charging":"");
-    else strcpy(power_menu.battery,"Battery: unavailable");
+        snprintf(power_menu.battery,sizeof(power_menu.battery),"%u%%%s",percent,charging?" +":"");
+    else strcpy(power_menu.battery,"--");
 }
 static void power_action(int action)
 {
     if(action==INK_POWER_LIGHT&&ink_light_set(power_menu.brightness,power_menu.warmth,power_menu.on)!=ESP_OK)
         strcpy(power_menu.message,"Light update failed");
     else if(action==INK_POWER_REFRESH) full_refresh=true;
-    else if(action==INK_POWER_FONTS) font_names();
+    else if(action==INK_POWER_FONTS) { ink_font_scan(); font_names(); }
     else if(action==INK_POWER_FONT_SELECT) {
         if(ink_font_select(power_menu.font_choice)) strcpy(power_menu.message,"Cannot load this font");
-        else { power_menu.view=0; strcpy(power_menu.message,"Font selected"); }
+        else { power_menu.view=0; power_menu.message[0]=0; }
     } else if(action==INK_POWER_TIME) {
         struct tm t={.tm_year=126,.tm_mon=0,.tm_mday=1}; ink_rtc_read(&t);
         int fields[]={t.tm_year+1900,t.tm_mon+1,t.tm_mday,t.tm_hour,t.tm_min};
@@ -100,17 +106,14 @@ static void draw(uint8_t *frame)
     ink_frame_rotate_180(frame);
 }
 static void notice(const char *text)
-{ snprintf(browser.message,sizeof(browser.message),"%s",text); browser.view=INK_NOTICE; }
+{ ESP_LOGW("ui","%s",text); snprintf(browser.message,sizeof(browser.message),"%s",text); browser.view=INK_NOTICE; }
 static void open_requests(void)
 {
     if(editor_active||console_active||reader_active) return;
     if(browser.view==INK_OPEN_MARKDOWN) {
         struct stat st;
-        if(!math_attempted&&!stat("/sd/inkpy/math",&st)&&S_ISDIR(st.st_mode)) {
-            char error[160]; math_attempted=true; math_ready=ink_math_init("/sd/inkpy/math",error,sizeof(error))==0;
-            if(!math_ready) ESP_LOGW("reader","math init: %s",error);
-        }
-        if(ink_reader_open(&reader,browser.selected,browser.root,math_ready?render_math:NULL,indexing_progress)) notice(reader.error);
+        bool assets=!stat("/sd/inkpy/math",&st)&&S_ISDIR(st.st_mode);
+        if(ink_reader_open(&reader,browser.selected,browser.root,assets?render_math:NULL,indexing_progress)) notice(reader.error);
         else { reader.dictionary=&dictionary; reader_active=true; }
         return;
     }

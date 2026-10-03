@@ -15,18 +15,18 @@ int main(int argc,char **argv)
     /* Locate entries without imposing sort order. */
     while(1) {
         for(unsigned i=0;i<b.count;++i) if(b.rows[i].directory) {
-            assert(!ink_browser_long_press(&b,20,148+i*42));
-            ink_browser_tap(&b,20,148+i*42); assert(b.count==3);
-            unsigned n=row(&b,"book.md"); ink_browser_tap(&b,20,148+n*42); assert(b.view==INK_OPEN_MARKDOWN);
-            ink_browser_home(&b); n=row(&b,"script.py"); ink_browser_tap(&b,20,148+n*42); assert(b.view==INK_OPEN_TEXT);
-            ink_browser_home(&b); n=row(&b,"binary.bin"); ink_browser_tap(&b,20,148+n*42); assert(b.view==INK_NOTICE);
-            ink_browser_home(&b); ink_browser_long_press(&b,20,148+n*42); assert(b.view==INK_FILE_MENU);
+            assert(!ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+i*42));
+            ink_browser_tap(&b,20,INK_BROWSER_LIST_Y+i*42); assert(b.count==3);
+            unsigned n=row(&b,"book.md"); ink_browser_tap(&b,20,INK_BROWSER_LIST_Y+n*42); assert(b.view==INK_OPEN_MARKDOWN);
+            ink_browser_home(&b); n=row(&b,"script.py"); ink_browser_tap(&b,20,INK_BROWSER_LIST_Y+n*42); assert(b.view==INK_OPEN_TEXT);
+            ink_browser_home(&b); n=row(&b,"binary.bin"); ink_browser_tap(&b,20,INK_BROWSER_LIST_Y+n*42); assert(b.view==INK_NOTICE);
+            ink_browser_home(&b); ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+n*42); assert(b.view==INK_FILE_MENU);
             ink_browser_tap(&b,60,200); assert(b.view==INK_NOTICE); /* binary Edit */
-            ink_browser_home(&b); n=row(&b,"book.md"); ink_browser_long_press(&b,20,148+n*42);
+            ink_browser_home(&b); n=row(&b,"book.md"); ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+n*42);
             ink_browser_tap(&b,60,200); assert(b.view==INK_EDIT_TEXT); /* editor request */
-            ink_browser_home(&b); ink_browser_long_press(&b,20,148+n*42);
+            ink_browser_home(&b); ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+n*42);
             ink_browser_tap(&b,60,270); assert(b.view==INK_NOTICE && !strcmp(b.message,"not executable"));
-            ink_browser_home(&b); n=row(&b,"script.py"); ink_browser_long_press(&b,20,148+n*42);
+            ink_browser_home(&b); n=row(&b,"script.py"); ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+n*42);
             ink_browser_tap(&b,60,270); assert(b.view==INK_EXECUTE_PYTHON);
             ink_browser_home(&b); ink_browser_home(&b); assert(!strcmp(b.folder,b.root));
             goto complete;

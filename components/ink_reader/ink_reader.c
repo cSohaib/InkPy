@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "ink_reader.h"
 #include "../ink_browser/ink_ui_font.h"
+#include "../ink_browser/ink_icons.h"
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -36,7 +37,7 @@ static int seek_record(FILE *f,uint64_t index,unsigned size)
 }
 static int chapter(ink_reader *r,unsigned id,char *title,unsigned *page)
 {
-    if(!id) { strcpy(title,"No chapter"); *page=1; return 0; }
+    if(!id) { strcpy(title,""); *page=1; return 0; }
     unsigned char b[212];
     if(id>r->stats.chapters||seek_record(r->chapters,id-1,212)||fread(b,1,sizeof(b),r->chapters)!=sizeof(b))
         return error(r,"Cannot read chapter");
@@ -68,8 +69,13 @@ int ink_reader_open(ink_reader *r,const char *source,const char *root,ink_layout
     memset(r,0,sizeof(*r)); char p[560];
     int n=snprintf(r->cache,sizeof(r->cache),"%s/.inkpy-reader",root);
     if(n<0||(size_t)n>=sizeof(r->cache)) { r->cache[0]=0; return error(r,"Cache path too long"); }
-    bool created=mkdir(r->cache,0700)==0;
-    if(!created&&errno!=EEXIST) { r->cache[0]=0; return error(r,"Cannot create reader cache"); }
+    struct stat st; bool exists=stat(r->cache,&st)==0;
+    if(exists&&!S_ISDIR(st.st_mode)) { r->cache[0]=0; return error(r,"Reader cache path is not a directory"); }
+    bool created=!exists&&mkdir(r->cache,0700)==0;
+    if(!exists&&!created) {
+        int code=errno; r->cache[0]=0;
+        snprintf(r->error,sizeof(r->error),"Cannot create reader cache: errno %d (%s)",code,strerror(code)); return -1;
+    }
     path(r,p,"owner"); FILE *owner=fopen(p,created?"wb":"rb");
     const char marker[]="InkPy reader cache v2\n"; char check[sizeof(marker)]={0};
     bool valid=false;
@@ -98,7 +104,7 @@ int ink_reader_open(ink_reader *r,const char *source,const char *root,ink_layout
     if(spool&&fclose(spool)) status=error(r,"Bitmap cache close failed");
     if(status) { ink_reader_close(r); return -1; }
     path(r,p,"bitmap"); unlink(p);
-    r->page=r->stats.pages?1:0; strcpy(r->title,"No chapter");
+    r->page=r->stats.pages?1:0; strcpy(r->title,"");
     if(r->page) { unsigned char b[32]; if(page_record(r,b)) { ink_reader_close(r); return -1; } }
     return 0;
 }
@@ -297,45 +303,43 @@ int ink_reader_draw(ink_reader *r,uint8_t frame[48000])
         if(r->view==INK_READER_DEFINITION||r->view==INK_READER_DICTIONARIES) {
             ink_dict *d=r->dictionary; label(frame,16,16,r->word);
             if(r->view==INK_READER_DICTIONARIES) {
-                label(frame,16,64,"Choose dictionary");
-                if(!d||!d->total) label(frame,16,120,"No dictionaries found");
+                ink_icon(frame,224,64,ICON_DICT,pixel);
+                if(!d||!d->total) ink_icon(frame,224,120,ICON_ERROR,pixel);
                 if(d) for(unsigned i=0;i<d->count;i++) { box(frame,16,120+i*64,448,64); label(frame,24,136+i*64,d->rows[i].name); }
             } else {
-                label(frame,16,64,d&&d->name[0]?d->name:"No dictionary selected");
-                if(r->error[0]) label(frame,16,144,r->error);
-                else if(d&&d->error[0]) {
-                    for(unsigned row=0;row<5;row++) { char part[25]; size_t at=(size_t)row*24,n=strlen(d->error);
-                        if(at>=n) break;
-                        snprintf(part,sizeof(part),"%.*s",24,d->error+at); label(frame,16,144+row*36,part); }
-                } else if(d) for(unsigned row=0;row<INK_DICT_LINES;row++) label(frame,16,144+row*32,d->lines[row]);
+                if(d&&d->name[0]) label(frame,16,64,d->name);
+                if(r->error[0]||(d&&d->error[0])) ink_icon(frame,224,144,ICON_ERROR,pixel);
+                else if(d) for(unsigned row=0;row<INK_DICT_LINES;row++) label(frame,16,144+row*32,d->lines[row]);
                 if(d&&d->pages&&!r->error[0]&&!d->error[0]) { snprintf(line,sizeof(line),"%u / %u",d->page+1,d->pages); label(frame,16,664,line); }
-                box(frame,16,704,312,64); text(frame,24,722,"Change dictionary",16,28,0);
-                box(frame,328,704,136,64); label(frame,344,720,"Close");
+                box(frame,16,704,312,64); ink_icon(frame,152,720,ICON_DICT,pixel);
+                box(frame,328,704,136,64); ink_icon(frame,380,720,ICON_CLOSE,pixel);
             }
             return 0;
         }
-        snprintf(line,sizeof(line),"Page %u / %u",r->page,(unsigned)r->stats.pages); label(frame,16,16,line);
+        snprintf(line,sizeof(line),"%u / %u",r->page,(unsigned)r->stats.pages); label(frame,16,16,line);
         label(frame,16,64,r->title);
         if(r->view==INK_READER_MENU) {
-            const char *names[]={"Go to chapter","Go to page","Close"};
-            for(unsigned i=0;i<3;i++) { box(frame,32,180+i*64,416,64); label(frame,48,196+i*64,names[i]); }
+            const unsigned icons[]={ICON_CHAPTER,ICON_PAGE,ICON_CLOSE};
+            for(unsigned i=0;i<3;i++) { box(frame,32,180+i*64,416,64); ink_icon(frame,224,196+i*64,icons[i],pixel); }
         } else if(r->view==INK_READER_CHAPTERS) {
-            if(!r->stats.chapters) label(frame,16,120,"No H2 chapters");
+            if(!r->stats.chapters) ink_icon(frame,224,120,ICON_ERROR,pixel);
             for(unsigned i=0;i<8&&r->chapter_first+i<=r->stats.chapters;i++) {
                 char title[INK_TITLE_BYTES]; unsigned page;
                 if(chapter(r,r->chapter_first+i,title,&page)) return -1;
                 box(frame,16,120+i*64,448,64); label(frame,24,136+i*64,title);
             }
         } else {
-            label(frame,32,140,r->digits[0]?r->digits:"Page number");
+            label(frame,32,140,r->digits);
             for(unsigned row=0;row<4;row++) for(unsigned col=0;col<3;col++) {
                 char key[8];
                 if(row<3) snprintf(key,sizeof(key),"%u",1+row*3+col);
-                else snprintf(key,sizeof(key),"%s",col==0?"0":col==1?"Del":"Go");
-                box(frame,32+col*138,220+row*80,138,80); label(frame,72+col*138,244+row*80,key);
+                else snprintf(key,sizeof(key),"%s",col==0?"0":"");
+                box(frame,32+col*138,220+row*80,138,80);
+                if(row==3&&col) ink_icon(frame,80+col*138,244+row*80,col==1?ICON_DELETE:ICON_PLAY,pixel);
+                else label(frame,72+col*138,244+row*80,key);
             }
         }
-        if(r->error[0]) label(frame,16,680,r->error);
+        if(r->error[0]) ink_icon(frame,224,680,ICON_ERROR,pixel);
     }
     return 0;
 }

@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
+#include <sys/stat.h>
 bool ink_view_landscape;
 
 static FT_Library library;
@@ -34,21 +35,33 @@ int ink_font_select(unsigned i)
     if(face) FT_Done_Face(face);
     face=next; selected=i; return 0;
 }
+static void scan_fonts(const char *folder,unsigned depth)
+{
+    DIR *d=opendir(folder); if(!d) return; struct dirent *entry;
+    while(count<32&&(entry=readdir(d))) {
+        if(entry->d_name[0]=='.') continue;
+        char path[512]; struct stat st;
+        int n=snprintf(path,sizeof(path),"%s/%s",folder,entry->d_name);
+        if(n<0||(size_t)n>=sizeof(path)||stat(path,&st)) continue;
+        if(S_ISDIR(st.st_mode)) { if(depth<4) scan_fonts(path,depth+1); continue; }
+        const char *ext=strrchr(entry->d_name,'.');
+        if(!S_ISREG(st.st_mode)||!ext||(strcasecmp(ext,".ttf")&&strcasecmp(ext,".otf"))) continue;
+        strcpy(paths[count],path);
+        snprintf(names[count],96,"%.95s",path+strlen("/sd/fonts/")); count++;
+    }
+    closedir(d);
+}
+void ink_font_scan(void)
+{
+    char active[512]; snprintf(active,sizeof(active),"%s",paths[selected]);
+    count=1; selected=0; scan_fonts("/sd/fonts",0);
+    for(unsigned i=1;i<count;i++) if(!strcmp(paths[i],active)) { selected=i; break; }
+}
 int ink_font_init(void)
 {
     strcpy(names[0],"InkPy Mono");
     if(FT_Init_FreeType(&library)) return -1;
-    DIR *d=opendir("/sd/fonts"); struct dirent *entry;
-    if(d) {
-        while(count<32&&(entry=readdir(d))) {
-            const char *ext=strrchr(entry->d_name,'.');
-            if(entry->d_name[0]=='.'||!ext||(strcasecmp(ext,".ttf")&&strcasecmp(ext,".otf"))) continue;
-            int n=snprintf(paths[count],512,"/sd/fonts/%s",entry->d_name);
-            if(n<0||n>=512) continue;
-            snprintf(names[count],96,"%.95s",entry->d_name); count++;
-        }
-        closedir(d);
-    }
+    ink_font_scan();
     return ink_font_select(0);
 }
 static unsigned decode(const unsigned char **p)
@@ -68,7 +81,7 @@ void ink_font_text(uint8_t *frame,unsigned x,unsigned y,const char *s,
     /* Compact controls keep their fixed hit grid in landscape; glyphs retain
      * their aspect ratio instead of stretching with that grid. Reader pages
      * reflow at native 800x480 and use the ordinary branch. */
-    bool compact=ink_view_landscape&&limit==464;
+    bool compact=ink_view_landscape&&(limit==464||limit==480);
     unsigned glyph_height=compact?height*480/800:height;
     unsigned advance=compact&&!(style&256)?(cell*480/800)*480/800:cell;
     if(!advance) advance=1;

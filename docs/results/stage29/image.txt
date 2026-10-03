@@ -1,0 +1,48 @@
+esptool.py v4.12.0
+File size: 2588752 (bytes)
+
+ESP32S3 image header
+====================
+Image version: 1
+Entry point: 0x403756dc
+Segments: 7
+Flash size: 16MB
+Flash freq: 80m
+Flash mode: DIO
+
+ESP32S3 extended image header
+=============================
+WP pin: 0xee (disabled)
+Flash pins drive settings: clk_drv: 0x0, q_drv: 0x0, d_drv: 0x0, cs0_drv: 0x0, hd_drv: 0x0, wp_drv: 0x0
+Chip ID: 9 (ESP32-S3)
+Minimal chip revision: v0.0, (legacy min_rev = 0)
+Maximal chip revision: v0.99
+
+Segments information
+====================
+Segment   Length   Load addr   File offs  Memory types
+-------  -------  ----------  ----------  ------------
+      0  0xe7db0  0x3c180020  0x00000018  DROM
+      1  0x06b00  0x3fc9ca00  0x000e7dd0  BYTE_ACCESSIBLE, MEM_INTERNAL, DRAM
+      2  0x01738  0x40374000  0x000ee8d8  MEM_INTERNAL, IRAM
+      3  0x170d1c  0x42000020  0x000f0018  IROM
+      4  0x1725c  0x40375738  0x00260d3c  MEM_INTERNAL, IRAM
+      5  0x00020  0x50000000  0x00277fa0  RTC_DATA
+      6  0x00058  0x600fe000  0x00277fc8  RTC_DRAM, RTC_IRAM
+
+ESP32S3 image footer
+====================
+Checksum: 0x83 (valid)
+Validation hash: 72e04f92cce118c3bb100ce328092832ae23d83f2a3922821d9e4588222741e8 (valid)
+
+Application information
+=======================
+Project name: inkpy
+App version: 09f21fb-dirty
+Compile time: Oct  3 2026 17:20:45
+ELF file SHA256: 393626bab4ac4f0977e02179056a21394edbd88af4bdd5a3ff68972fdbb88b8c
+ESP-IDF: v5.5.5-dirty
+Minimal eFuse block revision: 0.0
+Maximal eFuse block revision: 1.99
+MMU page size: 64 KB
+Secure version: 0
