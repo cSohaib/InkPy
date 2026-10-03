@@ -23,9 +23,9 @@ Python API: [PYTHON-DEVICE.md](PYTHON-DEVICE.md).
 - Xtensa GCC 14.2.0, esp-14.2.0_20260121; ESP32-S3, 16 MiB DIO.
 - Browser ON, diagnostics OFF; 32 KiB main stack.
 - Application: 2,767,840 bytes; slot 8,257,536 bytes, 66% free.
-- SHA-256: 0c670413d9c6bad52b20f714ad8bb691643654b531e73b94bdcd433b7e85e182.
+- SHA-256: 15969001175f5f592be4c9ebad02c4c64cb7c39eb2a43b1c5f09db3b6b35eec2.
 - Build: bash scripts/build-browser.sh; output build-browser/firmware.bin.
-- Evidence: results/stage25, valid esptool checksum and validation hash.
+- Evidence: results/stage25/final-check.txt, valid esptool checksum and validation hash.
 
 ## Physical checks and limits
 

@@ -1,0 +1,19 @@
+2026-10-03: final pre-test check requested by user.
+Application source: local 5c01399, matching GitHub 9f303687 content.
+No functional source changes; rebuild updates application build metadata.
+Product build: passed on pinned ESP-IDF v5.5.5 / ESP32-S3.
+Header: ESP32-S3 chip ID 9, 16MB flash, DIO, 80MHz.
+Application size: 2767840 bytes; both configured OTA slots 0x7e0000.
+Application SHA256: 15969001175f5f592be4c9ebad02c4c64cb7c39eb2a43b1c5f09db3b6b35eec2
+esptool image checksum and validation hash: valid.
+Delivery firmware.bin: byte-identical to freshly generated application.
+SD resources ZIP CRC: passed.
+All 30 SD manifest file-size/SHA256 checks: passed.
+Reader test using delivered SD math tree: passed (rendering/fallback,
+H2 navigation, page entry/paging, close cleanup and binary rejection).
+Earlier Stage 25 host checks remain valid; functional sources unchanged.
+Boot-confirmation and no-eFuse anti-rollback guard retained.
+No bootloader/partition image distributed; no physical device flashed here.
+Ready for exploratory test, not a hardware-validated release.
+Remaining: physical typing/refresh/heap/stack/gauge/Wi-Fi/TLS/Stop/Close/sleep;
+fix concrete issues, save recovery/cache/layout polish, EPUB deferred.

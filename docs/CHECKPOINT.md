@@ -3,6 +3,15 @@
 Updated: 2026-10-03. Stage 25: remaining non-EPUB integration.
 Committed stage boundary: pause before starting further implementation.
 
+Final pre-test check (2026-10-03): rebuilt the committed Stage 25 application;
+ESP32-S3 / 16MB DIO / 80MHz header, checksum/hash and OTA-slot fit pass.
+SD ZIP CRC and all 30 manifest resource hashes pass; reader/math/navigation checks
+also pass using the exact supplied SD math tree. No functional code changes.
+Current download SHA-256: 15969001175f5f592be4c9ebad02c4c64cb7c39eb2a43b1c5f09db3b6b35eec2.
+The rebuilt image remains 2,767,840 bytes. Earlier Stage 25 hash below is historical.
+Evidence: results/stage25/final-check.txt. Ready for exploratory device testing;
+physical timing/heap/panel/Wi-Fi/sleep acceptance remains pending.
+
 ## Current stage: 25 delivered
 - User requested the full non-EPUB remainder in this batch, overriding the usual
   small-stage scope. Pause after commit/delivery; EPUB remains explicitly excluded.
