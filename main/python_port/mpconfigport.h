@@ -17,3 +17,6 @@ void ink_python_poll(void);
 /* Embed's helper header has no Xtensa register type. Actual collection uses
  * python_gc.c's upstream ESP32 register-window spilling strategy, not setjmp. */
 #define MICROPY_GCREGS_SETJMP (1)
+
+/* Match the pinned upstream ESP32 port: IDF uses the windowed Xtensa ABI. */
+#define MICROPY_NLR_SETJMP (1)

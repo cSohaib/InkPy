@@ -23,9 +23,8 @@ static void wait_power_released(void)
 
 esp_err_t ink_sleep(void)
 {
-    /* The diagnostic has no VM, open files, Wi-Fi or other worker tasks. When
-     * these are added, this entry point must be preceded by a quiesce handshake,
-     * never vTaskSuspend on a worker that may own a bus/filesystem lock. */
+    /* Product caller acknowledges VM pause, flushes editor work and pauses input
+     * capture before entry. Never suspend a task that may own driver/FS locks. */
     ESP_RETURN_ON_ERROR(ink_display_sleep(), TAG, "panel standby");
     ESP_RETURN_ON_ERROR(ink_light_sleep(true), TAG, "light off");
     esp_err_t e = ink_touch_enable(false);

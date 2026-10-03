@@ -1,0 +1,12 @@
+4200b678 T app_main
+42021234 T ink_capture_next
+42021278 T ink_capture_pause
+420212b0 T ink_capture_resume
+4202119c T ink_capture_start
+4200db80 T ink_python_worker_close
+4200dd34 T ink_python_worker_home
+4200dd60 T ink_python_worker_page
+4200db50 T ink_python_worker_pause
+4200d980 T ink_python_worker_start
+4200dc34 T ink_python_worker_tap
+420133e4 T nlr_jump

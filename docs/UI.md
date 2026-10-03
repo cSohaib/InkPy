@@ -13,7 +13,8 @@ a confirmed requirement. Hardware initialization/recovery may require a full ref
 Touch/button capture must continue during display refresh. Queue discrete key/tap
 events and consume them in order; do not wait for rendering before listening for
 the next tap. Coalesce drawing, not input. Fast repeated keyboard taps must remain
-separate characters. Current blocking renderer does not meet this requirement yet.
+separate characters. Stage 22 implements independent input capture and a 256-event
+FIFO while rendering remains blocking; physical fast-typing verification is pending.
 
 ## Home: file browser
 - Filename list, no thumbnails.

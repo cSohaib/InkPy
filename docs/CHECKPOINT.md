@@ -1,7 +1,34 @@
 # InkPy checkpoint
 
-Updated: 2026-10-03 (Luxembourg). Stage 21 FreeRTOS MicroPython port compiles; see docs/MICROPYTHON.md.
+Updated: 2026-10-03. Stage 22 larger batch: device console/Execute + independent input capture.
 Committed stage boundary: pause before starting further implementation.
+
+## Current stage: 22 delivered
+- `main/browser_app.c` connects the native Python worker to Console/Execute,
+  keyboard submission, history paging, Home Stop/Close/Cancel and long Home Close.
+  Globals persist until Stop/Close; cleanup is acknowledged before browser return.
+- Manual sleep waits for VM pause acknowledgment; wake resumes it. Busy Python
+  inhibits auto-sleep, without a script runtime limit. Failed pause handshakes
+  leave the device awake. Editor work is flushed before sleep.
+- `main/input_capture.c` captures independently every 10 ms into a 256-event FIFO,
+  including during blocking display refresh. UI drains batches and coalesces draws.
+  `main/input_events.c` owns discrete gesture classification. Overflow logs are
+  explicit; this finite queue is not a guarantee against unlimited input bursts.
+- Touch/RTC I2C access is serialized. Sleep pauses capture by acknowledgment and
+  consumes stale/wake gestures on resume. The UI still owns display/frame access.
+- Native NLR now matches pinned upstream ESP32 `MICROPY_NLR_SETJMP`; the combined
+  link exposed an out-of-range jump in embed's architecture-selected assembly NLR.
+  No dependency revision or cached upstream source was changed.
+- Product and separate Python diagnostic compile/link; own code uses warnings as
+  errors. Host Python script/REPL and console workflow checks passed. Input tests
+  cover repeated taps buffered before consumption, ordering, swipes and buttons.
+  Results: `docs/results/stage22/`. No physical native execution, memory margin,
+  touch speed or sleep/resume claim follows from these checks.
+- Downloadable firmware.bin remains Stage 20; user will test after integration.
+  Full refresh remains current behavior; partial refresh is still pending.
+- Next bounded task: connect existing Markdown/math reader to the device browser.
+  StarDict/fonts, missing power controls, Python file/network bindings and partial
+  refresh remain pending. Do not implement the entire remainder in one run.
 
 ## Read first
 AGENTS.md and this checkpoint; docs/UI.md owns the current interaction contract.
@@ -16,8 +43,8 @@ Stage 3 measurements in MATH-PROTOTYPE.md are historical host results.
 - Reader Home: Go to chapter / Go to page / Close, with current page and chapter.
   Markdown chapters are parsed H2 headings only; EPUB chapter handling comes later.
 - Time/date/battery visible only in power-menu header; no status bar elsewhere.
-- Product menus are still unimplemented. The above is the updated UI contract,
-  not a claim that the firmware already displays these menus.
+- Power/editor/console menus are connected; reader menus remain a UI contract
+  until the existing reader is connected to the device.
 
 ## Stage 4 delivered
 - Shared C API and small C++ math backend moved from prototypes/math into

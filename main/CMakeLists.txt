@@ -4,8 +4,10 @@ idf_build_get_property(INKPY_PYTHON_DIAGNOSTIC INKPY_PYTHON_DIAGNOSTIC)
 set(app_source "main.c")
 set(extra_sources "")
 set(extra_requires "")
-if(INKPY_PYTHON_DIAGNOSTIC)
-    set(app_source "python_diagnostic.c")
+if(INKPY_PYTHON_DIAGNOSTIC OR INKPY_BROWSER)
+    if(INKPY_PYTHON_DIAGNOSTIC)
+        set(app_source "python_diagnostic.c")
+    endif()
     set(embed "${CMAKE_CURRENT_LIST_DIR}/../generated-python/embed")
     if(NOT EXISTS "${embed}/genhdr/qstrdefs.generated.h")
         message(FATAL_ERROR "Run scripts/prepare-python-device.sh first")
@@ -14,7 +16,10 @@ if(INKPY_PYTHON_DIAGNOSTIC)
     list(REMOVE_ITEM python_vendor "${embed}/port/mphalport.c")
     list(APPEND extra_sources "python_worker.c" "python_gc.c"
         "../components/ink_python/ink_python.c" "../components/ink_python/ink_console.c"
-        "../components/ink_browser/ink_keyboard.c" ${python_vendor})
+        ${python_vendor})
+    if(INKPY_PYTHON_DIAGNOSTIC)
+        list(APPEND extra_sources "../components/ink_browser/ink_keyboard.c")
+    endif()
 endif()
 if(INKPY_MATH_DIAGNOSTIC)
     list(APPEND extra_sources "math_diagnostic.c")
@@ -23,7 +28,7 @@ endif()
 if(INKPY_BROWSER)
     set(app_source "browser_app.c")
     list(APPEND extra_sources "../components/ink_browser/ink_browser.c" "../components/ink_browser/browser_draw.c" "../components/ink_browser/ink_text.c" "../components/ink_browser/ink_keyboard.c")
-    list(APPEND extra_sources "../components/ink_browser/ink_editor.c" "../components/ink_browser/ink_power.c" "boot.c")
+    list(APPEND extra_sources "../components/ink_browser/ink_editor.c" "../components/ink_browser/ink_power.c" "boot.c" "input_events.c" "input_capture.c")
 endif()
 idf_component_register(SRCS ${app_source} "board.c" "display.c" "input.c" "sleep.c" ${extra_sources}
     INCLUDE_DIRS "." "../components/ink_browser"
@@ -31,7 +36,7 @@ idf_component_register(SRCS ${app_source} "board.c" "display.c" "input.c" "sleep
              esp_driver_sdmmc fatfs sdmmc esp_timer esp_hw_support esp_system
              esp_psram app_update ${extra_requires})
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wall -Wextra -Werror)
-if(INKPY_PYTHON_DIAGNOSTIC)
+if(INKPY_PYTHON_DIAGNOSTIC OR INKPY_BROWSER)
     target_include_directories(${COMPONENT_LIB} PRIVATE "python_port" "${embed}"
         "${embed}/port" "../components/ink_python")
     # Generated upstream sources retain warnings without turning them into errors.

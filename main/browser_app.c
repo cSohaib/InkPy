@@ -1,47 +1,108 @@
 #include "board.h"
-#include "input.h"
-#include "pins.h"
 #include "boot.h"
 #include "orientation.h"
+#include "input_capture.h"
+#include "python_worker.h"
 #include "ink_browser.h"
 #include "ink_editor.h"
 #include "ink_power.h"
 #include "sdkconfig.h"
 #include <stdio.h>
-#include <stdlib.h>
-#include "driver/gpio.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 
 static ink_browser browser;
-_Static_assert(CONFIG_ESP_MAIN_TASK_STACK_SIZE>=16384,"Editor needs >=16 KiB main stack; update sdkconfig");
+_Static_assert(CONFIG_ESP_MAIN_TASK_STACK_SIZE>=16384,"Editor needs >=16 KiB main stack");
 static ink_editor editor;
-static bool editor_active;
+static ink_python_worker python;
+static ink_console console;
+static bool editor_active,console_active,python_started,paused,closed;
 static ink_power power_menu={.brightness=20,.warmth=50};
+static uint32_t milliseconds(void) { return (uint32_t)(esp_timer_get_time()/1000); }
 static void draw(uint8_t *frame)
 {
     if(power_menu.open) ink_power_draw(&power_menu,frame);
     else if(editor_active) ink_editor_draw(&editor,frame);
+    else if(console_active) ink_console_draw(&console,frame);
     else ink_browser_draw(&browser,frame);
     if(power_menu.night) for(unsigned i=0;i<PANEL_BYTES;i++) frame[i]^=255;
     ink_frame_rotate_180(frame);
 }
-static void open_editor(void)
+static void notice(const char *text)
+{ snprintf(browser.message,sizeof(browser.message),"%s",text); browser.view=INK_NOTICE; }
+static void open_requests(void)
 {
-    if(editor_active || browser.view!=INK_EDIT_TEXT) return;
-    if(ink_editor_open(&editor,browser.selected)) {
-        snprintf(browser.message,sizeof(browser.message),"%s",editor.error); browser.view=INK_NOTICE;
-    } else editor_active=true;
+    if(editor_active||console_active) return;
+    if(browser.view==INK_EDIT_TEXT) {
+        if(ink_editor_open(&editor,browser.selected)) notice(editor.error);
+        else editor_active=true;
+    } else if(browser.view==INK_OPEN_CONSOLE||browser.view==INK_EXECUTE_PYTHON) {
+        bool file=browser.view==INK_EXECUTE_PYTHON;
+        if(!python_started) {
+            if(ink_python_worker_start(&python)!=ESP_OK) { notice("Cannot allocate Python session"); return; }
+            python_started=true;
+        } else if(!ink_python_worker_reopen(&python)) { notice("Python session still closing"); return; }
+        console_active=true;
+        if(file&&!ink_python_worker_submit(&python,browser.selected,true)) {
+            ink_python_worker_close(&python);
+            /* Return only after the worker has acknowledged cleanup. */
+        }
+        ink_python_worker_snapshot(&python,&console,&paused,&closed);
+    }
 }
-static void handle_home(bool long_press)
+static void home(bool long_press)
 {
-    if(power_menu.open) { power_menu.open=false; return; }
-    if(editor_active) {
+    if(power_menu.open) power_menu.open=false;
+    else if(console_active) ink_python_worker_home(&python,long_press);
+    else if(editor_active) {
         if(ink_editor_home(&editor,long_press)) { editor_active=false; ink_browser_home(&browser); }
     } else ink_browser_home(&browser);
+}
+static bool dispatch(const ink_event *event)
+{
+    unsigned x,y;
+    switch(event->kind) {
+    case INK_EVENT_PREV: case INK_EVENT_NEXT:
+        if(power_menu.open||event->press!=INK_PRESS_SHORT) return false;
+        if(editor_active) ink_editor_page(&editor,event->kind==INK_EVENT_PREV?-1:1);
+        else if(console_active) ink_python_worker_page(&python,event->kind==INK_EVENT_PREV?-1:1);
+        else ink_browser_page(&browser,event->kind==INK_EVENT_PREV?-1:1);
+        return true;
+    case INK_EVENT_HOME: home(event->press==INK_PRESS_LONG); return true;
+    case INK_EVENT_TOUCH:
+        if(event->x>=800||event->y>=480) return false;
+        ink_panel_to_ui(event->x,event->y,&x,&y);
+        if(event->press==INK_PRESS_LONG) {
+            if(!power_menu.open&&!editor_active&&!console_active) return ink_browser_long_press(&browser,x,y);
+            return false;
+        }
+        if(power_menu.open) {
+            if(ink_power_tap(&power_menu,x,y)==INK_POWER_LIGHT &&
+               ink_light_set(power_menu.brightness,power_menu.warmth,power_menu.on)!=ESP_OK)
+                snprintf(power_menu.message,sizeof(power_menu.message),"Light update failed");
+        } else if(editor_active) {
+            if(ink_editor_tap(&editor,x,y)) { editor_active=false; ink_browser_home(&browser); }
+        } else if(console_active) ink_python_worker_tap(&python,x,y);
+        else ink_browser_tap(&browser,x,y);
+        return true;
+    case INK_EVENT_POWER:
+        if(event->press==INK_PRESS_SHORT) {
+            power_menu.open=!power_menu.open; power_menu.message[0]=0;
+            if(power_menu.open) {
+                struct tm time;
+                if(ink_rtc_read(&time)==ESP_OK) strftime(power_menu.time,sizeof(power_menu.time),"%Y-%m-%d %H:%M",&time);
+                else power_menu.time[0]=0;
+            }
+            return true;
+        }
+        if(event->press==INK_PRESS_DOUBLE) {
+            power_menu.on=!power_menu.on;
+            ink_light_set(power_menu.brightness,power_menu.warmth,power_menu.on);
+            return power_menu.open;
+        }
+    }
+    return false;
 }
 void app_main(void)
 {
@@ -51,92 +112,71 @@ void app_main(void)
     if(e!=ESP_OK) { ESP_LOGE(tag,"board: %s",esp_err_to_name(e)); return; }
     e=ink_display_init();
     if(e!=ESP_OK) { ESP_LOGE(tag,"display: %s",esp_err_to_name(e)); return; }
-    e=ink_sd_mount();
-    ESP_LOGI(tag,"SD: %s",esp_err_to_name(e));
-    /* New file and editor write to SD; no diagnostic SD write probe. */
+    e=ink_sd_mount(); ESP_LOGI(tag,"SD: %s",esp_err_to_name(e));
     ink_browser_init(&browser,"/sd");
-    uint8_t *frame=heap_caps_malloc(48000,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+    uint8_t *frame=heap_caps_malloc(PANEL_BYTES,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
     if(!frame) { ESP_LOGE(tag,"frame allocation failed"); return; }
+    e=ink_capture_start();
+    if(e!=ESP_OK) { heap_caps_free(frame); ESP_LOGE(tag,"input: %s",esp_err_to_name(e)); return; }
     draw(frame);
     if(ink_display_frame(frame)!=ESP_OK) { heap_caps_free(frame); return; }
     e=ink_boot_confirm();
-    if(e!=ESP_OK) ESP_LOGE(tag,"boot confirmation failed: %s; next reset may roll back",esp_err_to_name(e));
-    ink_button_t prev={0},next={0},home={0},power={0},contact={0};
-    ink_touch_t touch={0};
-    unsigned origin_x=0,origin_y=0;
-    bool moved=false;
-    uint32_t last_activity=(uint32_t)(esp_timer_get_time()/1000);
+    if(e!=ESP_OK) ESP_LOGE(tag,"boot confirmation: %s",esp_err_to_name(e));
+    uint32_t revision=0,last_draw=milliseconds(),sleep_at=0,last_sleep=0;
+    unsigned dropped=0;
+    bool dirty=false,sleep_requested=false;
     for(;;) {
-        uint32_t now=(uint32_t)(esp_timer_get_time()/1000);
-        bool fresh=false,changed=false; ink_touch_t t;
-        if(ink_touch_read(&t,&fresh)==ESP_OK && fresh) {
-            if(!touch.contacts && t.contacts) { origin_x=t.x; origin_y=t.y; moved=false; }
-            if(t.contacts>1 || (t.contacts && (abs((int)t.x-(int)origin_x)>12 || abs((int)t.y-(int)origin_y)>12))) moved=true;
-            touch=t;
+        ink_event event;
+        /* Capture continues while this task draws. Drain FIFO and paint once,
+         * retaining repeated keys rather than polling only between refreshes. */
+        unsigned batch=0;
+        while(ink_capture_next(&event,batch?0:pdMS_TO_TICKS(10))) {
+            if(event.kind==INK_EVENT_POWER&&event.press==INK_PRESS_LONG) {
+                sleep_requested=true; sleep_at=milliseconds();
+                if(console_active) ink_python_worker_pause(&python,true);
+            } else dirty|=dispatch(&event);
+            open_requests();
+            if(++batch==256) break;
         }
-        bool p=!gpio_get_level(PIN_POWER),a=!gpio_get_level(PIN_PREV),b=!gpio_get_level(PIN_NEXT);
-        if(p||a||b||touch.home||touch.contacts) last_activity=now;
-        ink_press_t pe=ink_button_update(&power,p,now,true);
-        ink_press_t ae=ink_button_update(&prev,a,now,false);
-        ink_press_t be=ink_button_update(&next,b,now,false);
-        ink_press_t he=ink_button_update(&home,touch.home,now,false);
-        ink_press_t te=ink_button_update(&contact,touch.contacts!=0,now,false);
-        if(!power_menu.open && (ae==INK_PRESS_SHORT || be==INK_PRESS_SHORT)) {
-            int direction=ae==INK_PRESS_SHORT?-1:1;
-            if(editor_active) { ink_editor_page(&editor,direction); changed=true; }
-            else changed|=ink_browser_page(&browser,direction);
+        uint32_t now=milliseconds();
+        if(console_active) {
+            uint32_t next_revision=ink_python_worker_snapshot(&python,&console,&paused,&closed);
+            if(next_revision!=revision) { revision=next_revision; dirty=true; }
+            if(closed) { console_active=false; ink_browser_home(&browser); dirty=true; }
         }
-        if(he==INK_PRESS_SHORT || he==INK_PRESS_LONG) { handle_home(he==INK_PRESS_LONG); changed=true; }
-        if(te==INK_PRESS_SHORT && !moved && origin_x<800 && origin_y<480) {
-            unsigned ui_x,ui_y; ink_panel_to_ui(origin_x,origin_y,&ui_x,&ui_y);
-            if(power_menu.open) {
-                int action=ink_power_tap(&power_menu,ui_x,ui_y);
-                if(action==INK_POWER_LIGHT && ink_light_set(power_menu.brightness,power_menu.warmth,power_menu.on)!=ESP_OK)
-                    snprintf(power_menu.message,sizeof(power_menu.message),"Light update failed");
-                /* All draws are still full refresh. REFRESH closes this modal
-                 * and redraws the untouched underlying page/editor state. */
-                changed=true;
-            } else if(editor_active) {
-                if(ink_editor_tap(&editor,ui_x,ui_y)) { editor_active=false; ink_browser_home(&browser); }
-                changed=true;
-            } else changed|=ink_browser_tap(&browser,ui_x,ui_y);
+        unsigned lost=ink_capture_dropped();
+        if(lost!=dropped) {
+            ESP_LOGW(tag,"input queue overflow: %u events",lost-dropped); dropped=lost;
         }
-        if(te==INK_PRESS_LONG && !power_menu.open && !editor_active && !moved && origin_x<800 && origin_y<480) {
-            unsigned ui_x,ui_y; ink_panel_to_ui(origin_x,origin_y,&ui_x,&ui_y);
-            changed|=ink_browser_long_press(&browser,ui_x,ui_y);
+        if(!sleep_requested&&now-ink_capture_activity()>=300000&&now-last_sleep>=300000&&!(console_active&&console.busy)) {
+            sleep_requested=true; sleep_at=now;
+            if(console_active) ink_python_worker_pause(&python,true);
         }
-        if(changed) open_editor();
-        if(pe==INK_PRESS_SHORT) {
-            power_menu.open=!power_menu.open; power_menu.message[0]=0;
-            if(power_menu.open) {
-                struct tm time;
-                if(ink_rtc_read(&time)==ESP_OK)
-                    strftime(power_menu.time,sizeof(power_menu.time),"%Y-%m-%d %H:%M",&time);
-                else power_menu.time[0]=0;
+        if(sleep_requested) {
+            if(!console_active||paused) {
+                if(editor_active&&fflush(editor.work)) {
+                    snprintf(editor.error,sizeof(editor.error),"Cannot flush before sleep"); dirty=true;
+                } else {
+                    ink_capture_pause();
+                    e=ink_sleep(); ESP_LOGI(tag,"sleep: %s",esp_err_to_name(e));
+                    ink_capture_resume();
+                }
+                if(console_active) ink_python_worker_pause(&python,false);
+                sleep_requested=false; last_sleep=milliseconds();
+            } else if(now-sleep_at>=5000) {
+                /* Native blocking extensions must reach a safe point. Never
+                 * suspend a task that could hold filesystem/driver locks. */
+                ink_python_worker_pause(&python,false); sleep_requested=false; last_sleep=now;
+                ESP_LOGW(tag,"Python did not acknowledge sleep; staying awake");
             }
-            changed=true;
         }
-        if(pe==INK_PRESS_DOUBLE) {
-            power_menu.on=!power_menu.on;
-            ink_light_set(power_menu.brightness,power_menu.warmth,power_menu.on);
-            changed|=power_menu.open;
-        }
-        if(pe==INK_PRESS_LONG || now-last_activity>=300000) {
-            if(editor_active && fflush(editor.work)) {
-                snprintf(editor.error,sizeof(editor.error),"Cannot flush before sleep");
-                last_activity=now;
-                draw(frame); ink_display_frame(frame); vTaskDelay(pdMS_TO_TICKS(10)); continue;
-            }
-            e=ink_sleep(); ESP_LOGI(tag,"sleep: %s",esp_err_to_name(e));
-            prev=next=home=power=contact=(ink_button_t){0}; touch=(ink_touch_t){0};
-            last_activity=(uint32_t)(esp_timer_get_time()/1000); changed=false;
-        }
-        if(changed) {
+        if(dirty&&now-last_draw>=250) {
             draw(frame);
             if(ink_display_frame(frame)!=ESP_OK) { ESP_LOGE(tag,"display failed"); break; }
+            last_draw=milliseconds(); dirty=false;
         }
-        vTaskDelay(pdMS_TO_TICKS(10));
     }
     if(editor_active) ink_editor_discard(&editor);
-    heap_caps_free(frame);
+    if(console_active) ink_python_worker_close(&python);
+    ink_capture_pause(); heap_caps_free(frame);
 }

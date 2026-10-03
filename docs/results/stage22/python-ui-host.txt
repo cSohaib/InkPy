@@ -1,0 +1,7 @@
+OK: .py job, not executable, script output/globals, missing file recovery
+OK: Home menu, Cancel, pause acknowledgment, Stop while paused, VM reset, result 42
+OK: Close while running and paused acknowledges VM cleanup
+OK: second Home cancels, long Home closes, fresh console opens
+OK: browser Console, long press Execute, script output, tapped REPL, Close returns, running-file long Home
+OK: browser Edit, tapped cursor/Delete/type, Save, Cancel, Discard, long Home, temp cleanup
+OK: create .py, type, Save, Execute -> 42; extensionless creation and Discard

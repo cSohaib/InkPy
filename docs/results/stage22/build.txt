@@ -1,0 +1,11 @@
+build-browser/firmware.bin: 520032 bytes; SHA256 146e6e83d83dc3ac3f37a31cfa26f453fb465b11f304c976d6ac4f4aa723b182
+build-python/inkpy.bin: 306880 bytes; SHA256 21a9eb4c18b3b54ba9cb96a647a1f898b45f7035fca05e2d8020deaf592373ca
+Bootloader binary size 0x5170 bytes. 0x2e90 bytes (36%) free.
+inkpy.bin binary size 0x7ef60 bytes. Smallest app partition is 0x7e0000 bytes. 0x7610a0 bytes (94%) free.
+Project build complete. To flash, run:
+Bootloader binary size 0x5170 bytes. 0x2e90 bytes (36%) free.
+inkpy.bin binary size 0x4aec0 bytes. Smallest app partition is 0x7e0000 bytes. 0x795140 bytes (96%) free.
+Project build complete. To flash, run:
+Native builds/links only: no device execution or flashing.
+Host Python/UI and input-event results are adjacent files.
+Download remains the Stage 20 image; generated Stage 22 binaries stay in build folders.

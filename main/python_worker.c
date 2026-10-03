@@ -26,7 +26,7 @@ static bool control(void *context)
     }
 }
 static void output(void *context,const char *bytes,size_t n)
-{ ink_python_worker *s=context; lock(s); ink_console_output(&s->console,bytes,n); unlock(s); }
+{ ink_python_worker *s=context; lock(s); ink_console_output(&s->console,bytes,n); s->revision++; unlock(s); }
 static void worker(void *context)
 {
     ink_python_worker *s=context; int stack_top;
@@ -49,12 +49,12 @@ static void worker(void *context)
             lock(s);
             if(result==2) ink_console_output(&s->console,"Stopped; Python reset\n",22);
             /* Closing wins over completion; no new jobs until Close acknowledgment. */
-            ink_console_completed(&s->console,more); s->stop=false; s->paused=false;
+            ink_console_completed(&s->console,more); s->stop=false; s->paused=false; s->revision++;
             unlock(s);
         }
         ink_python_close();
         lock(s); s->closed=true; s->paused=false; s->queued=false;
-        s->console.busy=false; unlock(s);
+        s->console.busy=false; s->revision++; unlock(s);
     }
 }
 esp_err_t ink_python_worker_start(ink_python_worker *s)
@@ -84,7 +84,7 @@ bool ink_python_worker_submit(ink_python_worker *s,const char *text,bool file)
     if(valid) {
         memcpy(file?s->path:s->command,text,n+1); s->file_job=file;
         if(!file) { memcpy(s->console.input,text,n+1); s->console.used=n; }
-        s->console.busy=true; s->queued=true;
+        s->console.busy=true; s->queued=true; s->revision++;
     }
     unlock(s); if(valid) xTaskNotifyGive(s->task); return valid;
 }
@@ -94,17 +94,48 @@ void ink_python_worker_stop(ink_python_worker *s)
     if(s->queued) { s->queued=false; ink_console_completed(&s->console,false); }
     else if(s->console.busy) s->stop=true;
     else ink_console_completed(&s->console,false);
-    s->pause=false; unlock(s); xTaskNotifyGive(s->task);
+    s->pause=false; s->revision++; unlock(s); xTaskNotifyGive(s->task);
 }
 void ink_python_worker_pause(ink_python_worker *s,bool paused)
 { lock(s); s->pause=paused; if(!paused) s->paused=false; unlock(s); xTaskNotifyGive(s->task); }
 void ink_python_worker_close(ink_python_worker *s)
-{ lock(s); s->closing=true; unlock(s); xTaskNotifyGive(s->task); }
+{ lock(s); s->closing=true; s->revision++; unlock(s); xTaskNotifyGive(s->task); }
 bool ink_python_worker_reopen(ink_python_worker *s)
 {
     lock(s); bool ready=s->closed;
-    if(ready) { ink_console_init(&s->console); s->closing=s->closed=s->stop=s->pause=s->paused=false; s->opening=true; }
+    if(ready) { ink_console_init(&s->console); s->closing=s->closed=s->stop=s->pause=s->paused=false; s->opening=true; s->revision++; }
     unlock(s); if(ready) xTaskNotifyGive(s->task); return ready;
 }
-void ink_python_worker_snapshot(ink_python_worker *s,ink_console *console,bool *paused,bool *closed)
-{ lock(s); *console=s->console; *paused=s->paused; *closed=s->closed; unlock(s); }
+uint32_t ink_python_worker_snapshot(ink_python_worker *s,ink_console *console,bool *paused,bool *closed)
+{ lock(s); *console=s->console; *paused=s->paused; *closed=s->closed; uint32_t revision=s->revision; unlock(s); return revision; }
+
+void ink_python_worker_tap(ink_python_worker *s,unsigned x,unsigned y)
+{
+    lock(s); int action=INK_CONSOLE_NONE; bool submit=false;
+    if(!s->closing&&!s->closed) {
+        if(s->console.menu) action=ink_console_tap(&s->console,x,y);
+        else if(!s->console.busy) {
+            int key=ink_keyboard_tap(&s->console.keyboard,x,y);
+            if(ink_console_key(&s->console,key)) {
+                memcpy(s->command,s->console.input,s->console.used+1);
+                const char *line=strrchr(s->command,'\n'); line=line?line+1:s->command;
+                ink_console_output(&s->console,s->console.more?"... ":">>> ",4);
+                ink_console_output(&s->console,line,strlen(line));
+                ink_console_output(&s->console,"\n",1);
+                s->file_job=false; s->queued=true; submit=true;
+            }
+        }
+        s->revision++;
+    }
+    unlock(s);
+    if(submit) xTaskNotifyGive(s->task);
+    if(action==INK_CONSOLE_STOP) ink_python_worker_stop(s);
+    if(action==INK_CONSOLE_CLOSE) ink_python_worker_close(s);
+}
+void ink_python_worker_home(ink_python_worker *s,bool long_press)
+{
+    lock(s); int action=ink_console_home(&s->console,long_press); s->revision++; unlock(s);
+    if(action==INK_CONSOLE_CLOSE) ink_python_worker_close(s);
+}
+void ink_python_worker_page(ink_python_worker *s,int direction)
+{ lock(s); ink_console_page(&s->console,direction); s->revision++; unlock(s); }

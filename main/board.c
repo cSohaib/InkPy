@@ -19,10 +19,12 @@
 #include "esp_vfs_fat.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "sdmmc_cmd.h"
 
 static const char *TAG = "board";
 static i2c_master_bus_handle_t i2c;
+static SemaphoreHandle_t i2c_lock;
 static i2c_master_dev_handle_t touch, rtc, gauge;
 static sdmmc_card_t *card;
 static unsigned saved_brightness = 20, saved_warmth = 50;
@@ -71,7 +73,7 @@ esp_err_t ink_light_sleep(bool sleeping)
     return e;
 }
 
-esp_err_t ink_touch_enable(bool enabled)
+static esp_err_t touch_enable(bool enabled)
 {
     if (touch) {
         ESP_RETURN_ON_ERROR(i2c_master_bus_rm_device(touch), TAG, "remove touch handle");
@@ -106,7 +108,7 @@ esp_err_t ink_touch_enable(bool enabled)
     return ESP_ERR_NOT_FOUND;
 }
 
-esp_err_t ink_touch_read(ink_touch_t *out, bool *fresh)
+static esp_err_t touch_read(ink_touch_t *out, bool *fresh)
 {
     *fresh = false;
     if (!touch) return ESP_ERR_INVALID_STATE;
@@ -134,7 +136,7 @@ esp_err_t ink_touch_read(ink_touch_t *out, bool *fresh)
 
 static int bcd(uint8_t b) { return (b >> 4) * 10 + (b & 15); }
 
-esp_err_t ink_rtc_read(struct tm *out)
+static esp_err_t rtc_read(struct tm *out)
 {
     if (!rtc) return ESP_ERR_INVALID_STATE;
     uint8_t reg = 2, data[7];
@@ -160,6 +162,8 @@ esp_err_t ink_rtc_read(struct tm *out)
 
 esp_err_t ink_board_init(void)
 {
+    i2c_lock=xSemaphoreCreateMutex();
+    if(!i2c_lock) return ESP_ERR_NO_MEM;
     ESP_RETURN_ON_ERROR(output(PIN_RAIL, 1), TAG, "peripheral rail");
     const gpio_config_t buttons = {
         .pin_bit_mask = (1ULL << PIN_PREV) | (1ULL << PIN_NEXT) | (1ULL << PIN_POWER),
@@ -195,6 +199,22 @@ esp_err_t ink_board_init(void)
         ESP_RETURN_ON_ERROR(add_device(0x63, &gauge), TAG, "gauge handle");
     }
     return ESP_OK;
+}
+
+esp_err_t ink_touch_enable(bool enabled)
+{
+    xSemaphoreTake(i2c_lock,portMAX_DELAY);
+    esp_err_t e=touch_enable(enabled); xSemaphoreGive(i2c_lock); return e;
+}
+esp_err_t ink_touch_read(ink_touch_t *out,bool *fresh)
+{
+    xSemaphoreTake(i2c_lock,portMAX_DELAY);
+    esp_err_t e=touch_read(out,fresh); xSemaphoreGive(i2c_lock); return e;
+}
+esp_err_t ink_rtc_read(struct tm *out)
+{
+    xSemaphoreTake(i2c_lock,portMAX_DELAY);
+    esp_err_t e=rtc_read(out); xSemaphoreGive(i2c_lock); return e;
 }
 
 esp_err_t ink_sd_mount(void)

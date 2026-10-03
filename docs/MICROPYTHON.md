@@ -22,7 +22,8 @@ the core's idle watchdog task. Blocking native calls still need future cooperati
 
 Xtensa GC uses the pinned upstream ESP32 register-window spilling strategy,
 with sibling-call optimization disabled; it traces this worker's stack only.
-Native Xtensa NLR and VM abort link successfully. ESP-IDF owns the assertion
+Stage 21 originally linked auto-selected Xtensa NLR; Stage 22 replaces that
+selection with upstream ESP32 setjmp NLR. VM abort links successfully. ESP-IDF owns the assertion
 handler; embed's fallback handler is omitted only for embed_util.c. Its remaining
 fatal nlr_jump_fail loop is still a limitation, not robust device fatal recovery.
 The generated package and this adapted code retain MicroPython's MIT notice.
@@ -34,13 +35,41 @@ run on hardware.** Reports and linked-symbol checks are in results/stage21.
 No runtime correctness, stack margin, GC stress or pause acknowledgment on the
 physical device is claimed from a successful link.
 
-Next: wire the existing onscreen console/keyboard and browser Execute into this
-adapter. Serialize SD ownership before enabling concurrent browser/editor and
-script file reads. Sleep must wait for acknowledged VM quiescence without holding
-the session lock; auto-sleep remains inhibited during an active job. Render a
-snapshot outside the mutex and throttle output redraws. Separately capture and
-queue touch/button events while panel refresh runs; current browser still drops
-taps during blocking refresh. Capture events first, coalesce only rendering.
+## Stage 22: product console and input capture
+
+The device browser now opens the onscreen REPL and executes selected `.py` files
+through the same worker. Enter submits a command; globals persist until Stop or
+Close. Side buttons page current-session history. Home exposes Stop/Close/Cancel;
+long Home requests Close. The browser returns only after VM cleanup acknowledgment.
+Power remains global while the console or its prompt is open.
+
+Manual sleep waits for a cooperative VM pause acknowledgment, then pauses input
+capture before touching panel/light/touch sleep controls. Wake resumes the worker.
+Auto-sleep is inhibited while Python is busy. A five-second failed pause handshake
+leaves the device awake; this is not a script runtime limit. Browser/editor SD
+access and script execution are separated by console ownership and Close acknowledgment.
+Snapshots are drawn outside the worker mutex, with output changes coalesced.
+
+`main/input_capture.c` polls touch/buttons every 10 ms in a separate FreeRTOS task,
+queues up to 256 discrete events, and continues while the UI performs a blocking
+refresh. The UI consumes FIFO events in batches before drawing. Repeated taps are
+separate events; swipes remain ignored. Queue overflow is logged, not silently
+hidden; controller timing and physical fast typing still need device verification.
+RTC reads and touch polling share an I2C mutex. The display driver still performs
+full refreshes: partial refresh is a separate pending task.
+
+The native configuration now explicitly uses `MICROPY_NLR_SETJMP`, matching the
+pinned upstream ESP32 port. This also removes the out-of-range assembly tail jump
+seen when the small diagnostic was linked into the larger browser application.
+The original embedded architecture autodetection is no longer used for native NLR.
+Both product and diagnostic builds link; host script/REPL/UI checks and input event
+checks passed. See results/stage22. Neither native VM execution nor actual touch,
+sleep/resume, stack margin or runtime heap has been verified on this device.
+The downloadable Stage 20 firmware remains unchanged while integration continues.
+
+Next: connect Markdown/math rendering to the device reader; keep partial refresh,
+fonts/StarDict, remaining power controls and Python file/network bindings tracked
+as pending rather than treating this console integration as full feature completion.
 
 ## Existing host prototype
 
@@ -84,8 +113,8 @@ use prototypes/python/app and session: one VM worker, file/REPL command slot,
 cooperative pause and uncaught VM abort. Stop resets globals and retains history;
 Close acknowledges VM cleanup before returning to the browser. Native blocking
 calls need their own cooperation; no universal arbitrary-native-call guarantee.
-The product device browser still shows a pending screen; the separate Stage 21
-FreeRTOS adapter/diagnostic has not yet been connected to its UI.
+The Stage 22 product browser now connects the FreeRTOS adapter to its UI;
+native execution remains untested on physical hardware.
 SD-backed full history is deferred. Upstream embed fatal internal errors still
 use its terminal loop; robust fatal/OOM recovery is deferred.
 

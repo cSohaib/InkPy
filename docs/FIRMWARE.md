@@ -31,6 +31,14 @@ orientation/time-setting/font controls, validated battery service, fast refresh 
 Console/Execute currently show a pending screen. All draws already use the
 existing full-refresh panel driver; a manual refresh-menu control is now present.
 
+## Source progress after this downloadable image
+
+Stage 22 source/builds now connect Python Console/Execute and queue touch/button
+input independently during refresh. The download described here remains Stage 20;
+it has not been replaced by the integration build. Rebuilding the latest source
+therefore produces a different image from the hash below. See MICROPYTHON.md and
+results/stage22 for current build evidence and physical-test limitations.
+
 ## Build identification
 
 - SDK: ESP-IDF v5.5.5, `b774170ff46c393eeb5e495ea37936038d3f4f4f`, clean pinned submodules.
@@ -46,7 +54,7 @@ bash scripts/build-browser.sh
 Output: `build-browser/firmware.bin` (identical to `inkpy.bin`), ELF/map and
 bootloader/partition build outputs. The script builds only; it never flashes.
 
-Current limits: panel refresh blocks the input loop; SD latency, battery behavior,
+Stage 20 download limits: panel refresh blocks its input loop; SD latency, battery behavior,
 sleep, touch, panel variants and editor stack margin need physical checking.
 Device Save uses a backup/replacement sequence because FatFs does not overwrite
 rename destinations. Power-loss recovery and stale backup cleanup are deferred.
