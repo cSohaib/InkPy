@@ -78,3 +78,8 @@ target_include_directories(reader-epub SYSTEM PRIVATE "${FT}/include")
 target_compile_definitions(reader-epub PRIVATE INK_USE_FONTS=1)
 target_compile_options(reader-epub PRIVATE -Wall -Wextra -Werror -UNDEBUG)
 target_link_libraries(reader-epub PRIVATE md4c book-input)
+
+add_executable(reader-incremental incremental.c "${CORE}/ink_layout.c" "${CORE}/md_budget.c")
+target_include_directories(reader-incremental PRIVATE "${CORE}")
+target_compile_options(reader-incremental PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_link_libraries(reader-incremental PRIVATE md4c)

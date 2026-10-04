@@ -9,6 +9,9 @@
 #include "ink_reader.h"
 #include "ink_math.h"
 #include "ink_font.h"
+#include "ink_epub.h"
+#include "ink_icons.h"
+#include "ink_ui.h"
 #include "python_port/native.h"
 #include <sys/stat.h>
 #include "sdkconfig.h"
@@ -37,7 +40,36 @@ static int render_math(const char *source,int display,unsigned pixels,uint8_t *b
     if(status) ESP_LOGW("reader","math render: %s",r.error);
     *w=(unsigned)r.width; *h=(unsigned)r.height; *baseline=(unsigned)r.baseline; return status;
 }
-static void indexing_progress(void) { vTaskDelay(1); }
+static uint8_t *loading_frame;
+static bool loading;
+static uint32_t loading_painted;
+static void loading_pixel(uint8_t *f,unsigned x,unsigned y)
+{
+    if(x>=480||y>=800)return;
+    unsigned dx=799-y,dy=x;f[dy*100+dx/8]&=(uint8_t)~(0x80>>(dx%8));
+}
+static void indexing_progress(void)
+{
+    uint32_t now=(uint32_t)(esp_timer_get_time()/1000);
+    if(loading){ink_event event;while(ink_capture_next(&event,0))if(event.kind==INK_EVENT_HOME&&event.press==INK_PRESS_LONG)ink_epub_cancel();}
+    if(loading&&loading_frame&&(!loading_painted||now-loading_painted>=2000)) {
+        ink_epub_debug("loading phase=%s free-8bit=%u largest-8bit=%u stack-words=%u",ink_epub_phase(),
+            (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT),(unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT),
+            (unsigned)uxTaskGetStackHighWaterMark(NULL));
+        memset(loading_frame,255,PANEL_BYTES);
+        ink_icon_size(loading_frame,208,336,ICON_WAIT,64,loading_pixel);
+        ink_font_text(loading_frame,16,432,ink_epub_phase(),INK_UI_CELL,INK_UI_FONT,0,464,loading_pixel);
+        ink_frame_rotate_180(loading_frame);
+        ink_display_update(loading_frame,false);loading_painted=(uint32_t)(esp_timer_get_time()/1000);
+    }
+    /* Do not add one RTOS tick of delay for every decompression chunk. */
+    static uint32_t yielded;
+    if(now-yielded>=100){vTaskDelay(1);yielded=(uint32_t)(esp_timer_get_time()/1000);}
+    else taskYIELD();
+}
+static void loading_begin(void){ink_epub_reset_cancel();loading=true;loading_painted=0;}
+static void loading_end(void){loading=false;}
+
 static ink_python_worker python;
 static ink_console console;
 static bool editor_active,console_active,python_started,paused,closed,home_requested;
@@ -92,8 +124,12 @@ static void open_requests(void)
     if(browser.view==INK_OPEN_MARKDOWN) {
         struct stat st;
         bool assets=!stat("/sd/inkpy/math",&st)&&S_ISDIR(st.st_mode);
+        ink_epub_debug_start(browser.root,browser.selected);
+        loading_begin();
         if(ink_reader_open(&reader,browser.selected,browser.root,assets?render_math:NULL,indexing_progress)) notice(reader.error);
         else { reader.dictionary=&dictionary; reader_active=true; }
+        loading_end();
+        if(ink_epub_cancelled()){ink_reader_close(&reader);reader_active=false;ink_browser_root(&browser);}
         return;
     }
     if(browser.view==INK_EDIT_TEXT) {
@@ -143,7 +179,7 @@ static bool dispatch(const ink_event *event)
         if(event->press!=INK_PRESS_SHORT) return false;
         if(power_menu.open) { ink_power_page(&power_menu,event->kind==INK_EVENT_PREV?-1:1); font_names(); return true; }
         if(editor_active) ink_editor_page(&editor,event->kind==INK_EVENT_PREV?-1:1);
-        else if(reader_active) ink_reader_page(&reader,event->kind==INK_EVENT_PREV?-1:1);
+        else if(reader_active){loading_begin();ink_reader_page(&reader,event->kind==INK_EVENT_PREV?-1:1);loading_end();if(ink_epub_cancelled())home(true);}
         else if(console_active) ink_python_worker_page(&python,event->kind==INK_EVENT_PREV?-1:1);
         else ink_browser_page(&browser,event->kind==INK_EVENT_PREV?-1:1);
         return true;
@@ -163,12 +199,14 @@ static bool dispatch(const ink_event *event)
         } else if(editor_active) {
             if(ink_editor_tap(&editor,x,y)) { editor_active=false; ink_browser_home(&browser); }
         } else if(reader_active) {
-            int action=ink_reader_tap(&reader,x,y);
+            loading_begin();int action=ink_reader_tap(&reader,x,y);
             if(action==INK_READER_CLOSE) { ink_reader_close(&reader); reader_active=false; ink_browser_home(&browser); }
             else if(action==INK_READER_ROTATE&&ink_reader_rotate(&reader,browser.selected,browser.root,
-                (reader.stats.formulas||reader.stats.math_fallbacks)?render_math:NULL,indexing_progress)) {
+                render_math,indexing_progress)) {
                 ink_reader_close(&reader); reader_active=false; notice(reader.error);
             }
+            loading_end();
+            if(ink_epub_cancelled())home(true);
         } else if(console_active) ink_python_worker_tap(&python,x,y);
         else ink_browser_tap(&browser,x,y);
         return true;
@@ -202,6 +240,7 @@ void app_main(void)
     ink_dict_init(&dictionary,"/sd",indexing_progress);
     uint8_t *frame=heap_caps_malloc(PANEL_BYTES,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
     if(!frame) { ESP_LOGE(tag,"frame allocation failed"); return; }
+    loading_frame=frame;
     e=ink_capture_start();
     if(e!=ESP_OK) { heap_caps_free(frame); ESP_LOGE(tag,"input: %s",esp_err_to_name(e)); return; }
     draw(frame);

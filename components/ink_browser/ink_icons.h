@@ -4,7 +4,7 @@
 enum { ICON_ADD,ICON_CONSOLE,ICON_ERROR,ICON_BULB,ICON_BULB_ON,ICON_WARM,ICON_CONTRAST,
  ICON_ROTATE,ICON_FONT,ICON_REFRESH,ICON_CLOSE,ICON_SAVE,ICON_DISCARD,ICON_BACK,
  ICON_PLAY,ICON_EDIT,ICON_CHAPTER,ICON_PAGE,ICON_DICT,ICON_STOP,ICON_ENTER,
- ICON_DELETE,ICON_SHIFT,ICON_SPACE,ICON_TAB,ICON_EXIT,ICON_FOLDER,ICON_FILE,ICON_TRASH };
+ ICON_DELETE,ICON_SHIFT,ICON_SPACE,ICON_TAB,ICON_EXIT,ICON_FOLDER,ICON_FILE,ICON_TRASH,ICON_WAIT };
 typedef void (*ink_icon_pixel)(uint8_t *,unsigned,unsigned);
 static inline void ink_icon_line(uint8_t *f,int x,int y,int xx,int yy,unsigned stroke,ink_icon_pixel p)
 {
@@ -37,6 +37,7 @@ static inline void ink_icon_size(uint8_t *f,unsigned x,unsigned y,unsigned kind,
    if(letters[0][row*16/24]&(1u<<(col*9/13)))L(2+(int)col,4+(int)row,2+(int)col,4+(int)row);
    if(letters[1][row*16/24]&(1u<<(col*9/13)))L(17+(int)col,4+(int)row,17+(int)col,4+(int)row);
   }break; }
+ case ICON_WAIT:L(7,3,25,3);L(7,29,25,29);L(8,4,8,9);L(24,4,24,9);L(8,9,24,23);L(24,9,8,23);L(8,23,8,28);L(24,23,24,28);L(12,26,20,26);break;
  case ICON_REFRESH:L(5,15,9,5);L(9,5,24,5);L(24,5,29,14);L(24,13,29,14);L(29,14,30,9);L(27,19,23,27);L(23,27,8,27);L(8,27,3,18);L(3,18,2,23);L(3,18,8,19);break;
  case ICON_DISCARD:L(2,2,30,30);L(2,30,30,2); /* fall through */
  case ICON_SAVE:R(5,3,27,29);R(10,3,21,12);R(10,20,23,29);break;

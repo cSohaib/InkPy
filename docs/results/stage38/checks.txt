@@ -1,0 +1,15 @@
+PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+PASS: device renderer, formula bitmaps/fallback, H2 navigation, page entry/paging, Close cleanup, missing-math-assets fallback, binary rejection
+PASS: all requested math commands, bordered/aligned/wrapped tables, inline math, tall-row/page continuation, landscape and missing-math fallback
+PASS: checkpoint/restore at every step matches uninterrupted draw/page/chapter output byte-for-byte
+PASS: checkpoint/restore at every step matches uninterrupted draw/page/chapter output byte-for-byte
+PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+PASS: missing TOC uses document titles instead of filenames
+PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+PASS: heavy chapter has no full pagination at open; cached reopen and Next/Previous work
+PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation

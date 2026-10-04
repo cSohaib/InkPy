@@ -138,3 +138,7 @@ page ranges when needed rather than allocating a complete directory index.
 
 Stage 37: tapping .epub opens the shared reader. EPUB contents define chapters;
 Markdown still uses H2 headings. PNG/JPEG images use formula-like bitmap runs.
+
+Stage 38: EPUB reader menu is Chapters / Rotate / Exit / Back. No page counter
+or Go to page for EPUB. Uncached work shows an hourglass/phase; long Home can
+cancel it. Cached screen turns remain normal differential updates.

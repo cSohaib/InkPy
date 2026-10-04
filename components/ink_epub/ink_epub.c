@@ -7,17 +7,40 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
+#include <stdarg.h>
+#include <sys/stat.h>
 
 typedef struct {
     char id[128], path[512];
 } Item;
-typedef struct {
-    char path[512], fragment[192], title[192];
-} Chapter;
+typedef ink_epub_chapter Chapter;
+static char debug_path[640];
+static bool cancelled;
+void ink_epub_cancel(void){cancelled=true;}
+void ink_epub_reset_cancel(void){cancelled=false;}
+bool ink_epub_cancelled(void){return cancelled;}
+static const char *phase="";
+const char *ink_epub_phase(void){return phase;}
+void ink_epub_debug(const char *format,...)
+{
+    if(!debug_path[0])return;
+    struct stat st;
+    if(!stat(debug_path,&st)&&st.st_size>524288)return;
+    FILE *f=fopen(debug_path,"ab");
+    if(!f)return;
+    va_list args;va_start(args,format);vfprintf(f,format,args);va_end(args);
+    fputc('\n',f);
+    fclose(f);
+}
+void ink_epub_debug_start(const char *root,const char *source)
+{
+    snprintf(debug_path,sizeof(debug_path),"%s/inkpy-epub-debug.txt",root);
+    ink_epub_debug("\nInkPy stage38 EPUB: %s",source);
+}
 typedef struct {
     ink_zip zip;
     const char *cache;
-    FILE *map, *spine, *toc, *body, *chapters;
+    FILE *map, *spine, *toc, *body, *chapters, *positions;
     ink_xml xml;
     unsigned images, ticks;
     void (*progress)(void);
@@ -42,11 +65,13 @@ static int extract(Import *b, const char *name, const char *dest) {
 /* Resolve archive-relative references, dropping queries/fragments. Never use an
  * archive name as a filesystem output path. Percent-decoding supports spaces. */
 static int resolve(char out[512], const char *base, const char *href) {
-    if (!*href || strstr(href, ":") || href[0] == '/')
+    if(href[0]=='#'){snprintf(out,512,"%s",base);
+    return 0;}
+    if (!*href || strstr(href, ":"))
         return -1;
     char temp[1024];
     const char *slash = strrchr(base, '/');
-    size_t prefix = slash ? (size_t)(slash - base) + 1 : 0;
+    size_t prefix = href[0]=='/'?0:slash ? (size_t)(slash - base) + 1 : 0;
     if (prefix + strlen(href) >= sizeof(temp))
         return -1;
     memcpy(temp, base, prefix);
@@ -91,10 +116,15 @@ static int resolve(char out[512], const char *base, const char *href) {
     return out[0] ? 0 : -1;
 }
 static int lookup(Import *b, const char *id, Item *item) {
-    rewind(b->map);
-    while (fread(item, 1, sizeof(*item), b->map) == sizeof(*item))
-        if (!strcmp(item->id, id))
-            return 0;
+    long start=ftell(b->map);
+    if(start<0||fseek(b->map,start,SEEK_SET))return -1;
+    for(unsigned pass=0;pass<2;pass++) {
+        while(fread(item,1,sizeof(*item),b->map)==sizeof(*item)) {
+            if(!strcmp(item->id,id))return 0;
+            if(pass&&ftell(b->map)>=start)break;
+        }
+        rewind(b->map);
+    }
     return -1;
 }
 static int xml_open(Import *b, const char *name) {
@@ -134,7 +164,7 @@ static void tidy(char *s) {
         out--;
     *out = 0;
 }
-static int navigation(Import *b, const char *nav, bool ncx) {
+static int navigation(Import *b, const char *nav, bool ncx, bool loose) {
     if (xml_open(b, nav))
         return -1;
     Chapter c = {0};
@@ -142,6 +172,7 @@ static int navigation(Import *b, const char *nav, bool ncx) {
     bool label = false, link = false;
     int kind;
     while ((kind = ink_xml_next(&b->xml)) > 0) {
+        if(cancelled)return -1;
         ink_xml *x = &b->xml;
         if (kind == 2) {
             if (label || link) {
@@ -160,6 +191,8 @@ static int navigation(Import *b, const char *nav, bool ncx) {
                 depth++;
                 char type[128];
                 ink_xml_attr(x, "epub:type", type, sizeof(type));
+                if(!type[0])ink_xml_attr(x,"type",type,sizeof(type));
+                if(!type[0])ink_xml_attr(x,"role",type,sizeof(type));
                 if (strstr(type, "toc"))
                     toc_depth = depth;
             }
@@ -169,7 +202,7 @@ static int navigation(Import *b, const char *nav, bool ncx) {
             if (label)
                 c.title[0] = 0;
         }
-        if (!ncx && toc_depth && !strcmp(x->name, "a")) {
+        if (!ncx && (toc_depth||loose) && !strcmp(x->name, "a")) {
             if (!x->closing) {
                 char href[704];
                 ink_xml_attr(x, "href", href, sizeof(href));
@@ -205,9 +238,10 @@ static int navigation(Import *b, const char *nav, bool ncx) {
 }
 static int chapter(Import *b, const char *document, const char *id, bool fallback) {
     Chapter c;
-    bool found = false;
+    bool found = false;unsigned id_number=0;
     rewind(b->toc);
     while (fread(&c, 1, sizeof(c), b->toc) == sizeof(c)) {
+        id_number++;
         if (strcmp(c.path, document) || strcmp(c.fragment, id))
             continue;
         found = true;
@@ -218,12 +252,16 @@ static int chapter(Import *b, const char *document, const char *id, bool fallbac
     if (!found) {
         memset(&c, 0, sizeof(c));
         const char *name = strrchr(document, '/');
-        snprintf(c.title, sizeof(c.title), "%s", name ? name + 1 : document);
+        (void)name;snprintf(c.title,sizeof(c.title),"%s",document);
     }
     fputs("\n\n", b->body);
     long at = ftell(b->body);
     if (at < 0)
         return -1;
+    if(b->positions&&found) {
+        uint64_t position[2]={c.id?c.id:id_number,(uint64_t)at};
+        if(fwrite(position,1,sizeof(position),b->positions)!=sizeof(position))return -1;
+    }
     unsigned char record[202] = {0};
     uint64_t source = (uint64_t)at;
     unsigned n = (unsigned)strlen(c.title);
@@ -245,6 +283,7 @@ static int document(Import *b, const char *name, bool fallback) {
     bool in_cell = false;
     int kind;
     while ((kind = ink_xml_next(&b->xml)) > 0) {
+        if(cancelled)return -1;
         ink_xml *x = &b->xml;
         if (kind == 2) {
             if (!body || skip)
@@ -323,18 +362,20 @@ static int document(Import *b, const char *name, bool fallback) {
         if (!strcmp(tag, "img") || !strcmp(tag, "image")) {
             if (x->closing)
                 continue;
-            char src[704], resource[512], alt[192], asset[64];
+            char src[704], resource[512], alt[192];
             ink_xml_attr(x, "src", src, sizeof(src));
             if (!src[0])
                 ink_xml_attr(x, "xlink:href", src, sizeof(src));
             if (!src[0])
                 ink_xml_attr(x, "href", src, sizeof(src));
             ink_xml_attr(x, "alt", alt, sizeof(alt));
-            snprintf(asset, sizeof(asset), "epub-img-%u", ++b->images);
-            if (!resolve(resource, name, src) && !extract(b, resource, asset))
-                fprintf(b->body, "![image](%s)", asset);
-            else
-                fprintf(b->body, "[image: %s]", alt);
+            if (!resolve(resource,name,src)) {
+                /* Angle-bracket destination supports spaces and parentheses. */
+                fprintf(b->body,"![image](<%s>)",resource);
+            } else {
+                ink_epub_debug("image unresolved document=%s src=%s",name,src);
+                fprintf(b->body,"[image: %s]",alt);
+            }
             continue;
         }
         if (!strcmp(tag, "pre")) {
@@ -420,7 +461,7 @@ void ink_epub_cleanup(const char *cache) {
             unlink(p);
     closedir(d);
 }
-int ink_epub_import(const char *source, const char *cache, void (*progress)(void), char *error, size_t cap) {
+int ink_epub_prepare(const char *source, const char *cache, void (*progress)(void), char *error, size_t cap) {
     Import *b = calloc(1, sizeof(*b));
     if (!b) {
         snprintf(error, cap, "EPUB allocation failed");
@@ -429,17 +470,16 @@ int ink_epub_import(const char *source, const char *cache, void (*progress)(void
     b->cache = cache;
     b->progress = progress;
     int result = -1, kind;
-    char opf[512] = {0}, nav[512] = {0}, ncx[512] = {0};
+    char opf[512] = {0}, nav[512] = {0}, ncx[512] = {0},guide[512]={0},spine_toc[128]={0};
     const char *why = "Cannot read EPUB archive";
     if (ink_zip_open(&b->zip, source, progress))
         goto done;
     b->map = scratch(b, "epub-map", "w+b");
     b->spine = scratch(b, "epub-spine", "w+b");
     b->toc = scratch(b, "epub-toc", "w+b");
-    b->body = scratch(b, "epub-body", "w+b");
-    b->chapters = scratch(b, "epub-chapters", "w+b");
+    phase="contents";
     why = "Cannot create EPUB cache";
-    if (!b->map || !b->spine || !b->toc || !b->body || !b->chapters)
+    if (!b->map || !b->spine || !b->toc)
         goto done;
     why = "Invalid EPUB container/package";
     if (xml_open(b, "META-INF/container.xml"))
@@ -452,6 +492,7 @@ int ink_epub_import(const char *source, const char *cache, void (*progress)(void
     if (!opf[0] || xml_open(b, opf))
         goto done;
     while ((kind = ink_xml_next(&b->xml)) > 0) {
+        if(cancelled)return -1;
         if (kind != 1 || b->xml.closing)
             continue;
         if (!strcmp(b->xml.name, "item")) {
@@ -467,8 +508,15 @@ int ink_epub_import(const char *source, const char *cache, void (*progress)(void
                 goto done;
             if (strstr(properties, "nav"))
                 strcpy(nav, item.path);
-            if (!strcmp(media, "application/x-dtbncx+xml"))
+            const char *extension=strrchr(item.path,'.');
+            if (!strcmp(media, "application/x-dtbncx+xml")||(extension&&!strcasecmp(extension,".ncx")))
                 strcpy(ncx, item.path);
+        } else if(!strcmp(b->xml.name,"spine")) {
+            ink_xml_attr(&b->xml,"toc",spine_toc,sizeof(spine_toc));
+        } else if(!strcmp(b->xml.name,"reference")) {
+            char type[64],href[704];ink_xml_attr(&b->xml,"type",type,sizeof(type));
+            ink_xml_attr(&b->xml,"href",href,sizeof(href));
+            if(!strcmp(type,"toc"))resolve(guide,opf,href);
         } else if (!strcmp(b->xml.name, "itemref")) {
             Item item;
             char id[128], linear[16];
@@ -485,26 +533,57 @@ int ink_epub_import(const char *source, const char *cache, void (*progress)(void
     if (kind < 0)
         goto done;
     why = "Invalid EPUB navigation";
-    if (nav[0]) {
-        if (navigation(b, nav, false))
-            goto done;
-    } else if (ncx[0] && navigation(b, ncx, true))
-        goto done;
-    if (fflush(b->toc) || fflush(b->spine))
-        goto done;
-    rewind(b->toc);
-    bool fallback = fgetc(b->toc) == EOF;
-    rewind(b->spine);
-    char name[512];
-    unsigned count = 0;
-    why = "Cannot import EPUB chapter";
-    while (fread(name, 1, sizeof(name), b->spine) == sizeof(name)) {
-        if (document(b, name, fallback))
-            goto done;
-        count++;
+    int nav_status=-1;
+    if(!ncx[0]&&spine_toc[0]){Item item;if(!lookup(b,spine_toc,&item))strcpy(ncx,item.path);}
+    if(!nav[0]&&guide[0])strcpy(nav,guide);
+    if(nav[0]) {
+        nav_status=navigation(b,nav,false,false);
+        if(!nav_status&&!ftell(b->toc))nav_status=navigation(b,nav,false,true);
     }
-    if (!count || fflush(b->body) || fflush(b->chapters))
-        goto done;
+    if(nav_status||!ftell(b->toc)) {
+        if(nav[0])ink_epub_debug("nav fallback path=%s status=%d entries=%ld",nav,nav_status,ftell(b->toc)/(long)sizeof(Chapter));
+        fclose(b->toc);b->toc=scratch(b,"epub-toc","w+b");
+        if(!b->toc)goto done;
+        if(ncx[0])nav_status=navigation(b,ncx,true,false);
+        else nav_status=-1;
+        if(nav_status){fclose(b->toc);b->toc=scratch(b,"epub-toc","w+b");
+    if(!b->toc)goto done;}
+    }
+    if(fflush(b->toc)||fflush(b->spine))goto done;
+    char name[512];unsigned count=0;
+    rewind(b->spine);while(fread(name,1,sizeof(name),b->spine)==sizeof(name))count++;
+    if(!count){why="EPUB has no readable spine";goto done;}
+    bool fallback=ftell(b->toc)==0;
+    if(fallback) {
+        rewind(b->spine);
+        for(unsigned i=1;i<=count;i++) {
+            Chapter c={.document=i,.id=i};
+            if(fread(c.path,1,sizeof(c.path),b->spine)!=sizeof(c.path))goto done;
+            snprintf(c.title,sizeof(c.title),"%u",i);
+            if(fwrite(&c,1,sizeof(c),b->toc)!=sizeof(c))goto done;
+        }
+        ink_epub_debug("no usable TOC; spine fallback=%u (titles resolved when opened)",count);
+    } else {
+        rewind(b->toc);rewind(b->spine);Chapter c;unsigned toc_id=0,spine_at=0;name[0]=0;
+        while(fread(&c,1,sizeof(c),b->toc)==sizeof(c)) {
+            c.id=++toc_id;
+            long next=ftell(b->toc);c.document=0;
+            if(spine_at&&!strcmp(name,c.path))c.document=spine_at;
+            else for(unsigned pass=0;pass<2&&!c.document;pass++) {
+                while(fread(name,1,sizeof(name),b->spine)==sizeof(name)) {
+                    spine_at++;
+                    if(!strcmp(name,c.path)){c.document=spine_at;break;}
+                }
+                if(!c.document){rewind(b->spine);spine_at=0;name[0]=0;}
+            }
+            if(!c.title[0])snprintf(c.title,sizeof(c.title),"%u",(unsigned)c.document);
+            if(fseek(b->toc,next-(long)sizeof(c),SEEK_SET)||fwrite(&c,1,sizeof(c),b->toc)!=sizeof(c)||
+               fseek(b->toc,next,SEEK_SET))goto done;
+            ink_epub_debug("toc document=%u title=%s path=%s fragment=%s",c.document,c.title,c.path,c.fragment);
+        }
+    }
+    if(fflush(b->toc))goto done;
+    ink_epub_debug("metadata complete spine=%u chapters=%ld nav=%s ncx=%s",count,ftell(b->toc)/(long)sizeof(Chapter),nav,ncx);
     result = 0;
 done:
     if (b->xml.file)
@@ -515,8 +594,110 @@ done:
     for (unsigned i = 0; i < 5; i++)
         if (files[i] && fclose(files[i]))
             result = -1;
-    if (result)
-        snprintf(error, cap, "%s", why);
+    if (result){snprintf(error,cap,"%s",why);ink_epub_debug("prepare error: %s",why);}
+    phase="layout";
     free(b);
+    return result;
+}
+
+static unsigned records(const char *cache,const char *name,unsigned size)
+{
+    char p[640];struct stat st;
+    return !path(p,sizeof(p),cache,name)&&!stat(p,&st)?(unsigned)(st.st_size/size):0;
+}
+unsigned ink_epub_documents(const char *cache){return records(cache,"epub-spine",512);}
+unsigned ink_epub_chapters(const char *cache){return records(cache,"epub-toc",sizeof(Chapter));}
+int ink_epub_get_chapter(const char *cache,unsigned id,ink_epub_chapter *c)
+{
+    char p[640];
+    if(!id||path(p,sizeof(p),cache,"epub-toc"))return -1;
+    FILE *f=fopen(p,"rb");
+    if(!f)return -1;
+    int r=fseek(f,(long)(id-1)*sizeof(*c),SEEK_SET)||fread(c,1,sizeof(*c),f)!=sizeof(*c);
+    fclose(f);
+    return r?-1:0;
+}
+int ink_epub_document(const char *source,const char *cache,unsigned id,const char *dest,
+    void (*progress)(void),char *error,size_t capacity)
+{
+    Import *b=calloc(1,sizeof(*b));
+    if(!b)return -1;
+    b->cache=dest;b->progress=progress;phase="chapter";
+    char p[640],name[512];int result=-1;
+    b->toc=!path(p,sizeof(p),cache,"epub-toc")?fopen(p,"r+b"):NULL;
+    b->spine=!path(p,sizeof(p),cache,"epub-spine")?fopen(p,"rb"):NULL;
+    if(!b->toc||!b->spine||!id||fseek(b->spine,(long)(id-1)*512,SEEK_SET)||
+       fread(name,1,sizeof(name),b->spine)!=sizeof(name)||ink_zip_open(&b->zip,source,progress))goto done;
+    ink_epub_debug("convert document=%u path=%s",id,name);
+    /* Resolve numeric fallback titles from the document's title or first heading.
+     * Only this document is inspected; opening never scans the whole book. */
+    rewind(b->toc);Chapter c;bool needs_title=false;char fallback[16];
+    snprintf(fallback,sizeof(fallback),"%u",id);
+    while(fread(&c,1,sizeof(c),b->toc)==sizeof(c))if(c.document==id&&!strcmp(c.title,fallback))needs_title=true;
+    if(needs_title) {
+        if(xml_open(b,name))goto done;
+        char title[192]={0};bool label=false;int kind;unsigned ticks=0;
+        while(ftell(b->xml.file)<65536&&(kind=ink_xml_next(&b->xml))>0) {
+            if(progress&&++ticks%64==0)progress();
+            if(cancelled)goto done;
+            if(kind==1&&(!strcmp(b->xml.name,"title")||!strcmp(b->xml.name,"h1")||!strcmp(b->xml.name,"h2"))) {
+                if(b->xml.closing){if(title[0])break;label=false;}else label=true;
+            }else if(kind==2&&label){ink_xml_entities(b->xml.text);append(title,sizeof(title),b->xml.text);}
+        }
+        tidy(title);rewind(b->toc);
+        while(fread(&c,1,sizeof(c),b->toc)==sizeof(c)) {
+            if(c.document==id&&!strcmp(c.title,fallback)&&title[0]) {
+                long next=ftell(b->toc);snprintf(c.title,sizeof(c.title),"%s",title);
+                if(fseek(b->toc,next-(long)sizeof(c),SEEK_SET)||fwrite(&c,1,sizeof(c),b->toc)!=sizeof(c)||
+                   fseek(b->toc,next,SEEK_SET))goto done;
+            }
+        }
+    }
+    /* Avoid rescanning the entire book's TOC for each XHTML id. */
+    FILE *local=scratch(b,"epub-local-toc","w+b");if(!local)goto done;
+    rewind(b->toc);
+    while(fread(&c,1,sizeof(c),b->toc)==sizeof(c))if(c.document==id) {
+        if(fwrite(&c,1,sizeof(c),local)!=sizeof(c)){fclose(local);goto done;}
+    }
+    fclose(b->toc);b->toc=local;
+    b->body=scratch(b,"epub-body","w+b");b->chapters=scratch(b,"epub-chapters","w+b");b->positions=scratch(b,"epub-positions","w+b");
+    if(!b->body||!b->chapters||!b->positions||document(b,name,false)||fflush(b->body)||fflush(b->chapters))goto done;
+    result=0;
+done:
+    if(result){snprintf(error,capacity,"Cannot read EPUB document %u",id);ink_epub_debug("document error=%u xml=%s",id,b->xml.name);}
+    if(b->xml.file)fclose(b->xml.file);
+    if(b->zip.file)fclose(b->zip.file);
+    FILE *files[]={b->toc,b->spine,b->body,b->chapters,b->positions};
+    for(unsigned i=0;i<5;i++)if(files[i])fclose(files[i]);
+    free(b);phase="layout";
+    return result;
+}
+int ink_epub_image(const char *source,const char *cache,const char *resource,char *out,size_t size,void (*progress)(void))
+{
+    uint64_t hash=1469598103934665603ULL;
+    for(const unsigned char *p=(const unsigned char*)resource;*p;p++)hash=(hash^*p)*1099511628211ULL;
+    char name[48];snprintf(name,sizeof(name),"epub-img-%016llx",(unsigned long long)hash);
+    if(path(out,size,cache,name))return -1;
+    struct stat st;
+    if(!stat(out,&st)&&st.st_size)return 0;
+    phase="image";ink_zip zip;
+    if(ink_zip_open(&zip,source,progress))return -1;
+    FILE *f=fopen(out,"wb");int result=f?ink_zip_extract(&zip,resource,f):-1;
+    if(f&&fclose(f))result=-1;
+    fclose(zip.file);
+    if(result)unlink(out);
+    ink_epub_debug("image extract status=%d resource=%s",result,resource);phase="layout";
+    return result;
+}
+
+int ink_epub_anchor(const char *cache,unsigned chapter,uint64_t *offset)
+{
+    char p[640];
+    if(path(p,sizeof(p),cache,"epub-positions"))return -1;
+    FILE *f=fopen(p,"rb");
+    if(!f)return -1;
+    uint64_t record[2];int result=-1;
+    while(fread(record,1,sizeof(record),f)==sizeof(record))if(record[0]==chapter){*offset=record[1];result=0;break;}
+    fclose(f);
     return result;
 }

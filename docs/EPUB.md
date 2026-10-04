@@ -2,15 +2,30 @@
 
 Tap a DRM-free .epub in the browser. EPUB 2 NCX and EPUB 3 navigation contents
 supply chapter titles and fragment targets; headings do not create chapters.
-Without usable contents, spine documents become chapters. Screen pages are
-calculated by InkPy; Go to page and reader-only rotation work as for Markdown.
+Without usable contents, spine documents become chapters. Their title/first heading
+replaces the numeric fallback when a document is opened; unopened fallbacks remain
+numeric to avoid reading every chapter at startup.
 
-ZIP stored and deflated entries are streamed. Container, manifest and spine
-select the reading order. XHTML becomes a temporary Markdown stream plus chapter
-anchors on SD, then uses the existing layout, math, tables, word lookup and page
-cache. Publisher CSS, embedded fonts and scripts are ignored. Scratch files are
-removed after indexing, on failure and on close. Opening a book currently imports
-and paginates it again; there is no persistent preprocessed-book cache.
+ZIP stored and deflated entries are streamed. Opening reads container/manifest,
+spine and contents, then imports only the current XHTML document. Screens are
+laid out on demand; one bounded parser block can produce several screens ahead.
+EPUB has no total screen count, page-number display or Go to page. Go to chapter,
+Previous/Next, dictionary lookup and reader-only rotation remain available.
+Markdown keeps its full pagination and Go to page.
+
+Converted documents, screen runs and pointer-free layout continuations survive
+Close and reboot on SD. Reopening resumes the last document/screen without
+reconversion or replaying already generated layout. Cache identity includes source
+path/size/mtime, font identity/file size/mtime, orientation and layout version.
+Caches live below the owned .inkpy-reader directory; removing that directory on SD
+resets them. There is no automatic eviction yet. These are derived files only.
+A damaged/missing continuation rebuilds that document's layout.
+
+The current XHTML document is still fully decompressed and converted before its
+first screen. Very large single-document EPUBs can therefore still wait. Returning
+to the end of an unvisited preceding document also requires laying it out. These
+are explicit next optimization candidates if the device log identifies them as
+bottlenecks; the whole book is not imported or paginated at opening.
 
 Supported content includes paragraphs, headings, emphasis, code, basic lists,
 tables, existing Markdown math notation and raster images. Table row one becomes
@@ -42,3 +57,20 @@ behavior still need physical testing.
 
 Reproduce fixtures with prototypes/reader/make-epub-fixtures.py and use the
 reader-epub host target. Results: results/stage37/checks.txt.
+
+## Temporary Stage 38 diagnostics
+
+SD-root inkpy-epub-debug.txt records book paths, TOC targets/fallbacks, ZIP methods
+and entry sizes, chapter conversion, cache hits, layout progress, image signatures
+and decoder failures. Device waiting updates also record heap/largest block/main
+stack headroom. The log appends up to roughly 512 KiB; delete it before a fresh
+reproduction if it reaches that limit. No source books are changed.
+
+An hourglass with the current processing phase is shown during uncached work.
+No invented percentage: the whole book's page count is intentionally unknown.
+Long Home cancels loading and returns home. Temporary logging/phase text should
+be removed after the four reported books have been diagnosed.
+
+For a device report: open each problematic book, try its contents and image pages,
+close/reopen it, then copy inkpy-epub-debug.txt from SD. Include the book name,
+what failed and, when shareable, the EPUB or a small excerpt reproducing it.

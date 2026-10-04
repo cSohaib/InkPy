@@ -5,6 +5,14 @@
 enum { INK_READER_PAGE,INK_READER_MENU,INK_READER_GOTO,INK_READER_CHAPTERS,INK_READER_DEFINITION,INK_READER_DICTIONARIES };
 typedef struct {
     FILE *draw,*pages,*chapters;
+    FILE *input,*anchors,*bitmap,*table;
+    void *layout;
+    ink_layout_stats local_stats;
+    char book_cache[512],source[512];
+    unsigned document,documents;
+    bool epub,eof;
+    ink_layout_math math;
+    void (*progress)(void);
     ink_layout_stats stats;
     unsigned page,chapter,view,chapter_first;
     char cache[512],title[INK_TITLE_BYTES],digits[11],error[160];

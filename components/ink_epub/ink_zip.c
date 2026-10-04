@@ -1,4 +1,5 @@
 #include "ink_zip.h"
+#include "ink_epub.h"
 #include "ink_inflate.h"
 #include <limits.h>
 #include <string.h>
@@ -19,6 +20,8 @@ int ink_zip_open(ink_zip *z, const char *path, void (*progress)(void)) {
     unsigned char b[22];
     long first = size > 65557 ? size - 65557 : 0;
     for (long at = size - 22; at >= first; at--) {
+        if((at&255)==0&&progress)progress();
+        if(ink_epub_cancelled())goto bad;
         if (fseek(z->file, at, SEEK_SET) || fread(b, 1, 22, z->file) != 22) goto bad;
         if (n(b, 4) != 0x06054b50 || at + 22 + n(b + 20, 2) != size) continue;
         if (n(b + 4, 2) || n(b + 6, 2) || n(b + 8, 2) != n(b + 10, 2)) goto bad;
@@ -37,6 +40,8 @@ int ink_zip_extract(ink_zip *z, const char *name, FILE *out) {
     uint32_t at = z->central, compressed = 0, size = 0, crc = 0, local = 0;
     unsigned method = 0;
     for (unsigned i = 0; i < z->entries; i++) {
+        if(i%64==0&&z->progress)z->progress();
+        if(ink_epub_cancelled())return -1;
         if (at > z->size - 46 || fseek(z->file, at, SEEK_SET) || fread(h, 1, 46, z->file) != 46 ||
             n(h, 4) != 0x02014b50)
             return -1;
@@ -64,6 +69,7 @@ int ink_zip_extract(ink_zip *z, const char *name, FILE *out) {
     uint64_t start = (uint64_t)local + 30 + n(h + 26, 2) + n(h + 28, 2);
     if (start > z->size || compressed > z->size - start || (method != 0 && method != 8) || size > 0x7fffffffU)
         return -1;
+    ink_epub_debug("zip resource=%s method=%u compressed=%u raw=%u",name,method,compressed,size);
     if (fseek(z->file, (long)start, SEEK_SET)) return -1;
     unsigned char input[4096], output[4096];
     size_t used = 0, have = 0;
@@ -91,6 +97,7 @@ int ink_zip_extract(ink_zip *z, const char *name, FILE *out) {
         written += (uint32_t)got;
         check = ink_crc32(check, output, got);
         if (z->progress) z->progress();
+        if(ink_epub_cancelled())goto bad;
         if (!take && !got && status != 1) goto bad;
     }
     ink_inflate_close(inflate);

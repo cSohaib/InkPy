@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
+#include <unistd.h>
 
 enum { CELLS=128, MARGIN=8, TABLE_COLUMNS=16, TABLE_PAD=4 };
 typedef struct { uint32_t value,min; unsigned need; uint64_t start; } Utf;
@@ -19,7 +20,7 @@ typedef struct {
     size_t block_n, read_n, read_at;
     uint64_t position,block_source,last_source,draw_bytes,page_begin,page_source;
     Utf validation,literal_utf;
-    bool failed,literal,previous_cr,page_open;
+    bool failed,literal,previous_cr,page_open,done;
     unsigned fence_char; uint64_t fence_length;
     unsigned y,head,bold,italic,code,math,image,chapter,page_chapter;
     Cell line[CELLS]; unsigned count;
@@ -498,6 +499,7 @@ static int peek(Layout *l)
 {
     if (l->read_at==l->read_n) {
         if(l->cfg.progress) l->cfg.progress();
+        if(l->cfg.cancelled&&l->cfg.cancelled()){fail(l,"Reader cancelled",l->position);return EOF;}
         l->read_n=fread(l->read,1,l->cfg.read_bytes,l->input); l->read_at=0;
         if (!l->read_n) { if (ferror(l->input)) fail(l,"source read failed",l->position); return EOF; }
     }
@@ -543,7 +545,7 @@ static void book_chapter(Layout *l)
     bytes(l,l->chapters,l->chapter_record+10,INK_TITLE_BYTES);l->stats->chapters++;
     next_chapter(l);
 }
-static void scan(Layout *l)
+static void scan(Layout *l,uint64_t target)
 {
     while (!l->failed && peek(l)!=EOF) {
         if(l->next_chapter&&l->position==l->chapter_source)book_chapter(l);
@@ -581,17 +583,19 @@ static void scan(Layout *l)
             if (l->literal) { paragraph(l); l->literal=false; }
             else parse(l);
         }
+        if(target && l->stats->pages>=target) return;
     }
+    l->done=true;
     if (l->validation.need) fail(l,"incomplete UTF-8 at EOF",l->validation.start);
     if (l->literal) paragraph(l); else parse(l);
     finish_line(l); end_page(l);
 }
-int ink_layout_run(FILE *source,FILE *draw,FILE *pages,FILE *chapters,
+void *ink_layout_begin(FILE *source,FILE *draw,FILE *pages,FILE *chapters,
                    const ink_layout_config *config,ink_layout_stats *stats)
 {
     memset(stats,0,sizeof(*stats));
     Layout *l=calloc(1,sizeof(*l));
-    if (!l) { snprintf(stats->error,sizeof(stats->error),"layout allocation failed"); return -1; }
+    if (!l) { snprintf(stats->error,sizeof(stats->error),"layout allocation failed"); return NULL; }
     l->input=source; l->draw=draw; l->pages=pages; l->chapters=chapters;
     l->cfg=*config; l->stats=stats; l->y=MARGIN; stats->context_bytes=sizeof(*l);
     if (config->width<120 || config->width>800 || config->height<100 || config->height>800 ||
@@ -602,10 +606,65 @@ int ink_layout_run(FILE *source,FILE *draw,FILE *pages,FILE *chapters,
     if (fseeko(source,(off_t)l->position,SEEK_SET)) fail(l,"source must be seekable",0);
     if((config->render_math||config->render_image) && !(l->bitmaps=config->bitmap_spool?config->bitmap_spool:tmpfile())) fail(l,"bitmap spool creation failed",0);
     if(config->chapter_spool)next_chapter(l);
-    if (!l->failed) scan(l);
-    if(l->bitmaps&&!config->bitmap_spool) fclose(l->bitmaps);
-    if(l->table&&!config->table_spool) fclose(l->table);
-    if (fflush(draw)||fflush(pages)||fflush(chapters)) fail(l,"cache flush failed",l->position);
-    stats->source_bytes=l->position; stats->parser_peak_bytes=ink_md_peak();
-    int result=l->failed?-1:0; free(l); return result;
+
+    if(l->failed) { ink_layout_end(l); return NULL; }
+    return l;
+}
+void ink_layout_end(void *context)
+{
+    Layout *l=context;if(!l)return;
+    if(l->bitmaps&&!l->cfg.bitmap_spool) fclose(l->bitmaps);
+    if(l->table&&!l->cfg.table_spool) fclose(l->table);
+    free(l);
+}
+int ink_layout_step(void *context)
+{
+    Layout *l=context;
+    if(!l->failed&&!l->done) scan(l,l->stats->pages+1);
+    if(fflush(l->draw)||fflush(l->pages)||fflush(l->chapters)||
+       (l->bitmaps&&fflush(l->bitmaps))||(l->table&&fflush(l->table)))
+        fail(l,"cache flush failed",l->position);
+    l->stats->source_bytes=l->position;l->stats->parser_peak_bytes=ink_md_peak();
+    return l->failed?-1:l->done?1:0;
+}
+/* Only the pointer-free scanner state is persisted, and only between parser
+ * calls. Header includes ABI size; book cache key includes firmware/layout version.
+ * Caller supplies fresh streams/callbacks on restore, never restored addresses. */
+int ink_layout_save(void *context,FILE *state)
+{
+    Layout *l=context;
+    uint64_t h[4]={0x383350594b4e49ULL,sizeof(*l),
+        l->cfg.chapter_spool?(uint64_t)ftello(l->cfg.chapter_spool):0,l->table!=NULL};
+    size_t offset=offsetof(Layout,block),size=offsetof(Layout,bitmap)-offset;
+    if(l->failed||fwrite(h,1,sizeof(h),state)!=sizeof(h)||
+       fwrite(l->stats,1,sizeof(*l->stats),state)!=sizeof(*l->stats)||
+       fwrite(l->block,1,size,state)!=size||fflush(state))return -1;
+    return 0;
+}
+void *ink_layout_restore(FILE *state,FILE *source,FILE *draw,FILE *pages,FILE *chapters,
+    const ink_layout_config *config,ink_layout_stats *stats)
+{
+    uint64_t h[4];
+    if(fread(h,1,sizeof(h),state)!=sizeof(h)||h[0]!=0x383350594b4e49ULL||h[1]!=sizeof(Layout))return NULL;
+    Layout *l=calloc(1,sizeof(*l));if(!l)return NULL;
+    size_t offset=offsetof(Layout,block),size=offsetof(Layout,bitmap)-offset;
+    if(fread(stats,1,sizeof(*stats),state)!=sizeof(*stats)||
+       fread(l->block,1,size,state)!=size)goto bad;
+    l->input=source;l->draw=draw;l->pages=pages;l->chapters=chapters;l->stats=stats;l->cfg=*config;
+    l->bitmaps=config->bitmap_spool;l->table=h[3]?config->table_spool:NULL;
+    if(l->read_n>sizeof(l->read)||l->read_at>l->read_n||l->count>CELLS||l->block_n>INK_BLOCK_BYTES||l->formula_n>sizeof(l->formula)||l->failed||
+       fseeko(source,(off_t)(l->position+l->read_n-l->read_at),SEEK_SET)||
+       ftruncate(fileno(draw),(off_t)l->draw_bytes)||fseeko(draw,(off_t)l->draw_bytes,SEEK_SET)||
+       ftruncate(fileno(pages),(off_t)(stats->pages*32))||fseeko(pages,(off_t)(stats->pages*32),SEEK_SET)||
+       ftruncate(fileno(chapters),(off_t)(stats->chapters*212))||fseeko(chapters,(off_t)(stats->chapters*212),SEEK_SET)||
+       (config->chapter_spool&&fseeko(config->chapter_spool,(off_t)h[2],SEEK_SET))||ink_md_reset())goto bad;
+    return l;
+bad:free(l);return NULL;
+}
+int ink_layout_run(FILE *source,FILE *draw,FILE *pages,FILE *chapters,
+    const ink_layout_config *config,ink_layout_stats *stats)
+{
+    void *l=ink_layout_begin(source,draw,pages,chapters,config,stats);if(!l)return -1;
+    int result;do{result=ink_layout_step(l);}while(!result);
+    ink_layout_end(l);return result<0?-1:0;
 }

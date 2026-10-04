@@ -1,5 +1,56 @@
 # InkPy checkpoint
 
+## Stage 38: lazy EPUB, persistent cache and temporary diagnostics (2026-10-04)
+
+User device results for Stage 37: loading froze the UI, TOC filenames/errors,
+image placeholders and no cache reuse; a heavy book was interrupted. The four
+EPUBs have not been supplied here, so their specific failures are not yet confirmed.
+
+EPUB opening now reads metadata/TOC and imports only the requested spine document.
+Layout advances at physical-line/parser boundaries until a screen is available;
+long bounded blocks can generate a few screens ahead. No total-page indexing,
+page numbers or Go to page for EPUB; Markdown behavior retained. Chapter jumps
+load their document/fragment directly; Previous/Next cross spine documents.
+
+Pointer-free scanner continuation (about 27 KiB, excluding the render scratch
+bitmap) and generated runs survive close/reboot. Book/font/stat/orientation/version
+key selects an owned e38b cache; last document/screen resumes. Streams/callbacks
+are supplied afresh on restore. Incomplete appended output is truncated back to
+saved offsets. Checkpoint publication handles FatFS rename's EEXIST behavior;
+state-next can recover the complete save if the old state was removed first.
+
+TOC handling tries EPUB3 nav, loose TOC links, NCX/spine toc and guide fallback.
+Malformed navigation no longer prevents book opening. Namespace aliases, large
+publisher attributes, same-document fragments and archive-root image references
+handled. Missing TOC uses numeric entries, replaced with title/first heading as
+that document opens. Current-document TOC filtering avoids per-id whole-TOC scans. Forward manifest/
+spine lookup avoids quadratic scans for ordinary reading-order metadata; screen
+title lookup reads local anchors instead of reopening every TOC entry.
+Images are extracted only when reached in layout; angle destinations support
+spaces/parentheses. Existing PNG/baseline JPEG restrictions remain.
+
+Hourglass/phase appears during actual work. Long Home cancels loading. Scheduler
+yields are throttled instead of adding a tick to every inflater chunk. Temporary
+SD-root inkpy-epub-debug.txt logs TOC/ZIP/chapter/cache/image failures and device
+heap/stack headroom, bounded around 512 KiB. Remove diagnostics in a later stage
+after analyzing the user's four books. See EPUB.md for reproduction instructions.
+
+Checks: EPUB2/3 stored/deflate, lazy next-document access, cache reopen without
+progress callbacks/reconversion, fragments and rotation; malformed-nav/NCX,
+namespace aliases/oversized styles/URI image names, absent TOC title fallback.
+Continuation save/restore at every step matches uninterrupted draw/page/chapter
+streams byte-for-byte. Existing mixed reader and table/math regressions pass.
+Evidence: results/stage38/checks.txt. Native ESP32-S3 build and esptool validation pass. Application 2,633,808 bytes;
+SHA-256 4a557c53829dcf9eb3525d87b225a54b5edd04226bf0bde3ed01ba29dfe30954. Image details in FIRMWARE.md.
+No physical testing or flashing here. Unrelated prototypes/python/run.sh mode
+remains untouched.
+
+Remaining limit: current XHTML document still decompresses/converts in full before
+its first screen; a huge single chapter can wait. Going Previous into an unvisited
+chapter must reach its last screen. No cache eviction yet. Next bounded task:
+review SD diagnostics from the four real books, fix their concrete remaining
+failures/bottleneck, then remove temporary diagnostics.
+
 ## Stage 37: EPUB and shared images (2026-10-04)
 
 Implemented restricted EPUB 2/3 import using container/OPF spine, nav/NCX TOC

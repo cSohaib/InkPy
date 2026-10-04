@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdio.h>
 /* Experimental host core, one owner. Outputs are disposable caches, never source
  * edits. Caller publishes them only after success; errors leave partial output.
@@ -20,6 +21,7 @@ typedef struct {
     FILE *chapter_spool; /* EPUB source anchors: u64 offset,u16 title length,192 title bytes. */
     FILE *table_spool; /* Optional caller-owned row scratch file, separate from bitmaps. */
     FILE *bitmap_spool; /* Optional caller-owned seekable scratch file. */
+    bool (*cancelled)(void);
     void (*progress)(void); /* Optional cooperative scheduling during indexing. */
 } ink_layout_config;
 typedef struct {
@@ -39,3 +41,13 @@ typedef struct {
  * Run source anchors are approximate for synthetic markers and normalized text. */
 int ink_layout_run(FILE *source, FILE *draw, FILE *pages, FILE *chapters,
                    const ink_layout_config *config, ink_layout_stats *stats);
+
+/* Incremental owner: each step finishes at a physical-line/parser boundary.
+ * A long Markdown block can produce several screens in one step. */
+void *ink_layout_begin(FILE *source,FILE *draw,FILE *pages,FILE *chapters,
+    const ink_layout_config *config,ink_layout_stats *stats);
+int ink_layout_step(void *layout); /* -1 error, 0 more input, 1 EOF */
+int ink_layout_save(void *layout,FILE *state);
+void *ink_layout_restore(FILE *state,FILE *source,FILE *draw,FILE *pages,FILE *chapters,
+    const ink_layout_config *config,ink_layout_stats *stats);
+void ink_layout_end(void *layout);

@@ -114,8 +114,7 @@ restart:;
     int quote = 0;
     while (c != EOF) {
         if (c == '>' && !quote) break;
-        if (n + 1 >= sizeof(x->attributes)) return -1;
-        x->attributes[n++] = (char)c;
+        if(n+1<sizeof(x->attributes))x->attributes[n++]=(char)c;
         if (quote) {
             if (c == quote) quote = 0;
         } else if (c == '\'' || c == '"')
@@ -152,7 +151,11 @@ void ink_xml_attr(const ink_xml *x, const char *key, char *value, size_t cap) {
         const char *start = p;
         while (*p && *p != quote)
             p++;
-        if (strlen(key) == n && !memcmp(name, key, n)) {
+        const char *local=name;
+        for(size_t i=0;i<n;i++)if(name[i]==':')local=name+i+1;
+        const char *wanted=strrchr(key,':');wanted=wanted?wanted+1:key;
+        if ((strlen(key)==n&&!memcmp(name,key,n))||
+            (strlen(wanted)==(size_t)(name+n-local)&&!memcmp(local,wanted,name+n-local))) {
             size_t len = p - start;
             if (len >= cap) len = cap - 1;
             memcpy(value, start, len);

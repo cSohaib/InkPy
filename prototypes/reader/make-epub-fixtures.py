@@ -26,3 +26,28 @@ for version in [2,3]:
             for n,data in assets.items():z.writestr('OPS/images/'+n,data)
 (root/'images.md').write_text('# Images\n\nAn inline ![icon](inline.png) image.\n\n![cover](cover.jpg)\n\n![palette](palette.png)\n\n![mono](mono.png)\n\n![missing](absent.png)\n')
 print('Generated EPUB 2/3 stored/deflate, PNG/JPEG and Markdown image fixtures')
+
+# Stage38 compatibility regressions: malformed nav falls back to NCX; aliased
+# namespaces and large publisher attributes; image names with spaces/parentheses.
+base=root/'epub3-deflate.epub'
+with zipfile.ZipFile(base) as z: original={n:z.read(n) for n in z.namelist()}
+for variant in ['nav-ncx-fallback','namespace-images','no-toc']:
+    entries=dict(original)
+    if variant=='nav-ncx-fallback':
+        entries['OPS/nav.xhtml']=b'<html><nav'
+        entries['OPS/toc.ncx']=ncx.encode()
+        entries['OPS/book.opf']=entries['OPS/book.opf'].replace(b'</manifest>',b'<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/></manifest>')
+    elif variant=='namespace-images':
+        entries['OPS/nav.xhtml']=entries['OPS/nav.xhtml'].replace(b'epub:type',b'e:type')
+        entries['OPS/text/one.xhtml']=entries['OPS/text/one.xhtml'].replace(b'inline.png',b'inline%20%28small%29.png').replace(b'<p>Ordinary',b'<p id="oversized" style="'+b'x'*5000+b'">Ordinary')
+        entries['OPS/images/inline (small).png']=entries.pop('OPS/images/inline.png')
+    else:
+        entries['OPS/book.opf']=entries['OPS/book.opf'].replace(b'properties="nav"',b'')
+    with zipfile.ZipFile(root/(variant+'.epub'),'w',compression=zipfile.ZIP_DEFLATED) as z:
+        for name,data in entries.items():z.writestr(name,data)
+
+entries=dict(original)
+entries['OPS/text/one.xhtml']=entries['OPS/text/one.xhtml'].replace(b'<h3 id="part">',
+    (b'<p>'+b'Heavy chapter text. '*100+b'</p>')*100+b'<h3 id="part">')
+with zipfile.ZipFile(root/'heavy.epub','w',compression=zipfile.ZIP_DEFLATED) as z:
+    for name,data in entries.items():z.writestr(name,data)
