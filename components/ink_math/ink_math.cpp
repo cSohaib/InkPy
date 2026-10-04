@@ -167,7 +167,7 @@ struct Raster final : Graphics2D {
 void preflight(const char *s) {
     require(s && std::strlen(s)<=2048, "formula exceeds 2048-byte prototype budget");
     static constexpr const char *allowed[]={
-        "alpha","beta","gamma","leq","geq","forall","in","mathbb","nabla","infty",
+        "bar","epsilon","mu","sigma","times","alpha","beta","gamma","leq","geq","forall","in","mathbb","nabla","infty",
         "partial","frac","sqrt","sum","int","text","mathrm","mathbf","mathcal",
         "pm","left","right","lVert","rVert","begin","end","min","quad","lim","to"
     };

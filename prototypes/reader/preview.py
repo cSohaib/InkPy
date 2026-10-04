@@ -12,6 +12,9 @@ meta=metadata(root); data=page(root,int(number))
 im=Image.new('1',(meta['width'],meta['height']),1); draw=ImageDraw.Draw(im)
 loaded={}
 for run in data['runs']:
+    if run.get('rule'):
+        draw.rectangle((run['x'],run['y'],run['x']+run['width']-1,run['y']+run['height']-1),fill=0)
+        continue
     if 'bitmap' in run:
         # Cache uses black=1; Pillow's 1-bit image uses white=1.
         from PIL import ImageChops

@@ -54,3 +54,11 @@ target_include_directories(reader-font SYSTEM PRIVATE "${FT}/include")
 target_compile_definitions(reader-font PRIVATE INK_USE_FONTS=1)
 target_compile_options(reader-font PRIVATE -Wall -Wextra -Werror -UNDEBUG)
 target_link_libraries(reader-font PRIVATE md4c math-vendor)
+add_executable(reader-tables tables.c "../../components/ink_reader/ink_reader.c"
+    "../../components/ink_dict/ink_dict.c" "../../components/ink_dict/ink_dict_gzip.c"
+    "../../components/ink_math/ink_font.c" "${CORE}/ink_layout.c" "${CORE}/md_budget.c" "${INK_MATH_ROOT}/ink_math.cpp")
+target_include_directories(reader-tables PRIVATE "${CORE}" "${INK_MATH_ROOT}" "../../components/ink_reader" "../../components/ink_dict")
+target_include_directories(reader-tables SYSTEM PRIVATE "${FT}/include")
+target_compile_definitions(reader-tables PRIVATE INK_USE_FONTS=1)
+target_compile_options(reader-tables PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_link_libraries(reader-tables PRIVATE md4c math-vendor)

@@ -52,8 +52,8 @@ void ink_reader_close(ink_reader *r)
     if(r->pages) fclose(r->pages);
     if(r->chapters) fclose(r->chapters);
     r->draw=r->pages=r->chapters=NULL;
-    if(r->cache[0]) for(unsigned i=0;i<4;i++) {
-        char p[560]; const char *names[]={"draw","pages","chapters","bitmap"};
+    if(r->cache[0]) for(unsigned i=0;i<5;i++) {
+        char p[560]; const char *names[]={"draw","pages","chapters","bitmap","table"};
         if(!path(r,p,names[i])) unlink(p);
     }
 }
@@ -78,25 +78,28 @@ static int open_book(ink_reader *r,const char *source,const char *root,ink_layou
         if(fclose(owner)) valid=false;
     }
     if(!valid) { r->cache[0]=0; return error(r,"Reader cache owner mismatch"); }
-    FILE *input=fopen(source,"rb"),*spool=NULL;
+    FILE *input=fopen(source,"rb"),*spool=NULL,*table=NULL;
     if(!input) return error(r,"Cannot open Markdown");
     path(r,p,"draw"); r->draw=fopen(p,"w+b");
     path(r,p,"pages"); r->pages=fopen(p,"w+b");
     path(r,p,"chapters"); r->chapters=fopen(p,"w+b");
     if(math) { path(r,p,"bitmap"); spool=fopen(p,"w+b"); }
+    path(r,p,"table"); table=fopen(p,"w+b");
     int status=-1;
-    if(!r->draw||!r->pages||!r->chapters||(math&&!spool)) error(r,"Cannot open reader cache");
+    if(!r->draw||!r->pages||!r->chapters||!table||(math&&!spool)) error(r,"Cannot open reader cache");
     else {
         ink_layout_config cfg={.width=page_width(r),.height=page_height(r),.font_pixels=INK_UI_FONT,.read_bytes=1024,
-            .render_math=math,.bitmap_spool=spool,.progress=progress};
+            .render_math=math,.bitmap_spool=spool,.table_spool=table,.progress=progress};
         status=ink_layout_run(input,r->draw,r->pages,r->chapters,&cfg,&r->stats);
         if(status) error(r,r->stats.error);
         else if(r->stats.pages>UINT_MAX||r->stats.chapters>UINT_MAX) status=error(r,"Reader index too large");
     }
     if(fclose(input)) status=error(r,"Markdown close failed");
     if(spool&&fclose(spool)) status=error(r,"Bitmap cache close failed");
+    if(table&&fclose(table)) status=error(r,"Table cache close failed");
     if(status) { ink_reader_close(r); return -1; }
     path(r,p,"bitmap"); unlink(p);
+    path(r,p,"table"); unlink(p);
     r->page=r->stats.pages?1:0; strcpy(r->title,"");
     if(r->page) { unsigned char b[32]; if(page_record(r,b)) { ink_reader_close(r); return -1; } }
     return 0;
@@ -168,10 +171,10 @@ static int lookup_word(ink_reader *r,unsigned tap_x,unsigned tap_y)
         at+=20; uint64_t size=number(h+8,4);
         unsigned x=(unsigned)number(h,2),y=(unsigned)number(h+2,2),cell=(unsigned)number(h+4,2),style=(unsigned)number(h+6,2);
         unsigned level=(style>>8)&7,height=INK_UI_FONT+(level?2*(7-level):0);
-        if(size>end-at||!cell||cell>480) return error(r,"Invalid word geometry");
+        if(size>end-at||!cell||cell>page_width(r)) return error(r,"Invalid word geometry");
         bool continuation=(x==prev_end&&y==prev_y)||(x==8&&prev_end>=page_width(r)-8-prev_cell&&y==prev_y+prev_height+8);
         if(used&&!continuation) { if(hit) goto found; used=0; overflow=false; }
-        if(style==INK_BITMAP||(style&INK_MATH)) {
+        if(style==INK_BITMAP||style==INK_RULE||(style&INK_MATH)) {
             if(hit) goto found;
             used=0; overflow=false;
             if(size>LONG_MAX||fseek(r->draw,(long)size,SEEK_CUR)) return error(r,"Cannot skip formula");
@@ -293,7 +296,13 @@ int ink_reader_draw(ink_reader *r,uint8_t frame[48000])
             unsigned x=(unsigned)number(h,2),y=(unsigned)number(h+2,2),cell=(unsigned)number(h+4,2),style=(unsigned)number(h+6,2);
             uint64_t size=number(h+8,4);
             if(!size||size>end-at||x>=page_width(r)||y>=page_height(r)||!cell) return error(r,"Invalid page run");
-            if(style==INK_BITMAP) {
+            if(style==INK_RULE) {
+                unsigned char b[2];
+                if(size!=2||fread(b,1,2,r->draw)!=2) return error(r,"Invalid table rule");
+                unsigned height=(unsigned)number(b,2);
+                if(!height||height>page_height(r)-y||cell>page_width(r)-x) return error(r,"Table rule outside page");
+                for(unsigned dy=0;dy<height;dy++) for(unsigned dx=0;dx<cell;dx++) pixel(frame,x+dx,y+dy);
+            } else if(style==INK_BITMAP) {
                 unsigned char b[2],row[60];
                 if(size<2||cell>480||fread(b,1,2,r->draw)!=2) return error(r,"Invalid formula bitmap");
                 unsigned height=(unsigned)number(b,2),stride=(cell+7)/8;

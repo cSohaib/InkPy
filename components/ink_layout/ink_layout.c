@@ -7,11 +7,11 @@
 #include <string.h>
 #include <inttypes.h>
 
-enum { CELLS=128, MARGIN=8 };
+enum { CELLS=128, MARGIN=8, TABLE_COLUMNS=16, TABLE_PAD=4 };
 typedef struct { uint32_t value,min; unsigned need; uint64_t start; } Utf;
 typedef struct { uint32_t cp; uint16_t style; uint64_t source, bitmap_offset; unsigned width,height,baseline; bool display; } Cell;
 typedef struct {
-    FILE *input,*draw,*pages,*chapters,*bitmaps;
+    FILE *input,*draw,*pages,*chapters,*bitmaps,*table;
     ink_layout_config cfg;
     ink_layout_stats *stats;
     char block[INK_BLOCK_BYTES], physical[INK_BLOCK_BYTES];
@@ -30,6 +30,11 @@ typedef struct {
     unsigned list_depth,list_order[16];
     char formula[4096]; unsigned formula_n; bool formula_cut,display_math;
     uint64_t formula_source;
+    unsigned table_columns,table_column,table_above,table_below;
+    bool table_active,table_collect,table_header,table_drawing;
+    unsigned table_align[TABLE_COLUMNS];
+    uint64_t table_write;
+    uint64_t table_begin[TABLE_COLUMNS],table_end[TABLE_COLUMNS];
     uint8_t bitmap[48000];
 } Layout;
 
@@ -107,6 +112,7 @@ static void output_line(Layout *l,unsigned n)
         Cell *c=&l->line[i]; if(c->baseline>above) above=c->baseline;
         if(c->height-c->baseline>below) below=c->height-c->baseline;
     }
+    if(l->table_drawing) { above=l->table_above; below=l->table_below; }
     unsigned height=above+below+8;
     if (l->y+height>l->cfg.height-MARGIN) end_page(l);
     open_page(l,l->line[0].source);
@@ -115,6 +121,13 @@ static void output_line(Layout *l,unsigned n)
         l->title_source=l->line[0].source;
     }
     unsigned step=cell_width(l),x=MARGIN;
+    if(l->table_drawing) {
+        unsigned width=(l->cfg.width-2*MARGIN)/l->table_columns;
+        unsigned used=line_width(l),extra=width-2*TABLE_PAD-used;
+        x+=l->table_column*width+TABLE_PAD;
+        if(l->table_align[l->table_column]==MD_ALIGN_CENTER) x+=extra/2;
+        if(l->table_align[l->table_column]==MD_ALIGN_RIGHT) x+=extra;
+    }
     for (unsigned i=0;i<n;) {
         Cell *c=&l->line[i]; unsigned j=i+1,len=0; char text[CELLS*4];
         unsigned y=l->y+above-pixels(l);
@@ -146,10 +159,19 @@ static void finish_line(Layout *l)
 { output_line(l,l->count); l->count=0; }
 static void paragraph(Layout *l)
 { finish_line(l); if (l->page_open) l->y+=6; }
+static void table_store(Layout *l,const Cell *cell)
+{
+    bytes(l,l->table,cell,sizeof(*cell));l->table_write+=sizeof(*cell);
+}
 static void emit(Layout *l,uint32_t cp,uint64_t source,bool preserve)
 {
     if (l->failed) return;
     if (source>l->last_source) l->last_source=source;
+    if(l->table_collect) {
+        if(cp=='\r'||cp=='\n'||cp=='\t') cp=' ';
+        Cell c={.cp=cp,.style=(uint16_t)style(l),.source=source};
+        table_store(l,&c); return;
+    }
     if (cp=='\r') { finish_line(l); l->previous_cr=true; return; }
     if (cp=='\n') { if (!l->previous_cr) finish_line(l); l->previous_cr=false; return; }
     l->previous_cr=false;
@@ -182,9 +204,94 @@ static void literal_text(Layout *l,const char *s,size_t n,uint64_t source)
 }
 static void synthetic(Layout *l,const char *s)
 { for (;*s;++s) emit(l,(unsigned char)*s,l->last_source,false); }
+/* A row's cells use a reusable SD scratch file. Read one wrapped line at
+ * a time, twice (measure then draw), so neither table size nor cell length sets
+ * RAM use. Page breaks happen between line bands, even inside a tall row. */
+static uint64_t table_line(Layout *l,unsigned col,uint64_t at)
+{
+    l->count=0;
+    unsigned width=(l->cfg.width-2*MARGIN)/l->table_columns-2*TABLE_PAD,used=0,word_cut=0;
+    uint64_t word_at=at;
+    if(fseeko(l->table,(off_t)at,SEEK_SET)) { fail(l,"table read seek failed",l->last_source); return at; }
+    while(at<l->table_end[col]&&l->count<CELLS) {
+        Cell c;
+        if(fread(&c,1,sizeof(c),l->table)!=sizeof(c)) { fail(l,"table read failed",l->last_source); break; }
+        unsigned w=item_width(l,&c);
+        if(used+w>width) {
+            if(word_cut) { l->count=word_cut;at=word_at; }
+            break;
+        }
+        l->line[l->count++]=c;used+=w;at+=sizeof(c);
+        if(c.cp==' '&&!(c.style&INK_CODE)) { word_cut=l->count;word_at=at; }
+    }
+    while(l->count&&l->line[l->count-1].cp==' ') l->count--;
+    return at;
+}
+static void rule(Layout *l,unsigned x,unsigned y,unsigned w,unsigned h)
+{
+    number(l,l->draw,x,2);number(l,l->draw,y,2);number(l,l->draw,w,2);
+    number(l,l->draw,INK_RULE,2);number(l,l->draw,2,4);number(l,l->draw,l->last_source,8);
+    number(l,l->draw,h,2);l->draw_bytes+=22;l->stats->runs++;
+}
+static void table_row(Layout *l)
+{
+    uint64_t at[TABLE_COLUMNS];memcpy(at,l->table_begin,sizeof(at));
+    bool first=true,more=true;
+    while(more&&!l->failed) {
+        if(l->cfg.progress) l->cfg.progress();
+        more=false;l->table_above=pixels(l);l->table_below=0;
+        for(unsigned col=0;col<l->table_columns;col++) {
+            table_line(l,col,at[col]);
+            for(unsigned i=0;i<l->count;i++) if(l->line[i].width) {
+                Cell *c=&l->line[i];
+                if(c->baseline>l->table_above) l->table_above=c->baseline;
+                if(c->height-c->baseline>l->table_below) l->table_below=c->height-c->baseline;
+            }
+        }
+        unsigned height=l->table_above+l->table_below+8;
+        if(l->y+height>l->cfg.height-MARGIN) {
+            if(l->page_open&&!first) rule(l,MARGIN,l->y-1,((l->cfg.width-2*MARGIN)/l->table_columns)*l->table_columns+1,1);
+            end_page(l);first=true;
+        }
+        unsigned top=l->y;
+        l->table_drawing=true;
+        for(unsigned col=0;col<l->table_columns;col++) {
+            l->table_column=col;
+            uint64_t next=table_line(l,col,at[col]);
+            if(next==at[col]&&at[col]<l->table_end[col]) { fail(l,"table cell exceeds column width",l->last_source);break; }
+            at[col]=next;more|=next<l->table_end[col];
+            l->y=top;finish_line(l);
+        }
+        l->table_drawing=false;
+        open_page(l,l->last_source);l->y=top+height;
+        unsigned width=(l->cfg.width-2*MARGIN)/l->table_columns;
+        if(first) rule(l,MARGIN,top,width*l->table_columns+1,1);
+        for(unsigned col=0;col<=l->table_columns;col++) rule(l,MARGIN+col*width,top,1,height);
+        if(!more) rule(l,MARGIN,top+height-1,width*l->table_columns+1,1);
+        first=false;
+    }
+    l->count=0;
+}
 static int block_enter(MD_BLOCKTYPE t,void *detail,void *user)
 {
     Layout *l=user;
+    if(t==MD_BLOCK_TABLE) {
+        paragraph(l);l->table_columns=((MD_BLOCK_TABLE_DETAIL*)detail)->col_count;
+        l->table_active=l->table_columns&&l->table_columns<=TABLE_COLUMNS&&
+            (l->cfg.width-2*MARGIN)/l->table_columns>=cell_width(l)+2*TABLE_PAD;
+        if(l->table_active&&!l->table) l->table=l->cfg.table_spool?l->cfg.table_spool:tmpfile();
+        if(l->table_active&&!l->table) return fail(l,"table spool creation failed",l->block_source);
+    }
+    if(t==MD_BLOCK_TR&&l->table_active) {
+        l->table_column=0;l->table_write=0;
+        if(fseeko(l->table,0,SEEK_SET)) return fail(l,"table row seek failed",l->last_source);
+    }
+    if((t==MD_BLOCK_TD||t==MD_BLOCK_TH)&&l->table_active) {
+        l->table_collect=true;l->table_header=t==MD_BLOCK_TH;
+        l->table_align[l->table_column]=((MD_BLOCK_TD_DETAIL*)detail)->align;
+        if(l->table_header) l->bold++;
+        l->table_begin[l->table_column]=l->table_write;
+    }
     if (t==MD_BLOCK_H || t==MD_BLOCK_CODE || t==MD_BLOCK_LI) paragraph(l);
     if (t==MD_BLOCK_H) {
         l->head=((MD_BLOCK_H_DETAIL*)detail)->level;
@@ -211,6 +318,13 @@ static int block_enter(MD_BLOCKTYPE t,void *detail,void *user)
 static int block_leave(MD_BLOCKTYPE t,void *detail,void *user)
 {
     (void)detail; Layout *l=user;
+    if((t==MD_BLOCK_TD||t==MD_BLOCK_TH)&&l->table_active) {
+        l->table_end[l->table_column++]=l->table_write;
+        if(l->table_header) l->bold--;
+        l->table_collect=false;return l->failed?-1:0;
+    }
+    if(t==MD_BLOCK_TR&&l->table_active) { table_row(l);return l->failed?-1:0; }
+    if(t==MD_BLOCK_TABLE) { l->table_active=false;paragraph(l); }
     if (t==MD_BLOCK_P || t==MD_BLOCK_H || t==MD_BLOCK_CODE || t==MD_BLOCK_LI || t==MD_BLOCK_TR) paragraph(l);
     if (t==MD_BLOCK_H) {
         if (l->head==2) {
@@ -233,7 +347,12 @@ static void formula(Layout *l)
     unsigned w=0,h=0,base=0;
     l->formula[l->formula_n]=0;
     int bad=l->formula_cut || l->cfg.render_math(l->formula,l->display_math,pixels(l),l->bitmap,&w,&h,&base);
-    if (bad || !w || w>480 || w>l->cfg.width-2*MARGIN || !h || h>800 ||
+    unsigned available=l->table_collect?(l->cfg.width-2*MARGIN)/l->table_columns-2*TABLE_PAD:l->cfg.width-2*MARGIN;
+    if(!bad&&w>available&&l->table_collect) {
+        unsigned smaller=pixels(l)*available/w;
+        if(smaller>=12) bad=l->cfg.render_math(l->formula,0,smaller,l->bitmap,&w,&h,&base);
+    }
+    if (bad || !w || w>480 || w>available || !h || h>800 ||
         base>h || (base>pixels(l)?base:pixels(l))+h-base+8>l->cfg.height-2*MARGIN) {
         ++l->stats->math_fallbacks;
         synthetic(l,l->display_math?"$$":"$");
@@ -243,17 +362,18 @@ static void formula(Layout *l)
         synthetic(l,l->display_math?"$$":"$");
         return;
     }
-    if(l->display_math) paragraph(l);
-    if(line_width(l)+w>l->cfg.width-2*MARGIN || l->count==CELLS) finish_line(l);
+    if(l->display_math&&!l->table_collect) paragraph(l);
+    if(!l->table_collect&&(line_width(l)+w>available || l->count==CELLS)) finish_line(l);
     if(fseeko(l->bitmaps,0,SEEK_END)) { fail(l,"bitmap spool seek failed",l->formula_source); return; }
     off_t offset=ftello(l->bitmaps);
     if(offset<0) { fail(l,"bitmap spool position failed",l->formula_source); return; }
     unsigned stride=(w+7)/8;
     for(unsigned y=0;y<h;++y) bytes(l,l->bitmaps,l->bitmap+y*60,stride);
-    l->line[l->count++]=(Cell){.source=l->formula_source,.bitmap_offset=(uint64_t)offset,
-                             .width=w,.height=h,.baseline=base,.display=l->display_math};
+    Cell c={.source=l->formula_source,.bitmap_offset=(uint64_t)offset,
+        .width=w,.height=h,.baseline=base,.display=l->display_math&&!l->table_collect};
+    if(l->table_collect) table_store(l,&c); else l->line[l->count++]=c;
     ++l->stats->formulas;
-    if(l->display_math) paragraph(l);
+    if(l->display_math&&!l->table_collect) paragraph(l);
 }
 static int span(MD_SPANTYPE t,void *user,bool enter)
 {
@@ -432,6 +552,7 @@ int ink_layout_run(FILE *source,FILE *draw,FILE *pages,FILE *chapters,
     if(config->render_math && !(l->bitmaps=config->bitmap_spool?config->bitmap_spool:tmpfile())) fail(l,"bitmap spool creation failed",0);
     if (!l->failed) scan(l);
     if(l->bitmaps&&!config->bitmap_spool) fclose(l->bitmaps);
+    if(l->table&&!config->table_spool) fclose(l->table);
     if (fflush(draw)||fflush(pages)||fflush(chapters)) fail(l,"cache flush failed",l->position);
     stats->source_bytes=l->position; stats->parser_peak_bytes=ink_md_peak();
     int result=l->failed?-1:0; free(l); return result;

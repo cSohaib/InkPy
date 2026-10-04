@@ -1,5 +1,39 @@
 # InkPy checkpoint
 
+## Stage 36: expanded math and Markdown tables (2026-10-04)
+
+All user-listed commands supported: bar, beta, epsilon, frac, left, min, mu, pm,
+quad, right, sigma, sqrt, sum, text, times. Added missing bar/epsilon/mu/sigma/times
+to native math preflight; existing MicroTeX implementation/assets handle them.
+Fixture fixtures/markdown-tables-math.md includes average, Cpk and table formulas.
+Nine expressions render without fallback in portrait and landscape at body size.
+
+Tables now have equal-width columns, bold headers, left/center/right alignment,
+word wrapping (character wrapping for oversized words), borders, inline text
+styles and inline math. Wide cell formulas retry at a smaller size down to 12px,
+then preserve source if still oversized. Empty cells/escaped pipes supported.
+Rows can continue across pages; headers are not repeated. No settings/dependencies.
+
+One reusable SD row scratch file stores Cell records; one bounded line is read
+for measuring then drawing each column band. Layout context increases by 384
+host bytes to 75,560; neither table/cell length sets RAM use. Rows overwrite the
+scratch from offset zero. Reader closes/removes it after indexing and on failure.
+New INK_RULE cache runs encode solid rectangles; device draw/word lookup and
+host cache/preview understand them. Cache is regenerated on every book opening.
+
+Limits retained: 8 KiB parser block before literal fallback; over-wide or >16
+column tables use readable linear cells. No arbitrary HTML tables or merged
+cells. Normal cell math keeps existing complexity/size limits/source fallback.
+Tests: all commands, aligned/wrapped/style/Unicode/empty/escaped-pipe tables,
+1000-character row with exact text preservation across pages, 40 subsequent rows,
+inline formulas, landscape and no-math path; prior reader/math/rotation/navigation
+and StarDict suites pass. Host preview decoder and device previews inspected.
+ESP32-S3 build/slot fit and esptool checksum/hash pass. Evidence results/stage36.
+App 2,595,216 bytes, SHA256 fc7cf6339a13383c1bfcf2f8eb8687febf7d1a8836e1176d3901dbaa362aa030.
+No physical device test. Existing math SD assets unchanged. Unrelated Python
+run.sh mode excluded. Next: user tests real document tables/new commands; EPUB
+still deferred. Scoped commit/push and pause.
+
 ## Stage 35: keyboard, sorted files and global Home (2026-10-04)
 
 Reader Home order: Chapter / Page / Rotate / Exit / Back. File browser sorts

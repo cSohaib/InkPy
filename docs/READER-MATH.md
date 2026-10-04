@@ -43,3 +43,25 @@ atomic when wrapping and cannot exceed the current page's usable dimensions.
 Markdown's existing cross-block parsing and literal-fallback limitations remain.
 This is a working mixed-page prototype; reader menus, tap-word lookup, font UI,
 images from files and the full device reader are still to come.
+
+## Stage 36: math commands and tables
+
+Supported commands include all of the requested bar, beta, epsilon, frac, left,
+min, mu, pm, quad, right, sigma, sqrt, sum, text and times. Existing SD math fonts
+are sufficient. Unsupported/oversized expressions still display source.
+
+Markdown pipe tables render with equal-width columns, bold headers, colon-based
+alignment, wrapped cells, borders and inline math/styles. Landscape reflows them.
+A row may continue across pages; headers are not repeated. Up to 16 columns that
+fit at least one character per cell use the grid; wider tables use linear cells.
+The existing 8 KiB parser-block limit still gives literal fallback for oversized
+blocks. No HTML tables, merged cells or table-specific configuration.
+
+A reusable row scratch file on SD avoids retaining whole rows in RAM. Device and
+host cache readers accept INK_RULE style 64: width in cell, payload u16 height,
+solid black rectangle. Rules are skipped by dictionary word lookup. Reader
+scratch is closed/removed after indexing. Layout context is 75,560 host bytes,
+384 bytes more than the previous core. Tables do not add new dependencies.
+
+Fixture: fixtures/markdown-tables-math.md. Host test: build reader-tables through
+prototypes/reader/CMakeLists.txt, then run with fixture/output folder/math resources.
