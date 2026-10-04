@@ -11,9 +11,13 @@ enum { INK_BOLD=1, INK_ITALIC=2, INK_CODE=4, INK_LITERAL=8, INK_MATH=16, INK_IMA
 typedef int (*ink_layout_math)(const char *source, int display, unsigned pixels,
                               uint8_t *bitmap, unsigned *width, unsigned *height,
                               unsigned *baseline);
+typedef int (*ink_layout_image)(const char *resource,unsigned max_width,unsigned max_height,
+                                uint8_t *bitmap,unsigned *width,unsigned *height);
 typedef struct {
     unsigned width, height, font_pixels, read_bytes;
     ink_layout_math render_math;
+    ink_layout_image render_image;
+    FILE *chapter_spool; /* EPUB source anchors: u64 offset,u16 title length,192 title bytes. */
     FILE *table_spool; /* Optional caller-owned row scratch file, separate from bitmaps. */
     FILE *bitmap_spool; /* Optional caller-owned seekable scratch file. */
     void (*progress)(void); /* Optional cooperative scheduling during indexing. */

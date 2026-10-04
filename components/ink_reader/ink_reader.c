@@ -1,5 +1,8 @@
 #define _POSIX_C_SOURCE 200809L
 #include "ink_reader.h"
+#include "ink_epub.h"
+#include "ink_image.h"
+#include <strings.h>
 #include "../ink_browser/ink_ui_font.h"
 #include "../ink_browser/ink_ui.h"
 #include "../ink_browser/ink_icons.h"
@@ -52,10 +55,27 @@ void ink_reader_close(ink_reader *r)
     if(r->pages) fclose(r->pages);
     if(r->chapters) fclose(r->chapters);
     r->draw=r->pages=r->chapters=NULL;
+    if(r->cache[0])ink_epub_cleanup(r->cache);
     if(r->cache[0]) for(unsigned i=0;i<5;i++) {
         char p[560]; const char *names[]={"draw","pages","chapters","bitmap","table"};
         if(!path(r,p,names[i])) unlink(p);
     }
+}
+static char image_folder[512];
+static void (*image_progress)(void);
+static int render_image(const char *resource,unsigned mw,unsigned mh,uint8_t *bits,unsigned *w,unsigned *h)
+{
+    if(strstr(resource,":")||!resource[0])return -1;
+    char file[1024];int n=resource[0]=='/'?snprintf(file,sizeof(file),"%s",resource):snprintf(file,sizeof(file),"%s/%s",image_folder,resource);
+    if(n<0||(size_t)n>=sizeof(file))return -1;
+    char *out=file;
+    for(char *in=file;*in;in++) {
+        if(*in=='%'&&in[1]&&in[2]) {
+            char hex[3]={in[1],in[2],0},*tail;unsigned long value=strtoul(hex,&tail,16);
+            if(!*tail&&value){*out++=(char)value;in+=2;continue;}
+        }*out++=*in;
+    }*out=0;
+    return ink_image_render(file,mw,mh,bits,w,h,image_progress);
 }
 static int open_book(ink_reader *r,const char *source,const char *root,ink_layout_math math,void (*progress)(void),bool landscape)
 {
@@ -78,23 +98,39 @@ static int open_book(ink_reader *r,const char *source,const char *root,ink_layou
         if(fclose(owner)) valid=false;
     }
     if(!valid) { r->cache[0]=0; return error(r,"Reader cache owner mismatch"); }
-    FILE *input=fopen(source,"rb"),*spool=NULL,*table=NULL;
-    if(!input) return error(r,"Cannot open Markdown");
+    const char *extension=strrchr(source,'.');bool epub=extension&&!strcasecmp(extension,".epub");
+    FILE *anchors=NULL;
+    if(epub) {
+        if(ink_epub_import(source,r->cache,progress,r->error,sizeof(r->error))){ink_reader_close(r);return -1;}
+        path(r,p,"epub-chapters");anchors=fopen(p,"rb");
+        if(!anchors){ink_reader_close(r);return error(r,"Cannot open EPUB chapter anchors");}
+        path(r,p,"epub-body");
+    }
+    const char *input_path=epub?p:source;
+    const char *slash=strrchr(source,'/');size_t folder=slash?(size_t)(slash-source):0;
+    if(folder>=sizeof(image_folder)){if(anchors)fclose(anchors);ink_reader_close(r);return error(r,"Image folder too long");}
+    if(folder){memcpy(image_folder,source,folder);image_folder[folder]=0;}else strcpy(image_folder,".");
+    if(epub)snprintf(image_folder,sizeof(image_folder),"%s",r->cache);
+    image_progress=progress;
+    FILE *input=fopen(input_path,"rb"),*spool=NULL,*table=NULL;
+    if(!input){if(anchors)fclose(anchors);ink_reader_close(r);return error(r,"Cannot open book");}
     path(r,p,"draw"); r->draw=fopen(p,"w+b");
     path(r,p,"pages"); r->pages=fopen(p,"w+b");
     path(r,p,"chapters"); r->chapters=fopen(p,"w+b");
-    if(math) { path(r,p,"bitmap"); spool=fopen(p,"w+b"); }
+    path(r,p,"bitmap"); spool=fopen(p,"w+b");
     path(r,p,"table"); table=fopen(p,"w+b");
     int status=-1;
-    if(!r->draw||!r->pages||!r->chapters||!table||(math&&!spool)) error(r,"Cannot open reader cache");
+    if(!r->draw||!r->pages||!r->chapters||!table||!spool) error(r,"Cannot open reader cache");
     else {
         ink_layout_config cfg={.width=page_width(r),.height=page_height(r),.font_pixels=INK_UI_FONT,.read_bytes=1024,
-            .render_math=math,.bitmap_spool=spool,.table_spool=table,.progress=progress};
+            .render_math=math,.render_image=render_image,.chapter_spool=anchors,.bitmap_spool=spool,.table_spool=table,.progress=progress};
         status=ink_layout_run(input,r->draw,r->pages,r->chapters,&cfg,&r->stats);
         if(status) error(r,r->stats.error);
         else if(r->stats.pages>UINT_MAX||r->stats.chapters>UINT_MAX) status=error(r,"Reader index too large");
     }
-    if(fclose(input)) status=error(r,"Markdown close failed");
+    if(fclose(input)) status=error(r,"Book close failed");
+    if(anchors&&fclose(anchors))status=error(r,"Chapter anchor close failed");
+    if(epub)ink_epub_cleanup(r->cache);
     if(spool&&fclose(spool)) status=error(r,"Bitmap cache close failed");
     if(table&&fclose(table)) status=error(r,"Table cache close failed");
     if(status) { ink_reader_close(r); return -1; }
@@ -303,8 +339,8 @@ int ink_reader_draw(ink_reader *r,uint8_t frame[48000])
                 if(!height||height>page_height(r)-y||cell>page_width(r)-x) return error(r,"Table rule outside page");
                 for(unsigned dy=0;dy<height;dy++) for(unsigned dx=0;dx<cell;dx++) pixel(frame,x+dx,y+dy);
             } else if(style==INK_BITMAP) {
-                unsigned char b[2],row[60];
-                if(size<2||cell>480||fread(b,1,2,r->draw)!=2) return error(r,"Invalid formula bitmap");
+                unsigned char b[2],row[100];
+                if(size<2||cell>800||fread(b,1,2,r->draw)!=2) return error(r,"Invalid formula bitmap");
                 unsigned height=(unsigned)number(b,2),stride=(cell+7)/8;
                 if(!height||height>page_height(r)-y||cell>page_width(r)-x||size!=2+(uint64_t)stride*height) return error(r,"Formula outside page");
                 for(unsigned dy=0;dy<height;dy++) {

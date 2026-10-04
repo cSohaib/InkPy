@@ -23,7 +23,9 @@ typedef struct {
     unsigned fence_char; uint64_t fence_length;
     unsigned y,head,bold,italic,code,math,image,chapter,page_chapter;
     Cell line[CELLS]; unsigned count;
-    bool title_active,title_cut,title_located;
+    bool title_active,title_cut,title_located,image_rendered,next_chapter;
+    uint64_t chapter_source;
+    unsigned char chapter_record[202];
     unsigned title_n,title_page;
     uint64_t title_source;
     char title[INK_TITLE_BYTES];
@@ -116,7 +118,7 @@ static void output_line(Layout *l,unsigned n)
     unsigned height=above+below+8;
     if (l->y+height>l->cfg.height-MARGIN) end_page(l);
     open_page(l,l->line[0].source);
-    if (l->head==2 && !l->title_located) {
+    if (l->head==2 && l->title_active && !l->title_located) {
         l->title_located=true; l->title_page=(unsigned)l->stats->pages+1;
         l->title_source=l->line[0].source;
     }
@@ -295,7 +297,7 @@ static int block_enter(MD_BLOCKTYPE t,void *detail,void *user)
     if (t==MD_BLOCK_H || t==MD_BLOCK_CODE || t==MD_BLOCK_LI) paragraph(l);
     if (t==MD_BLOCK_H) {
         l->head=((MD_BLOCK_H_DETAIL*)detail)->level;
-        if (l->head==2) {
+        if (l->head==2 && !l->cfg.chapter_spool) {
             /* Fixed chapter behavior: an H2 begins a new page. */
             end_page(l);
             ++l->chapter; l->title_active=true; l->title_cut=false; l->title_located=false;
@@ -327,7 +329,7 @@ static int block_leave(MD_BLOCKTYPE t,void *detail,void *user)
     if(t==MD_BLOCK_TABLE) { l->table_active=false;paragraph(l); }
     if (t==MD_BLOCK_P || t==MD_BLOCK_H || t==MD_BLOCK_CODE || t==MD_BLOCK_LI || t==MD_BLOCK_TR) paragraph(l);
     if (t==MD_BLOCK_H) {
-        if (l->head==2) {
+        if (l->head==2 && !l->cfg.chapter_spool) {
             l->title_active=false;
             if (!l->title_located) { room(l); open_page(l,l->block_source); l->title_page=(unsigned)l->stats->pages+1; l->title_source=l->block_source; }
             number(l,l->chapters,l->title_source,8); number(l,l->chapters,l->title_page,4);
@@ -375,6 +377,23 @@ static void formula(Layout *l)
     ++l->stats->formulas;
     if(l->display_math&&!l->table_collect) paragraph(l);
 }
+static bool picture(Layout *l,const MD_ATTRIBUTE *src)
+{
+    if(!l->cfg.render_image||src->size>=512) return false;
+    char resource[512];memcpy(resource,src->text,src->size);resource[src->size]=0;
+    unsigned w=0,h=0,available=l->table_collect?(l->cfg.width-2*MARGIN)/l->table_columns-2*TABLE_PAD:l->cfg.width-2*MARGIN;
+    if(l->cfg.render_image(resource,available,l->cfg.height-2*MARGIN-8,l->bitmap,&w,&h)||!w||w>available||!h||h>l->cfg.height-2*MARGIN-8) return false;
+    bool display=!l->table_collect&&(w>pixels(l)*3||h>pixels(l)*2);
+    if(display)paragraph(l);
+    if(!l->table_collect&&(line_width(l)+w>available||l->count==CELLS))finish_line(l);
+    if(fseeko(l->bitmaps,0,SEEK_END)) {fail(l,"image spool seek failed",l->last_source);return false;}
+    off_t offset=ftello(l->bitmaps);if(offset<0){fail(l,"image spool offset failed",l->last_source);return false;}
+    unsigned stride=(w+7)/8;bytes(l,l->bitmaps,l->bitmap,(size_t)stride*h);
+    Cell c={.source=l->last_source,.bitmap_offset=(uint64_t)offset,.width=w,.height=h,.baseline=h,.display=display};
+    if(l->table_collect)table_store(l,&c);else l->line[l->count++]=c;
+    if(display)paragraph(l);
+    return true;
+}
 static int span(MD_SPANTYPE t,void *user,bool enter)
 {
     Layout *l=user; int delta=enter?1:-1;
@@ -398,8 +417,21 @@ static int span(MD_SPANTYPE t,void *user,bool enter)
     }
     return l->failed?-1:0;
 }
-static int span_enter(MD_SPANTYPE t,void *d,void *u) { (void)d; return span(t,u,true); }
-static int span_leave(MD_SPANTYPE t,void *d,void *u) { (void)d; return span(t,u,false); }
+static int span_enter(MD_SPANTYPE t,void *d,void *u)
+{
+    Layout *l=u;
+    if(t==MD_SPAN_IMG) {
+        l->image_rendered=picture(l,&((MD_SPAN_IMG_DETAIL*)d)->src);
+        if(l->image_rendered){l->image++;return l->failed?-1:0;}
+    }
+    return span(t,u,true);
+}
+static int span_leave(MD_SPANTYPE t,void *d,void *u)
+{
+    (void)d;Layout *l=u;
+    if(t==MD_SPAN_IMG&&l->image_rendered){l->image--;l->image_rendered=false;return l->failed?-1:0;}
+    return span(t,u,false);
+}
 static uint32_t entity(const char *s,size_t n)
 {
     const struct { const char *s; uint32_t cp; } names[]={{"&amp;",38},{"&lt;",60},{"&gt;",62},{"&quot;",34},{"&apos;",39},{"&nbsp;",160}};
@@ -421,7 +453,7 @@ static uint32_t entity(const char *s,size_t n)
 }
 static int text(MD_TEXTTYPE t,const MD_CHAR *s,MD_SIZE n,void *user)
 {
-    Layout *l=user; uint64_t at=l->last_source;
+    Layout *l=user; if(l->image_rendered)return 0; uint64_t at=l->last_source;
     uintptr_t p=(uintptr_t)s,base=(uintptr_t)l->block;
     if (p>=base && p-base<l->block_n) at=l->block_source+(p-base);
     if(l->math && l->cfg.render_math) {
@@ -493,9 +525,28 @@ static void classify(Line *m,int c)
     if (c!=' '&&c!='\t') m->tail_space=false;
     if (c=='`') m->tail_tick=true;
 }
+static void next_chapter(Layout *l)
+{
+    size_t n=fread(l->chapter_record,1,sizeof(l->chapter_record),l->cfg.chapter_spool);
+    l->next_chapter=n==sizeof(l->chapter_record);l->chapter_source=0;
+    if(n&&!l->next_chapter)fail(l,"Invalid EPUB chapter anchor",l->position);
+    if(l->next_chapter)for(unsigned i=0;i<8;i++)l->chapter_source|=(uint64_t)l->chapter_record[i]<<(i*8);
+}
+static void book_chapter(Layout *l)
+{
+    parse(l);paragraph(l);end_page(l);l->chapter++;
+    unsigned n=l->chapter_record[8]|(unsigned)l->chapter_record[9]<<8;
+    if(n>=INK_TITLE_BYTES){fail(l,"Invalid EPUB chapter title",l->position);return;}
+    open_page(l,l->position);
+    number(l,l->chapters,l->position,8);number(l,l->chapters,l->stats->pages+1,4);
+    number(l,l->chapters,l->chapter,4);number(l,l->chapters,n,2);number(l,l->chapters,0,2);
+    bytes(l,l->chapters,l->chapter_record+10,INK_TITLE_BYTES);l->stats->chapters++;
+    next_chapter(l);
+}
 static void scan(Layout *l)
 {
     while (!l->failed && peek(l)!=EOF) {
+        if(l->next_chapter&&l->position==l->chapter_source)book_chapter(l);
         uint64_t first=l->position; size_t n=0; bool long_line=false;
         Line m={.blank=true,.tail_space=true};
         for (;;) {
@@ -549,7 +600,8 @@ int ink_layout_run(FILE *source,FILE *draw,FILE *pages,FILE *chapters,
     unsigned char bom[3]; size_t n=fread(bom,1,3,source);
     l->position=n==3 && !memcmp(bom,"\xef\xbb\xbf",3)?3:0;
     if (fseeko(source,(off_t)l->position,SEEK_SET)) fail(l,"source must be seekable",0);
-    if(config->render_math && !(l->bitmaps=config->bitmap_spool?config->bitmap_spool:tmpfile())) fail(l,"bitmap spool creation failed",0);
+    if((config->render_math||config->render_image) && !(l->bitmaps=config->bitmap_spool?config->bitmap_spool:tmpfile())) fail(l,"bitmap spool creation failed",0);
+    if(config->chapter_spool)next_chapter(l);
     if (!l->failed) scan(l);
     if(l->bitmaps&&!config->bitmap_spool) fclose(l->bitmaps);
     if(l->table&&!config->table_spool) fclose(l->table);

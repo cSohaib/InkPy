@@ -135,3 +135,6 @@ Stage 35: Reader Home order is Chapter / Page / Rotate / Exit / Back. Browser
 bottom buttons extend to the screen edge, with centered 48-pixel icons. Battery
 body is 80×32 pixels. Sorted listing retains only 15 entries, rescanning earlier
 page ranges when needed rather than allocating a complete directory index.
+
+Stage 37: tapping .epub opens the shared reader. EPUB contents define chapters;
+Markdown still uses H2 headings. PNG/JPEG images use formula-like bitmap runs.

@@ -12,6 +12,7 @@ mkdir "$sample_dir/.hidden-folder"
 printf 'hidden\n' > "$sample_dir/.hidden-file"
 printf '# A book\n' > "$sample_dir/Books/book.md"
 printf 'print(1)\n' > "$sample_dir/Books/script.py"
+printf 'PK\000\001' > "$sample_dir/Books/book.epub"
 printf '\000\001' > "$sample_dir/Books/binary.bin"
 for ((i=1;i<=19;i++)); do printf 'hello\n' > "$sample_dir/Notes-$i.txt"; done
 mv "$sample_dir/Notes-19.txt" "$sample_dir/notes-19.txt"

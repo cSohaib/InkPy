@@ -1,5 +1,32 @@
 # InkPy checkpoint
 
+## Stage 37: EPUB and shared images (2026-10-04)
+
+Implemented restricted EPUB 2/3 import using container/OPF spine, nav/NCX TOC
+and fragment anchors. TOC chapters replace H2 inference only for EPUB. Stored
+and deflated ZIP entries stream through the existing inflater. XHTML is reduced
+to supported Markdown plus chapter anchors on SD; all layout, tables, math,
+translation and navigation are reused. Publisher styles/scripts/fonts ignored.
+
+PNG/baseline JPEG images now work in EPUB and Markdown, with fit-to-screen
+monochrome bitmaps and small inline images. Fixed buffers, no full-book DOM or
+full-source-image allocation. SVG raster wrappers supported. See EPUB.md for
+limits and ink_image/vendor/SOURCE.md for pinned TJpgDec provenance.
+
+Checks: four EPUB archive/version combinations, Markdown images, TOC/fragment
+navigation, H2 exclusion, inline/display math, tables, PNG variants/JPEG, missing
+image fallback and portrait/landscape. Existing reader/table/dictionary/browser
+regressions pass. Results: results/stage37/checks.txt. Native ESP32-S3 build and
+esptool validation pass. Rebuilt a damaged zero-byte derived math object/archive;
+no source/dependency reset. Unrelated prototypes/python/run.sh mode left untouched.
+
+Application 2,613,200 bytes, slot 8,257,536 bytes.
+SHA-256: c5879dd5c56ce90b1396bca62c2986723c0bbc43c62fcaee75b938e9d61bee27
+
+Next: test on X4 Pro with an ordinary EPUB (including images), contents navigation,
+rotation and repeated close/open; check available heap/stack and responsiveness.
+No device flashing/testing performed here. Keep this stage bounded and pause.
+
 ## Stage 36: expanded math and Markdown tables (2026-10-04)
 
 All user-listed commands supported: bar, beta, epsilon, frac, left, min, mu, pm,

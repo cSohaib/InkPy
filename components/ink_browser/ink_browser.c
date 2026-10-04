@@ -156,6 +156,8 @@ bool ink_browser_tap(ink_browser *b,unsigned x,unsigned y)
         snprintf(b->folder,sizeof(b->folder),"%s",b->selected);
         b->page=0; ink_browser_reload(b); return true;
     }
+    const char *ext=strrchr(b->rows[row].name,'.');
+    if(ext&&!strcasecmp(ext,".epub")){b->view=INK_OPEN_MARKDOWN;return true;}
     FILE *file=fopen(b->selected,"rb");
     if(!file) { notice(b,"Cannot open file"); return true; }
     /* Cheap first-block binary heuristic; full UTF-8 validation belongs to reader. */
@@ -169,7 +171,7 @@ bool ink_browser_tap(ink_browser *b,unsigned x,unsigned y)
     bad|=ferror(file)!=0; fclose(file);
     if(bad) { notice(b,"Binary file or read error"); return true; }
     const char *extension=strrchr(b->rows[row].name,'.');
-    b->view=extension && !strcasecmp(extension,".md")?INK_OPEN_MARKDOWN:INK_OPEN_TEXT;
+    b->view=extension && (!strcasecmp(extension,".md")||!strcasecmp(extension,".epub"))?INK_OPEN_MARKDOWN:INK_OPEN_TEXT;
     if(b->view==INK_OPEN_TEXT && ink_text_open(&b->text,b->selected)) notice(b,b->text.error);
     return true;
 }

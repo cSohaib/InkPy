@@ -112,3 +112,12 @@ foreach(src base/ftbase base/ftinit base/ftsystem base/ftdebug base/ftglyph base
     list(APPEND FT_SOURCES "${FT}/src/${src}.c")
 endforeach()
 set(MATH_VENDOR_SOURCES ${MT_SOURCES} ${FT_SOURCES} "${XML}/tinyxml2.cpp")
+
+# Share FreeType's existing private inflater with EPUB ZIP and PNG decoding.
+file(READ "${FT}/src/gzip/ftgzip.c" gzip_source)
+file(READ "${INK_MATH_ROOT}/ink_inflate.inc" inflate_adapter)
+file(MAKE_DIRECTORY "${OVERLAY}/gzip")
+file(WRITE "${OVERLAY}/gzip/ftgzip.c" "${gzip_source}\n${inflate_adapter}")
+list(REMOVE_ITEM MATH_VENDOR_SOURCES "${FT}/src/gzip/ftgzip.c")
+list(APPEND MATH_VENDOR_SOURCES "${OVERLAY}/gzip/ftgzip.c")
+set_source_files_properties("${OVERLAY}/gzip/ftgzip.c" PROPERTIES INCLUDE_DIRECTORIES "${FT}/src/gzip")

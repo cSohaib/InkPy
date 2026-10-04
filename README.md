@@ -3,11 +3,11 @@
 Minimal firmware exclusively for the Xteink X4 Pro. The device browser, text
 editor, MicroPython console/script execution and Markdown reader with inline/display
 math now compile together into an ESP32-S3 application image. Stage 31 math and the Stage 32 AI Python script are confirmed working on-device;
-Stage 36 adds expanded math commands and bordered Markdown tables; new firmware
+Stage 37 adds EPUB chapters and PNG/JPEG images through the shared Markdown renderer; new firmware
 needs device testing. See [the checkpoint](docs/CHECKPOINT.md)
 and [downloaded firmware version](docs/FIRMWARE.md). Stage 25 includes StarDict,
 Unicode fonts/selection, differential refresh, Power controls and Python SD
-files/imports plus Wi-Fi/HTTP. EPUB remains deferred. This exploratory build is
+files/imports plus Wi-Fi/HTTP. Basic EPUB support is now integrated. This exploratory build is
 ready for physical testing; source/build checks do not establish hardware behavior.
 
 ## Confirmed scope
@@ -19,7 +19,7 @@ ready for physical testing; source/build checks do not establish hardware behavi
 - Fonts and StarDict tap-word lookup.
 - Files supplied through microSD. Wi-Fi may be used by Python.
 - One fixed theme with night inversion, one UI language with hardcoded text, one keyboard layout, and the small power menu defined below.
-- EPUB later, only after Markdown works well, using the same supported rendering capabilities.
+- EPUB with actual TOC chapters, shared Markdown rendering and images; publisher styling ignored.
 
 No cloud, synchronization, KOReader sync, USB file-transfer mode, file-transfer protocol, multiple themes, localization system, or additional device targets. These are deliberate scope boundaries.
 
@@ -31,6 +31,7 @@ Keep layout separate from document parsing so a later restricted EPUB importer c
 “ChatGPT-style math” describes the intended use, not a fixed compatibility specification. The proposed acceptance corpus defines representative notation; actual supported coverage must be established by the rendering prototype. Delimiters alone do not make mathematical layout trivial.
 
 ## Interaction and implementation references
+- [EPUB and images](docs/EPUB.md): supported content, chapter rules and limits.
 - [Resource review](docs/RESOURCE-REVIEW.md): Stage 33 cleanup and remaining performance limits.
 - [OpenAI chat experiment](examples/README.md): SD Python agent using the Responses API.
 - [StarDict lookup](docs/STARDICT.md): dictionary files, supported formats and popup/selection behavior.

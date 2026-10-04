@@ -1,12 +1,12 @@
-# Stage 36 expanded math and Markdown tables firmware
+# Stage 37 EPUB and images firmware
 
-The non-EPUB feature set is integrated: browser/text/editor, Python console/scripts,
+The feature set is integrated: browser/text/editor, Python console/scripts,
 Markdown/math, StarDict, Unicode fonts/selection, Power controls and differential
-refresh. EPUB remains deferred. The user tested an earlier image on an unlocked
+refresh, EPUB chapters and raster images. The user tested an earlier image on an unlocked
 X4 Pro; Stage 27 boots on that device. Stage 29 plain Markdown, TTF, Python file writes and Wi-Fi/HTTP have now
 worked on-device. Stage 30 input(), JSON and sleep/wake are also confirmed on-device.
 Stage 31 math and Stage 32 AI script are now confirmed working on-device.
-Stage 35 keyboard/browser/Home fixes and Stage 36 tables/expanded math are
+Stage 37 EPUB/images and earlier UI/tables/expanded math are
 build/host checked; device testing is pending. Stage 34 Power uses two light rows plus
 font/refresh/contrast tiles; only Python inkpy.set_time changes the clock.
 
@@ -36,10 +36,10 @@ initialization, which Stage 30 simplifies.
 - ESP-IDF v5.5.5: b774170ff46c393eeb5e495ea37936038d3f4f4f, pinned submodules.
 - Xtensa GCC 14.2.0, esp-14.2.0_20260121; ESP32-S3, 16 MiB DIO.
 - Browser ON, diagnostics OFF; 32 KiB main stack.
-- Application: 2,595,216 bytes; slot 8,257,536 bytes.
-- SHA-256: fc7cf6339a13383c1bfcf2f8eb8687febf7d1a8836e1176d3901dbaa362aa030.
+- Application: 2,613,200 bytes; slot 8,257,536 bytes.
+- SHA-256: c5879dd5c56ce90b1396bca62c2986723c0bbc43c62fcaee75b938e9d61bee27.
 - Build: bash scripts/build-browser.sh; output build-browser/firmware.bin.
-- Evidence: results/stage36/image.txt, valid esptool checksum and validation hash.
+- Evidence: results/stage37/image.txt, valid esptool checksum and validation hash.
 
 ## Physical checks and limits
 
