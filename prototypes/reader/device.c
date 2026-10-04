@@ -36,7 +36,7 @@ int main(int argc,char **argv)
     assert(!ink_reader_tap(&r,340,480)); assert(r.view==INK_READER_PAGE&&r.page==1);
     ink_reader_page(&r,1); assert(r.page==2); ink_reader_page(&r,-1); assert(r.page==1);
     ink_reader_home(&r);assert(!ink_reader_tap(&r,48,464)&&r.view==INK_READER_PAGE);
-    ink_reader_home(&r); assert(ink_reader_tap(&r,48,330)); ink_reader_close(&r);
+    ink_reader_home(&r); assert(ink_reader_tap(&r,48,400)); ink_reader_close(&r);
     snprintf(path,sizeof(path),"%s/.inkpy-reader/draw",argv[2]); struct stat st; assert(stat(path,&st));
     assert(!ink_reader_open(&r,argv[1],argv[2],NULL,NULL));
     assert(r.stats.chapters==3&&r.stats.formulas==0); assert(!ink_reader_draw(&r,frame)); ink_reader_close(&r);
@@ -49,13 +49,13 @@ int main(int argc,char **argv)
     ink_reader_home(&r);
     FILE *page_draw=r.draw; r.draw=NULL; /* A menu must not render/read page runs. */
     assert(!ink_reader_draw(&r,frame)); r.draw=page_draw;
-    assert(ink_reader_tap(&r,48,400)==INK_READER_ROTATE);
+    assert(ink_reader_tap(&r,48,330)==INK_READER_ROTATE);
     assert(!ink_reader_rotate(&r,argv[1],argv[2],render,NULL)&&r.landscape);
     assert(!ink_reader_draw(&r,frame)&&r.chapter==chapter_before);
     snprintf(path,sizeof(path),"%s/landscape.bin",argv[2]); out=fopen(path,"wb"); assert(out);
     assert(fwrite(frame,1,sizeof(frame),out)==sizeof(frame)); assert(!fclose(out));
     ink_reader_home(&r); assert(!ink_reader_draw(&r,frame));
-    assert(ink_reader_tap(&r,48,400)==INK_READER_ROTATE);
+    assert(ink_reader_tap(&r,48,330)==INK_READER_ROTATE);
     assert(!ink_reader_rotate(&r,argv[1],argv[2],render,NULL)&&!r.landscape);
     assert(!ink_reader_draw(&r,frame)&&r.chapter==chapter_before); ink_reader_close(&r);
 #endif

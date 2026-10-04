@@ -40,7 +40,7 @@ static int render_math(const char *source,int display,unsigned pixels,uint8_t *b
 static void indexing_progress(void) { vTaskDelay(1); }
 static ink_python_worker python;
 static ink_console console;
-static bool editor_active,console_active,python_started,paused,closed;
+static bool editor_active,console_active,python_started,paused,closed,home_requested;
 static ink_power power_menu={.brightness=20,.warmth=50};
 static bool full_refresh;
 static void font_names(void)
@@ -119,6 +119,15 @@ static void open_requests(void)
 }
 static void home(bool long_press)
 {
+    if(long_press) {
+        power_menu.open=false; power_menu.view=0;
+        if(reader_active) { ink_reader_close(&reader); reader_active=false; }
+        if(editor_active) { ink_editor_discard(&editor); editor_active=false; }
+        if(console_active) {
+            home_requested=true; ink_python_worker_close(&python);
+        } else ink_browser_root(&browser);
+        return;
+    }
     if(power_menu.open) { if(power_menu.view) power_menu.view=0; else power_menu.open=false; }
     else if(reader_active) ink_reader_home(&reader);
     else if(console_active) ink_python_worker_home(&python,long_press);
@@ -221,7 +230,9 @@ void app_main(void)
             if(next_revision!=revision) { revision=next_revision; dirty=true; }
             if(closed) {
                 ink_python_worker_release(&python); python_started=false; console_active=false;
-                ink_browser_home(&browser); dirty=true;
+                if(home_requested) { ink_browser_root(&browser); home_requested=false; }
+                else ink_browser_home(&browser);
+                dirty=true;
             }
         }
         unsigned lost=ink_capture_dropped();

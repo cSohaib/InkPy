@@ -5,6 +5,8 @@ Updated 2026-10-04. User-confirmed requirements unless explicitly marked propose
 No swipe, slide, drag-to-scroll or touchpad navigation gestures anywhere. Side buttons page through content. One fixed UI with icon controls and one keyboard layout. User content, filenames,
 chapter titles, numeric values and Python output remain text. The power menu below is the complete requested settings surface; night mode is global; orientation belongs only to Markdown book pages.
 Brightness and warmth use only + and - buttons; no sliders. Press durations, debounce and double-click timing are fixed implementation constants, not user settings. A long press must suppress its short-press action; a double power press must suppress the single-press menu.
+Long-press Home from any screen or overlay discards edits, closes the reader, stops
+and releases Python, and returns to the root browser after cleanup.
 No screen displays an InkPy title/header. Power menu is global: accessible from
 the browser, editor, reader, console and their prompts, without losing their state.
 Routine display updates should use a fast/partial refresh; full refresh is explicitly
@@ -18,7 +20,8 @@ separate characters. Stage 22 implements independent input capture and a 256-eve
 FIFO while rendering remains blocking; physical fast-typing verification is pending.
 
 ## Home: file browser
-- Filename list, no thumbnails.
+- Filename list, no thumbnails. Folders first; each group alphabetically sorted
+  case-insensitively, with exact spelling as the tie-break.
 - Hide dot-prefixed files and folders; do not delete or modify them.
 - Two icon buttons at the bottom: New file and Python console.
 - New file accepts a freely entered filename and extension: .py, .md, .txt, another extension, or no extension. It creates a text file; do not append or force .txt.
@@ -43,7 +46,11 @@ Text validation must inspect content, not only the extension. Proposed encoding 
 - Normal editing displays neither filename nor "Home: save or discard" footer.
   Keyboard sits at the bottom. Filename may remain in Save/Discard/Cancel prompt.
 Proposed: Save writes successfully then closes; on failure remain in the editor with changes intact. Discard closes without replacing the original. Cancel resumes editing. Prompt text and layout must make the destructive long-press rule predictable.
-A single onscreen keyboard is shared with filename entry and the Python console. It spans the full screen width and prioritizes Python input.
+A single onscreen keyboard is shared with filename entry and the Python console.
+It spans the full screen width and prioritizes Python input. Default letter rows:
+1234567890 / qwertzuiop / asdfghjkl' / yxcvbnm,. + Tab.
+Symbol rows: 1234567890 / !@#$%^&*() / +-=/\[]{}; / '"<>?~`|:_ .
+Both layers have Shift / abc (layer toggle) / Space / Delete / Enter.
 
 ## Python console
 - Side buttons page through the current session's history; no slides.
@@ -122,4 +129,9 @@ rows plus its input field, viewer 24 rows. Browser shows 15 entries, chapters 10
 per page; menu/list margins are reduced. Icons are line drawings: open-book chapters,
 page with #, AZ dictionary, door/arrow exits, crossed-save discard, Aa font,
 thermometer warmth, bulb brightness and half-filled contrast. Error is 100×100;
-browser +/>_ are 64 pixels and Power tiles use 96-pixel icons.
+browser +/>_ are 48 pixels and Power tiles use 96-pixel icons.
+
+Stage 35: Reader Home order is Chapter / Page / Rotate / Exit / Back. Browser
+bottom buttons extend to the screen edge, with centered 48-pixel icons. Battery
+body is 80×32 pixels. Sorted listing retains only 15 entries, rescanning earlier
+page ranges when needed rather than allocating a complete directory index.

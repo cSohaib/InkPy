@@ -12,23 +12,49 @@ static int notice(ink_browser *b,const char *message)
 { snprintf(b->message,sizeof(b->message),"%s",message); b->view=INK_NOTICE; return -1; }
 static int join(char *out,size_t capacity,const char *folder,const char *name)
 { int n=snprintf(out,capacity,"%s/%s",folder,name); return n<0||(size_t)n>=capacity?-1:0; }
+static int entry_compare(const ink_browser_entry *a,const ink_browser_entry *b)
+{
+    if(a->directory!=b->directory) return a->directory?-1:1;
+    int result=strcasecmp(a->name,b->name);
+    return result?result:strcmp(a->name,b->name);
+}
 int ink_browser_reload(ink_browser *b)
 {
     b->count=0; b->has_next=false; b->view=INK_FILES;
     DIR *dir=opendir(b->folder);
     if(!dir) return notice(b,"Cannot open folder");
-    struct dirent *entry; unsigned seen=0;
-    while((entry=readdir(dir))) {
-        if(entry->d_name[0]=='.') continue;
-        char path[INK_BROWSER_PATH]; struct stat st;
-        if(join(path,sizeof(path),b->folder,entry->d_name)||stat(path,&st)) continue;
-        if(!S_ISDIR(st.st_mode)&&!S_ISREG(st.st_mode)) continue;
-        if(seen++ < b->page*INK_BROWSER_ROWS) continue;
-        if(b->count==INK_BROWSER_ROWS) { b->has_next=true; break; }
-        ink_browser_entry *row=&b->rows[b->count++];
-        snprintf(row->name,sizeof(row->name),"%s",entry->d_name); row->directory=S_ISDIR(st.st_mode);
+    /* Select one sorted page per scan: fixed RAM regardless of directory size.
+       Later pages rescan preceding ranges rather than keeping a whole index. */
+    ink_browser_entry anchor={0}; bool anchored=false;
+    for(unsigned page=0;page<=b->page;page++) {
+        b->count=0; b->has_next=false;
+        struct dirent *entry;
+        while((entry=readdir(dir))) {
+            if(entry->d_name[0]=='.') continue;
+            char path[INK_BROWSER_PATH]; struct stat st;
+            if(join(path,sizeof(path),b->folder,entry->d_name)||stat(path,&st)) continue;
+            if(!S_ISDIR(st.st_mode)&&!S_ISREG(st.st_mode)) continue;
+            ink_browser_entry item={.directory=S_ISDIR(st.st_mode)};
+            snprintf(item.name,sizeof(item.name),"%s",entry->d_name);
+            if(anchored&&entry_compare(&item,&anchor)<=0) continue;
+            unsigned at=0;
+            while(at<b->count&&entry_compare(&b->rows[at],&item)<0) at++;
+            if(b->count==INK_BROWSER_ROWS) b->has_next=true;
+            if(at==INK_BROWSER_ROWS) continue;
+            if(b->count<INK_BROWSER_ROWS) b->count++;
+            memmove(&b->rows[at+1],&b->rows[at],(b->count-at-1)*sizeof(item));
+            b->rows[at]=item;
+        }
+        if(page==b->page||!b->has_next) { b->page=page; break; }
+        anchor=b->rows[b->count-1]; anchored=true; rewinddir(dir);
     }
     closedir(dir); return 0;
+}
+void ink_browser_root(ink_browser *b)
+{
+    snprintf(b->folder,sizeof(b->folder),"%s",b->root);
+    b->page=0; b->selected[0]=b->new_name[0]=b->message[0]=0;
+    ink_browser_reload(b);
 }
 int ink_browser_init(ink_browser *b,const char *root)
 {

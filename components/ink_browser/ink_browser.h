@@ -22,6 +22,7 @@ int ink_browser_init(ink_browser *b,const char *root);
 int ink_browser_reload(ink_browser *b);
 bool ink_browser_page(ink_browser *b,int direction);
 bool ink_browser_home(ink_browser *b);
+void ink_browser_root(ink_browser *b);
 bool ink_browser_tap(ink_browser *b,unsigned portrait_x,unsigned portrait_y);
 bool ink_browser_long_press(ink_browser *b,unsigned portrait_x,unsigned portrait_y);
 /* Native panel: 800x480 landscape, white=1. UI is rotated 480x800 portrait. */

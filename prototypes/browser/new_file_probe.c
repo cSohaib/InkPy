@@ -20,10 +20,15 @@ int main(int argc,char **argv)
 {
     assert(argc==3);
     ink_browser b; assert(!ink_browser_init(&b,argv[1]));
-    assert(ink_keyboard_key(&b.keyboard,3,0)=='\'');
-    assert(ink_keyboard_key(&b.keyboard,3,2)=='(');
-    assert(ink_keyboard_key(&b.keyboard,3,4)=='[');
-    assert(ink_keyboard_key(&b.keyboard,3,9)==INK_KEY_INDENT);
+    const char *layers[2][4]={{"1234567890","qwertzuiop","asdfghjkl'","yxcvbnm,."},
+        {"1234567890","!@#$%^&*()","+-=/\\[]{};","'\"<>?~`|:_"}};
+    for(unsigned layer=0;layer<2;layer++) {
+        b.keyboard.symbols=layer;
+        for(unsigned row=0;row<4;row++) for(unsigned col=0;col<10;col++)
+            assert(ink_keyboard_key(&b.keyboard,row,col)==
+                (!layer&&row==3&&col==9?INK_KEY_INDENT:layers[layer][row][col]));
+    }
+    b.keyboard=(ink_keyboard){0};
     const char *names[]={"notes.py","chapter.md","plain.txt","scratch"};
     for(unsigned i=0;i<4;++i) {
         ink_browser_tap(&b,50,INK_BROWSER_ACTION_Y+20); assert(b.view==INK_NEW_FILE);

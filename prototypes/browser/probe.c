@@ -9,10 +9,18 @@ int main(int argc,char **argv)
     assert(argc==3);
     ink_browser b; assert(!ink_browser_init(&b,argv[1]));
     assert(b.count==INK_BROWSER_ROWS && b.has_next);
+    assert(!strcmp(b.rows[0].name,"Books")&&b.rows[0].directory);
+    assert(!strcmp(b.rows[1].name,"z-folder"));
+    assert(!strcmp(b.rows[2].name,"Notes-1.txt"));
+    assert(!strcmp(b.rows[14].name,"Notes-3.txt"));
+    assert(b.rows[1].directory);
+    assert(!strcmp(b.rows[12].name,"notes-19.txt"));
     assert(!ink_browser_home(&b));
-    assert(ink_browser_page(&b,1)); assert(b.count==20-INK_BROWSER_ROWS && !b.has_next);
+    assert(ink_browser_page(&b,1)); assert(b.count==21-INK_BROWSER_ROWS && !b.has_next);
+    assert(!strcmp(b.rows[0].name,"Notes-4.txt"));
+    assert(!strcmp(b.rows[5].name,"Notes-9.txt"));
     assert(!ink_browser_page(&b,1)); assert(ink_browser_page(&b,-1));
-    /* Locate entries without imposing sort order. */
+    /* Exercise routing through the first folder. */
     while(1) {
         for(unsigned i=0;i<b.count;++i) if(b.rows[i].directory) {
             assert(!ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+i*INK_BROWSER_ROW_HEIGHT));
@@ -31,7 +39,7 @@ int main(int argc,char **argv)
             ink_browser_home(&b); n=row(&b,"script.py");ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+n*INK_BROWSER_ROW_HEIGHT);
             ink_browser_tap(&b,60,340);assert(b.view==INK_FILES&&b.count==2);
             for(unsigned j=0;j<b.count;j++)assert(strcmp(b.rows[j].name,"script.py"));
-            ink_browser_home(&b); assert(!strcmp(b.folder,b.root));
+            ink_browser_root(&b); assert(!strcmp(b.folder,b.root)&&b.page==0&&b.view==INK_FILES);
             goto complete;
         }
         assert(ink_browser_page(&b,1));

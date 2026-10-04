@@ -1,0 +1,5 @@
+OK: paging, folders, Home, Markdown/text routing, file menu, Edit text/binary gate, Execute gate
+OK: keyboard, exact extensions, extensionless file, no overwrite, invalid name, cancel
+PASS: global long Home across browser/reader/editor/Python and Power/font overlays; cleanup ownership preserved
+PASS: bundled Unicode face, selection validation, Power tile/light/font controls, split UTF-8 console output
+PASS: device renderer, formula bitmaps/fallback, H2 navigation, page entry/paging, Close cleanup, missing-math-assets fallback, binary rejection

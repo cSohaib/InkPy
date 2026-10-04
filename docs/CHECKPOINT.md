@@ -1,5 +1,33 @@
 # InkPy checkpoint
 
+## Stage 35: keyboard, sorted files and global Home (2026-10-04)
+
+Reader Home order: Chapter / Page / Rotate / Exit / Back. File browser sorts
+folders first, then files, case-insensitive alphabetical with exact-spelling tie
+break. Fixed 15-entry page selection rescans earlier ranges for later pages:
+RAM stays bounded regardless of directory size; later pages incur extra SD scans.
+Clamps pages if directory contents shrink. Hidden files remain excluded.
+
+Bottom +/>_ icons shrink to 48 pixels, centered in 88-pixel buttons reaching the
+screen bottom. Battery body shrinks to 80×32. Shared keyboard follows requested
+digit-first QWERTZ letter layer and full symbols layer with colon/underscore;
+Tab remains in bottom letter row. Both layer toggles display abc as specified.
+
+Long Home overrides all overlays, closes reader, discards editor, and returns to
+root. Python close uses existing abort/cleanup acknowledgment before releasing
+VM/task memory and returning to root; no forced deletion of a live worker.
+Short Home behavior preserved. Settings/dictionary selection remain unchanged.
+
+Checks: browser sorting across two pages/two folders/mixed case, routing/Delete,
+all keyboard cells and filename entry; actual Home dispatch with owner stubs in
+12 context/overlay combinations; font/Power previews and mixed Markdown/math,
+Rotate/Exit/Back pass. Previews inspected. Product build and image validation pass.
+One empty restored math object/archive regenerated; no dependency-source edits.
+App 2,593,104 bytes, SHA256 9d7aad11ab1f503b1c3f652d28f8d0f2f6fcb9ca219e4bb30c0df2fd2262fd4b.
+Evidence: results/stage35. No physical device test performed. Unrelated Python
+run.sh mode excluded. Next: user tests UI/global Home during running Python;
+math command expansion and EPUB remain deferred. Scoped commit/push and pause.
+
 ## Stage 34: compact UI, icons and Python-only clock (2026-10-04)
 
 Implemented the requested UI stage. Reader Home adds Back; book/console Close

@@ -59,7 +59,7 @@ static void keyboard_draw_at(const ink_keyboard *keyboard,uint8_t *frame,unsigne
         unsigned w=INK_KB_WIDTH*(row==4?2:1),x=INK_KB_X+col*w,y=INK_KB_Y+offset+row*INK_KB_HEIGHT;
         box(frame,x+1,y+1,w-2,INK_KB_HEIGHT-2);
         if(row==4 || key==INK_KEY_INDENT) {
-            if(key==INK_KEY_SYMBOLS) text_size(frame,x+(w-27)/2,y+19,keyboard->symbols?"abc":"#+=",1);
+            if(key==INK_KEY_SYMBOLS) text_size(frame,x+(w-27)/2,y+19,"abc",1);
             else ink_icon(frame,x+(w-32)/2,y+12,key==INK_KEY_INDENT?ICON_TAB:key==INK_KEY_SHIFT?ICON_SHIFT:
                 key==' '?ICON_SPACE:key==INK_KEY_DELETE?ICON_DELETE:ICON_ENTER,pixel);
         } else {
@@ -78,8 +78,8 @@ void ink_power_draw(const ink_power *p,uint8_t frame[48000])
 {
     memset(frame,255,48000);
     text_size(frame,8,20,p->time[0]?p->time:"--",1);
-    box(frame,360,10,104,44);box(frame,464,22,8,20);
-    text_at(frame,370,19,p->battery[0]?p->battery:"--",14,26,460);
+    box(frame,386,14,80,32);box(frame,466,24,6,12);
+    text_at(frame,396,20,p->battery[0]?p->battery:"--",11,20,462);
     if(p->view) {
         for(unsigned i=0;i<8&&p->font_first+i<p->font_count;i++) {
             box(frame,8,96+i*64,464,64);text(frame,16,114+i*64,p->font_names[i]);
@@ -157,8 +157,8 @@ void ink_browser_draw(const ink_browser *b,uint8_t frame[48000])
     if(b->view!=INK_FILES) { ink_icon(frame,224,368,ICON_ERROR,pixel); return; }
     const char *folder=b->folder+strlen(b->root);
     if(*folder) text_size(frame,6,4,folder,1);
-    box(frame,0,INK_BROWSER_ACTION_Y,240,72); box(frame,240,INK_BROWSER_ACTION_Y,240,72);
-    ink_icon_size(frame,88,724,ICON_ADD,64,pixel); ink_icon_size(frame,328,724,ICON_CONSOLE,64,pixel);
+    box(frame,0,INK_BROWSER_ACTION_Y,240,800-INK_BROWSER_ACTION_Y); box(frame,240,INK_BROWSER_ACTION_Y,240,800-INK_BROWSER_ACTION_Y);
+    ink_icon_size(frame,96,732,ICON_ADD,48,pixel); ink_icon_size(frame,336,732,ICON_CONSOLE,48,pixel);
     for(unsigned i=0;i<b->count;++i) {
         unsigned y=INK_BROWSER_LIST_Y+i*INK_BROWSER_ROW_HEIGHT;
         ink_icon(frame,6,y+4,b->rows[i].directory?ICON_FOLDER:ICON_FILE,pixel);

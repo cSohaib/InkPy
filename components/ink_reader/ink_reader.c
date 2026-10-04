@@ -223,8 +223,8 @@ int ink_reader_tap(ink_reader *r,unsigned x,unsigned y)
         }
     } else if(r->view==INK_READER_MENU&&x>=8&&x<472&&y>=180&&y<500) {
         unsigned row=(y-180)/64;
-        if(row==2) return INK_READER_CLOSE;
-        if(row==3) return INK_READER_ROTATE;
+        if(row==3) return INK_READER_CLOSE;
+        if(row==2) return INK_READER_ROTATE;
         if(row==4) {r->view=INK_READER_PAGE;return INK_READER_STAY;}
         r->view=row?INK_READER_GOTO:INK_READER_CHAPTERS; r->digits[0]=0; r->chapter_first=1;
     } else if(r->view==INK_READER_CHAPTERS&&x>=8&&x<472&&y>=104&&y<744) {
@@ -333,7 +333,7 @@ int ink_reader_draw(ink_reader *r,uint8_t frame[48000])
         snprintf(line,sizeof(line),"%u / %u",r->page,(unsigned)r->stats.pages); label(frame,16,16,line);
         label(frame,16,64,r->title);
         if(r->view==INK_READER_MENU) {
-            const unsigned icons[]={ICON_CHAPTER,ICON_PAGE,ICON_EXIT,ICON_ROTATE,ICON_BACK};
+            const unsigned icons[]={ICON_CHAPTER,ICON_PAGE,ICON_ROTATE,ICON_EXIT,ICON_BACK};
             for(unsigned i=0;i<5;i++) { box(frame,8,180+i*64,464,64); ink_icon(frame,224,196+i*64,icons[i],pixel); }
         } else if(r->view==INK_READER_CHAPTERS) {
             if(!r->stats.chapters) ink_icon(frame,224,120,ICON_ERROR,pixel);
