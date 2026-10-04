@@ -7,7 +7,7 @@
 #include <string.h>
 #include <inttypes.h>
 
-enum { CELLS=128, MARGIN=16 };
+enum { CELLS=128, MARGIN=8 };
 typedef struct { uint32_t value,min; unsigned need; uint64_t start; } Utf;
 typedef struct { uint32_t cp; uint16_t style; uint64_t source, bitmap_offset; unsigned width,height,baseline; bool display; } Cell;
 typedef struct {

@@ -1,8 +1,9 @@
 #pragma once
+#include "ink_ui.h"
 #include "ink_keyboard.h"
 #include <stdint.h>
 #include <stdio.h>
-enum { INK_EDITOR_ROWS=9, INK_EDITOR_COLUMNS=24, INK_EDITOR_PATH=544 };
+enum { INK_EDITOR_ROWS=16, INK_EDITOR_COLUMNS=INK_UI_COLUMNS, INK_EDITOR_PATH=544 };
 enum { INK_EDITOR_KEYBOARD_OFFSET=120 };
 typedef struct {
     FILE *work;

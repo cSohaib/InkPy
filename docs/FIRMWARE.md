@@ -1,4 +1,4 @@
-# Stage 33 minimalism/resource cleanup firmware
+# Stage 34 UI redesign and Python clock firmware
 
 The non-EPUB feature set is integrated: browser/text/editor, Python console/scripts,
 Markdown/math, StarDict, Unicode fonts/selection, Power controls and differential
@@ -6,7 +6,9 @@ refresh. EPUB remains deferred. The user tested an earlier image on an unlocked
 X4 Pro; Stage 27 boots on that device. Stage 29 plain Markdown, TTF, Python file writes and Wi-Fi/HTTP have now
 worked on-device. Stage 30 input(), JSON and sleep/wake are also confirmed on-device.
 Stage 31 math and Stage 32 AI script are now confirmed working on-device.
-Stage 33 cleanup/reader rotation is build/host checked; device retesting is pending.
+Stage 33 cleanup/reader rotation and Stage 34 UI/clock changes are build/host
+checked; device retesting is pending. Stage 34 Power uses two light rows plus
+font/refresh/contrast tiles; only Python inkpy.set_time changes the clock.
 
 Use the same X4 Pro application-image web installer that worked previously.
 firmware.bin is an **application-only ESP32-S3 image**, without bootloader or
@@ -34,10 +36,10 @@ initialization, which Stage 30 simplifies.
 - ESP-IDF v5.5.5: b774170ff46c393eeb5e495ea37936038d3f4f4f, pinned submodules.
 - Xtensa GCC 14.2.0, esp-14.2.0_20260121; ESP32-S3, 16 MiB DIO.
 - Browser ON, diagnostics OFF; 32 KiB main stack.
-- Application: 2,587,056 bytes; slot 8,257,536 bytes, 69% free.
-- SHA-256: 603e774e23670237f9a609fd5912ba4bfebb7d5c5a230c8a8af93829a90dd9f3.
+- Application: 2,592,480 bytes; slot 8,257,536 bytes, 69% free.
+- SHA-256: 5984998c29faa612030b338b08f0fda22dca8a7f03cbc998bfbe0cde9bb5d054.
 - Build: bash scripts/build-browser.sh; output build-browser/firmware.bin.
-- Evidence: results/stage33/image.txt, valid esptool checksum and validation hash.
+- Evidence: results/stage34/image.txt, valid esptool checksum and validation hash.
 
 ## Physical checks and limits
 

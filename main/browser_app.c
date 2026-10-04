@@ -46,7 +46,7 @@ static bool full_refresh;
 static void font_names(void)
 {
     power_menu.font_count=ink_font_count();
-    for(unsigned i=0;i<6;i++) snprintf(power_menu.font_names[i],96,"%s",ink_font_name(power_menu.font_first+i));
+    for(unsigned i=0;i<8;i++) snprintf(power_menu.font_names[i],96,"%s",ink_font_name(power_menu.font_first+i));
 }
 static void power_header(void)
 {
@@ -55,7 +55,7 @@ static void power_header(void)
     else power_menu.time[0]=0;
     unsigned percent; bool charging;
     if(ink_battery_read(&percent,&charging)==ESP_OK)
-        snprintf(power_menu.battery,sizeof(power_menu.battery),"%u%%%s",percent,charging?" +":"");
+        snprintf(power_menu.battery,sizeof(power_menu.battery),"%u%%",percent);
     else strcpy(power_menu.battery,"--");
 }
 static void power_action(int action)
@@ -67,19 +67,6 @@ static void power_action(int action)
     else if(action==INK_POWER_FONT_SELECT) {
         if(ink_font_select(power_menu.font_choice)) strcpy(power_menu.message,"Cannot load this font");
         else { power_menu.view=0; power_menu.message[0]=0; }
-    } else if(action==INK_POWER_TIME) {
-        struct tm t={.tm_year=126,.tm_mon=0,.tm_mday=1}; ink_rtc_read(&t);
-        int fields[]={t.tm_year+1900,t.tm_mon+1,t.tm_mday,t.tm_hour,t.tm_min};
-        memcpy(power_menu.calendar,fields,sizeof(fields));
-    } else if(action==INK_POWER_TIME_SAVE) {
-        int *c=power_menu.calendar;
-        struct tm t={.tm_year=c[0]-1900,.tm_mon=c[1]-1,.tm_mday=c[2],.tm_hour=c[3],.tm_min=c[4],.tm_isdst=-1};
-        struct tm normalized=t; mktime(&normalized);
-        if(normalized.tm_year!=t.tm_year||normalized.tm_mon!=t.tm_mon||normalized.tm_mday!=t.tm_mday) strcpy(power_menu.message,"Invalid date");
-        else { t.tm_wday=normalized.tm_wday;
-            if(ink_rtc_set(&t)!=ESP_OK) strcpy(power_menu.message,"Cannot set time");
-            else { power_menu.view=0; power_header(); }
-        }
     }
 }
 static uint32_t milliseconds(void) { return (uint32_t)(esp_timer_get_time()/1000); }

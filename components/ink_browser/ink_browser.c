@@ -96,8 +96,12 @@ bool ink_browser_tap(ink_browser *b,unsigned x,unsigned y)
 {
     if(x>=480 || y>=800) return false;
     if(b->view==INK_FILE_MENU) {
-        if(x<32 || x>=448 || y<180 || y>=308) return false;
-        if(y>=244) {
+        if(x<8 || x>=472 || y<140 || y>=380) return false;
+        if(y>=300) {
+            struct stat st;
+            if(stat(b->selected,&st)||!S_ISREG(st.st_mode)||unlink(b->selected)) notice(b,"Cannot delete file");
+            else if(!ink_browser_reload(b)&&!b->count&&b->page) { b->page--; ink_browser_reload(b); }
+        } else if(y>=220) {
             const char *name=strrchr(b->selected,'/'); name=name?name+1:b->selected;
             const char *ext=strrchr(name,'.');
             if(!ext || strcasecmp(ext,".py")) notice(b,"not executable");
@@ -117,8 +121,8 @@ bool ink_browser_tap(ink_browser *b,unsigned x,unsigned y)
         } else { b->selected[0]=0; b->view=INK_OPEN_CONSOLE; }
         return true;
     }
-    if(y<INK_BROWSER_LIST_Y || y>=INK_BROWSER_LIST_Y+42*INK_BROWSER_ROWS) return false;
-    unsigned row=(y-INK_BROWSER_LIST_Y)/42; if(row>=b->count) return false;
+    if(y<INK_BROWSER_LIST_Y || y>=INK_BROWSER_LIST_Y+INK_BROWSER_ROW_HEIGHT*INK_BROWSER_ROWS) return false;
+    unsigned row=(y-INK_BROWSER_LIST_Y)/INK_BROWSER_ROW_HEIGHT; if(row>=b->count) return false;
     if(join(b->selected,sizeof(b->selected),b->folder,b->rows[row].name)) {
         notice(b,"Path is too long"); return true;
     }
@@ -145,8 +149,8 @@ bool ink_browser_tap(ink_browser *b,unsigned x,unsigned y)
 }
 bool ink_browser_long_press(ink_browser *b,unsigned x,unsigned y)
 {
-    if(b->view!=INK_FILES || x>=480 || y<INK_BROWSER_LIST_Y || y>=INK_BROWSER_LIST_Y+42*INK_BROWSER_ROWS) return false;
-    unsigned row=(y-INK_BROWSER_LIST_Y)/42;
+    if(b->view!=INK_FILES || x>=480 || y<INK_BROWSER_LIST_Y || y>=INK_BROWSER_LIST_Y+INK_BROWSER_ROW_HEIGHT*INK_BROWSER_ROWS) return false;
+    unsigned row=(y-INK_BROWSER_LIST_Y)/INK_BROWSER_ROW_HEIGHT;
     if(row>=b->count || b->rows[row].directory) return false;
     if(join(b->selected,sizeof(b->selected),b->folder,b->rows[row].name)) {
         notice(b,"Path is too long"); return true;

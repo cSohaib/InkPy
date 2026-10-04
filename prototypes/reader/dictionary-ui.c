@@ -37,9 +37,9 @@ int main(int argc,char **argv)
     ink_reader_page(&r,1); assert(d.first==8); ink_reader_home(&r);
     assert(r.view==INK_READER_DEFINITION&&has(&d,"a red fruit"));
     ink_reader_home(&r); assert(r.view==INK_READER_PAGE&&r.page==page);
-    ink_reader_tap(&r,87,20); assert(r.view==INK_READER_PAGE); /* comma */
-    ink_reader_tap(&r,116,20); assert(!strcmp(r.word,"café")&&has(&d,"coffee"));
-    ink_reader_home(&r); ink_reader_tap(&r,199,20); assert(!strcmp(r.word,"pomme")&&has(&d,"a red fruit"));
+    ink_reader_tap(&r,103,20); assert(r.view==INK_READER_PAGE); /* comma */
+    ink_reader_tap(&r,138,20); assert(!strcmp(r.word,"café")&&has(&d,"coffee"));
+    ink_reader_home(&r); ink_reader_tap(&r,246,20); assert(!strcmp(r.word,"pomme")&&has(&d,"a red fruit"));
     choose(&r,"zip"); assert(!strcmp(d.name,"zip")&&has(&d,"Word not found")&&r.page==page);
     choose(&r,"plain"); assert(has(&d,"a red fruit"));
     ink_reader_tap(&r,400,730); assert(r.view==INK_READER_PAGE); ink_reader_close(&r);

@@ -35,6 +35,7 @@ int main(int argc,char **argv)
     assert(!ink_reader_tap(&r,48,240)); assert(!strcmp(r.digits,"1"));
     assert(!ink_reader_tap(&r,340,480)); assert(r.view==INK_READER_PAGE&&r.page==1);
     ink_reader_page(&r,1); assert(r.page==2); ink_reader_page(&r,-1); assert(r.page==1);
+    ink_reader_home(&r);assert(!ink_reader_tap(&r,48,464)&&r.view==INK_READER_PAGE);
     ink_reader_home(&r); assert(ink_reader_tap(&r,48,330)); ink_reader_close(&r);
     snprintf(path,sizeof(path),"%s/.inkpy-reader/draw",argv[2]); struct stat st; assert(stat(path,&st));
     assert(!ink_reader_open(&r,argv[1],argv[2],NULL,NULL));

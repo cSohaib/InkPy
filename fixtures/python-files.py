@@ -45,3 +45,18 @@ try:
 except OSError:
     pass
 print('Files/imports/Unicode/JSON passed')
+
+import inkpy
+assert inkpy.set_time(2026, 10, 4, 12, 30) is None
+assert inkpy.set_time(2028, 2, 29, 23, 59, 59) is None
+for date in [(2026, 2, 29, 0, 0), (2026, 4, 31, 0, 0),
+             (1999, 1, 1, 0, 0), (2100, 1, 1, 0, 0),
+             (2026, 13, 1, 0, 0), (2026, 1, 1, 24, 0),
+             (2026, 1, 1, 0, 60), (2026, 1, 1, 0, 0, 60)]:
+    try:
+        inkpy.set_time(*date)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("accepted invalid clock value")
+print("Clock binding passed")

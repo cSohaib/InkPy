@@ -1,0 +1,18 @@
+OK: paging, folders, Home, Markdown/text routing, file menu, Edit text/binary gate, Execute gate
+PASS: bundled Unicode face, selection validation, Power tile/light/font controls, split UTF-8 console output
+PASS: device renderer, formula bitmaps/fallback, H2 navigation, page entry/paging, Close cleanup, missing-math-assets fallback, binary rejection
+PASS: discovery/paging, plain/gzip/dictzip, 32/64-bit offsets, homographs, aliases, UTF-8, HTML/entities, typed fields/media omission, large paged definitions, choice persistence, invalid input rejection
+PASS: styled-word hit testing, punctuation/UTF-8/alias taps, definition/chooser paging, dictionary switch and retry, modal Home/Close, page preservation, missing/error dictionary recovery
+PASS: 6000 deterministic edit/navigation operations, exact save, UTF-8 preservation, invalid-text rejection; ESP branch also tests failed replacement rollback
+PASS: 6000 deterministic edit/navigation operations, exact save, UTF-8 preservation, invalid-text rejection; ESP branch also tests failed replacement rollback
+Files/imports/Unicode/JSON passed
+Clock binding passed
+Value: Traceback (most recent call last):
+  File "<stdin>", in <module>
+EOFError:
+Files/imports/Unicode/JSON passed
+Clock binding passed
+PASS: native configuration, SD streams/imports/JSON/os/time, cleanup after abort and reopen
+UI previews inspected: Power/header/tiles, files, editor/console, menus, error and math page.
+Native ESP32-S3 build/slot fit and image validation PASS. Application bytes=2592480 SHA256=5984998c29faa612030b338b08f0fda22dca8a7f03cbc998bfbe0cde9bb5d054
+Clock RTC writes, physical touch/alignment and firmware regression require device testing.

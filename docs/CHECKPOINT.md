@@ -1,5 +1,43 @@
 # InkPy checkpoint
 
+## Stage 34: compact UI, icons and Python-only clock (2026-10-04)
+
+Implemented the requested UI stage. Reader Home adds Back; book/console Close
+uses door/arrow Exit, editor Discard uses crossed Save. File menu adds Delete
+(unlink regular file, reload list, fall back one page if it becomes empty).
+Browser distinguishes file/folder entries and has 64-pixel +/>_ bottom controls.
+Icons: open book chapters, # page, AZ book dictionary, 100×100 error, thermometer,
+bulb with rays only when on, Aa and half-filled contrast. Scaled line icons stay
+code-defined, with no image assets or icon-font dependencies.
+
+Power header shows larger time/date left and percentage inside battery right.
+Two 96-pixel rows: minus / bulb or thermometer + value / plus; brightness center
+also toggles light. Three 152-pixel tiles: font, refresh, contrast. No time, close,
+rotation or separate light rows. Font picker has eight entries and Back.
+Removed calendar fields, time UI branches/actions and clock-icon code.
+
+Added inkpy.set_time(year,month,day,hour,minute[,second]): seconds defaults 0,
+years 2000–2099, calendar/leap-day and ranges checked before RTC write. None on
+success, ValueError on invalid date, OSError on I/O failure. Reuses board RTC
+setter/system-clock update for TLS. No timezone conversion or time-service logic.
+Usage: PYTHON-DEVICE.md; AI example docs updated. Host RTC function is a stub;
+valid/invalid binding calls tested, actual hardware write not claimed.
+
+One body geometry in ink_browser/ink_ui.h: 26-pixel text, 17-pixel cells, 6-pixel
+grid margins (Markdown margin 8). Editor 16 rows up to bottom keyboard, console
+14 output rows + input, viewer 24 rows. Browser 15 rows; chapters 10/page, narrower
+margins. Markdown headings keep hierarchy; body matches other contexts. Existing
+bounded storage, shared keyboard and Python lifetime/sleep logic preserved.
+
+Checks: generated Python headers, native MicroPython/files/input/JSON plus clock
+validation, browser routing/Delete, Power hit targets/selector/toggles, fonts and
+mixed Markdown/math/rotation/Back, StarDict core/popups, editor ASan/UBSan checks
+pass. Previews visually inspected. Product build/slot fit, esptool checksum/hash
+pass; evidence results/stage34. App 2,592,480 bytes, SHA256 5984998c29faa612030b338b08f0fda22dca8a7f03cbc998bfbe0cde9bb5d054.
+No physical UI/RTC/firmware testing performed. Unrelated Python run.sh mode stays
+untouched. Next: install/test new UI and inkpy.set_time, then user refinements;
+math command expansion/EPUB remain deferred. Scoped commit/push and pause.
+
 ## Stage 33: reader-only rotation and resource cleanup (2026-10-04)
 
 User confirms the Stage 32 AI script works on-device. User requests a minimalism/

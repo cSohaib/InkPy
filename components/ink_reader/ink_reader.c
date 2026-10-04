@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "ink_reader.h"
 #include "../ink_browser/ink_ui_font.h"
+#include "../ink_browser/ink_ui.h"
 #include "../ink_browser/ink_icons.h"
 #include <errno.h>
 #include <limits.h>
@@ -86,7 +87,7 @@ static int open_book(ink_reader *r,const char *source,const char *root,ink_layou
     int status=-1;
     if(!r->draw||!r->pages||!r->chapters||(math&&!spool)) error(r,"Cannot open reader cache");
     else {
-        ink_layout_config cfg={.width=page_width(r),.height=page_height(r),.font_pixels=22,.read_bytes=1024,
+        ink_layout_config cfg={.width=page_width(r),.height=page_height(r),.font_pixels=INK_UI_FONT,.read_bytes=1024,
             .render_math=math,.bitmap_spool=spool,.progress=progress};
         status=ink_layout_run(input,r->draw,r->pages,r->chapters,&cfg,&r->stats);
         if(status) error(r,r->stats.error);
@@ -135,8 +136,8 @@ bool ink_reader_page(ink_reader *r,int direction)
             ink_dict_catalog(d,first);
         }
     } else if(r->view==INK_READER_CHAPTERS) {
-        if(direction>0&&r->chapter_first+8<=r->stats.chapters) r->chapter_first+=8;
-        if(direction<0&&r->chapter_first>8) r->chapter_first-=8;
+        if(direction>0&&r->chapter_first+10<=r->stats.chapters) r->chapter_first+=10;
+        if(direction<0&&r->chapter_first>10) r->chapter_first-=10;
     } else if(r->view==INK_READER_PAGE) {
         if(direction>0&&r->page<r->stats.pages) r->page++;
         if(direction<0&&r->page>1) r->page--;
@@ -166,9 +167,9 @@ static int lookup_word(ink_reader *r,unsigned tap_x,unsigned tap_y)
         if(end-at<20||fread(h,1,20,r->draw)!=20) return error(r,"Invalid word run");
         at+=20; uint64_t size=number(h+8,4);
         unsigned x=(unsigned)number(h,2),y=(unsigned)number(h+2,2),cell=(unsigned)number(h+4,2),style=(unsigned)number(h+6,2);
-        unsigned level=(style>>8)&7,height=22+(level?2*(7-level):0);
+        unsigned level=(style>>8)&7,height=INK_UI_FONT+(level?2*(7-level):0);
         if(size>end-at||!cell||cell>480) return error(r,"Invalid word geometry");
-        bool continuation=(x==prev_end&&y==prev_y)||(x==16&&prev_end>=page_width(r)-16-prev_cell&&y==prev_y+prev_height+8);
+        bool continuation=(x==prev_end&&y==prev_y)||(x==8&&prev_end>=page_width(r)-8-prev_cell&&y==prev_y+prev_height+8);
         if(used&&!continuation) { if(hit) goto found; used=0; overflow=false; }
         if(style==INK_BITMAP||(style&INK_MATH)) {
             if(hit) goto found;
@@ -220,13 +221,14 @@ int ink_reader_tap(ink_reader *r,unsigned x,unsigned y)
             else if(r->word[0]) { r->error[0]=0; if(ink_dict_lookup(d,r->word)<0) error(r,d->error); }
             r->view=INK_READER_DEFINITION;
         }
-    } else if(r->view==INK_READER_MENU&&x>=32&&x<448&&y>=180&&y<436) {
+    } else if(r->view==INK_READER_MENU&&x>=8&&x<472&&y>=180&&y<500) {
         unsigned row=(y-180)/64;
         if(row==2) return INK_READER_CLOSE;
         if(row==3) return INK_READER_ROTATE;
+        if(row==4) {r->view=INK_READER_PAGE;return INK_READER_STAY;}
         r->view=row?INK_READER_GOTO:INK_READER_CHAPTERS; r->digits[0]=0; r->chapter_first=1;
-    } else if(r->view==INK_READER_CHAPTERS&&x>=16&&x<464&&y>=120&&y<632) {
-        unsigned id=r->chapter_first+(y-120)/64,page; char title[INK_TITLE_BYTES];
+    } else if(r->view==INK_READER_CHAPTERS&&x>=8&&x<472&&y>=104&&y<744) {
+        unsigned id=r->chapter_first+(y-104)/64,page; char title[INK_TITLE_BYTES];
         if(id<=r->stats.chapters&&!chapter(r,id,title,&page)) { r->page=page; r->view=INK_READER_PAGE; }
     } else if(r->view==INK_READER_GOTO&&x>=32&&x<448&&y>=220&&y<540) {
         unsigned col=(x-32)/138,row=(y-220)/80,key=row*3+col;
@@ -252,7 +254,7 @@ static void pixel(uint8_t *f,unsigned x,unsigned y)
 static void text(uint8_t *f,unsigned x,unsigned y,const char *s,unsigned cell,unsigned height,unsigned style)
 {
 #ifdef INK_USE_FONTS
-    ink_font_text(f,x,y,s,cell,height,style,drawing->view==INK_READER_PAGE?page_width(drawing)-16:464,pixel); return;
+    ink_font_text(f,x,y,s,cell,height,style,drawing->view==INK_READER_PAGE?page_width(drawing)-8:464,pixel); return;
 #endif
     unsigned shift=0;
     for(;*s;s++) {
@@ -266,11 +268,11 @@ static void text(uint8_t *f,unsigned x,unsigned y,const char *s,unsigned cell,un
                 if(style&INK_BOLD) pixel(f,x+dx+shift+1,y+dy);
             }
         }
-        x+=cell; if(x>=page_width(drawing)-16) break;
+        x+=cell; if(x>=page_width(drawing)-8) break;
     }
 }
 static void label(uint8_t *f,unsigned x,unsigned y,const char *s)
-{ text(f,x,y,s,18,32,0); }
+{ text(f,x,y,s,INK_UI_CELL,INK_UI_FONT,0); }
 static void box(uint8_t *f,unsigned x,unsigned y,unsigned w,unsigned h)
 {
     for(unsigned i=0;i<w;i++) { pixel(f,x+i,y); pixel(f,x+i,y+h-1); }
@@ -303,7 +305,7 @@ int ink_reader_draw(ink_reader *r,uint8_t frame[48000])
             } else {
                 char payload[513];
                 if(size>512||cell>100||fread(payload,1,(size_t)size,r->draw)!=size) return error(r,"Invalid text run");
-                payload[size]=0; unsigned level=(style>>8)&7,height=22+(level?2*(7-level):0);
+                payload[size]=0; unsigned level=(style>>8)&7,height=INK_UI_FONT+(level?2*(7-level):0);
                 text(frame,x,y,payload,cell,height,style|(level?INK_BOLD:0));
             }
             at+=size;
@@ -331,14 +333,14 @@ int ink_reader_draw(ink_reader *r,uint8_t frame[48000])
         snprintf(line,sizeof(line),"%u / %u",r->page,(unsigned)r->stats.pages); label(frame,16,16,line);
         label(frame,16,64,r->title);
         if(r->view==INK_READER_MENU) {
-            const unsigned icons[]={ICON_CHAPTER,ICON_PAGE,ICON_CLOSE,ICON_ROTATE};
-            for(unsigned i=0;i<4;i++) { box(frame,32,180+i*64,416,64); ink_icon(frame,224,196+i*64,icons[i],pixel); }
+            const unsigned icons[]={ICON_CHAPTER,ICON_PAGE,ICON_EXIT,ICON_ROTATE,ICON_BACK};
+            for(unsigned i=0;i<5;i++) { box(frame,8,180+i*64,464,64); ink_icon(frame,224,196+i*64,icons[i],pixel); }
         } else if(r->view==INK_READER_CHAPTERS) {
             if(!r->stats.chapters) ink_icon(frame,224,120,ICON_ERROR,pixel);
-            for(unsigned i=0;i<8&&r->chapter_first+i<=r->stats.chapters;i++) {
+            for(unsigned i=0;i<10&&r->chapter_first+i<=r->stats.chapters;i++) {
                 char title[INK_TITLE_BYTES]; unsigned page;
                 if(chapter(r,r->chapter_first+i,title,&page)) return -1;
-                box(frame,16,120+i*64,448,64); label(frame,24,136+i*64,title);
+                box(frame,8,104+i*64,464,64); label(frame,16,122+i*64,title);
             }
         } else {
             label(frame,32,140,r->digits);

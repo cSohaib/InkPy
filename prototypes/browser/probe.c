@@ -10,25 +10,28 @@ int main(int argc,char **argv)
     ink_browser b; assert(!ink_browser_init(&b,argv[1]));
     assert(b.count==INK_BROWSER_ROWS && b.has_next);
     assert(!ink_browser_home(&b));
-    assert(ink_browser_page(&b,1)); assert(b.count==6 && !b.has_next);
+    assert(ink_browser_page(&b,1)); assert(b.count==20-INK_BROWSER_ROWS && !b.has_next);
     assert(!ink_browser_page(&b,1)); assert(ink_browser_page(&b,-1));
     /* Locate entries without imposing sort order. */
     while(1) {
         for(unsigned i=0;i<b.count;++i) if(b.rows[i].directory) {
-            assert(!ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+i*42));
-            ink_browser_tap(&b,20,INK_BROWSER_LIST_Y+i*42); assert(b.count==3);
-            unsigned n=row(&b,"book.md"); ink_browser_tap(&b,20,INK_BROWSER_LIST_Y+n*42); assert(b.view==INK_OPEN_MARKDOWN);
-            ink_browser_home(&b); n=row(&b,"script.py"); ink_browser_tap(&b,20,INK_BROWSER_LIST_Y+n*42); assert(b.view==INK_OPEN_TEXT);
-            ink_browser_home(&b); n=row(&b,"binary.bin"); ink_browser_tap(&b,20,INK_BROWSER_LIST_Y+n*42); assert(b.view==INK_NOTICE);
-            ink_browser_home(&b); ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+n*42); assert(b.view==INK_FILE_MENU);
+            assert(!ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+i*INK_BROWSER_ROW_HEIGHT));
+            ink_browser_tap(&b,20,INK_BROWSER_LIST_Y+i*INK_BROWSER_ROW_HEIGHT); assert(b.count==3);
+            unsigned n=row(&b,"book.md"); ink_browser_tap(&b,20,INK_BROWSER_LIST_Y+n*INK_BROWSER_ROW_HEIGHT); assert(b.view==INK_OPEN_MARKDOWN);
+            ink_browser_home(&b); n=row(&b,"script.py"); ink_browser_tap(&b,20,INK_BROWSER_LIST_Y+n*INK_BROWSER_ROW_HEIGHT); assert(b.view==INK_OPEN_TEXT);
+            ink_browser_home(&b); n=row(&b,"binary.bin"); ink_browser_tap(&b,20,INK_BROWSER_LIST_Y+n*INK_BROWSER_ROW_HEIGHT); assert(b.view==INK_NOTICE);
+            ink_browser_home(&b); ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+n*INK_BROWSER_ROW_HEIGHT); assert(b.view==INK_FILE_MENU);
             ink_browser_tap(&b,60,200); assert(b.view==INK_NOTICE); /* binary Edit */
-            ink_browser_home(&b); n=row(&b,"book.md"); ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+n*42);
+            ink_browser_home(&b); n=row(&b,"book.md"); ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+n*INK_BROWSER_ROW_HEIGHT);
             ink_browser_tap(&b,60,200); assert(b.view==INK_EDIT_TEXT); /* editor request */
-            ink_browser_home(&b); ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+n*42);
+            ink_browser_home(&b); ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+n*INK_BROWSER_ROW_HEIGHT);
             ink_browser_tap(&b,60,270); assert(b.view==INK_NOTICE && !strcmp(b.message,"not executable"));
-            ink_browser_home(&b); n=row(&b,"script.py"); ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+n*42);
+            ink_browser_home(&b); n=row(&b,"script.py"); ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+n*INK_BROWSER_ROW_HEIGHT);
             ink_browser_tap(&b,60,270); assert(b.view==INK_EXECUTE_PYTHON);
-            ink_browser_home(&b); ink_browser_home(&b); assert(!strcmp(b.folder,b.root));
+            ink_browser_home(&b); n=row(&b,"script.py");ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+n*INK_BROWSER_ROW_HEIGHT);
+            ink_browser_tap(&b,60,340);assert(b.view==INK_FILES&&b.count==2);
+            for(unsigned j=0;j<b.count;j++)assert(strcmp(b.rows[j].name,"script.py"));
+            ink_browser_home(&b); assert(!strcmp(b.folder,b.root));
             goto complete;
         }
         assert(ink_browser_page(&b,1));

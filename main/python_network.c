@@ -22,6 +22,13 @@ static bool initialized,started,suspended;
 static esp_http_client_handle_t client;
 static FILE *download;
 static char temporary[544];
+int ink_python_set_time(int year,int month,int day,int hour,int minute,int second)
+{
+    struct tm t={.tm_year=year-1900,.tm_mon=month-1,.tm_mday=day,
+        .tm_hour=hour,.tm_min=minute,.tm_sec=second,.tm_isdst=-1};
+    if(mktime(&t)==(time_t)-1) return EINVAL;
+    return ink_rtc_set(&t)==ESP_OK?0:EIO;
+}
 uint32_t ink_python_ticks(void) { return (uint32_t)(esp_timer_get_time()/1000); }
 void ink_python_delay(unsigned ms) { vTaskDelay(pdMS_TO_TICKS(ms)?pdMS_TO_TICKS(ms):1); }
 static void http_close(void)

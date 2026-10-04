@@ -11,3 +11,6 @@ int ink_python_http(const char *a,const char *b,const char *c,const char *d,size
 { (void)a;(void)b;(void)c;(void)d;(void)n;(void)h; return -ENOSYS; }
 uint32_t ink_python_ticks(void) { struct timespec t; clock_gettime(CLOCK_MONOTONIC,&t); return (uint32_t)(t.tv_sec*1000+t.tv_nsec/1000000); }
 void ink_python_delay(unsigned ms) { struct timespec t={.tv_sec=ms/1000,.tv_nsec=(ms%1000)*1000000}; nanosleep(&t,NULL); }
+
+int ink_python_set_time(int y,int m,int d,int h,int minute,int second)
+{ (void)y;(void)m;(void)d;(void)h;(void)minute;(void)second; return 0; }

@@ -1,9 +1,10 @@
 #pragma once
+#include "../ink_browser/ink_ui.h"
 #include <stddef.h>
 #include <stdint.h>
 #include "../ink_browser/ink_keyboard.h"
-enum { INK_CONSOLE_INPUT=4096, INK_CONSOLE_LINES=128, INK_CONSOLE_COLUMNS=24,
-    INK_CONSOLE_KEYBOARD_OFFSET=120, INK_CONSOLE_PAGE_ROWS=12 };
+enum { INK_CONSOLE_INPUT=4096, INK_CONSOLE_LINES=128, INK_CONSOLE_COLUMNS=INK_UI_COLUMNS,
+    INK_CONSOLE_KEYBOARD_OFFSET=120, INK_CONSOLE_PAGE_ROWS=14 };
 /* Adapter serializes access; VM worker owns execution, UI owns key events. */
 typedef struct {
     ink_keyboard keyboard;

@@ -13,3 +13,5 @@ int ink_python_http(const char *url,const char *destination,const char *method,
     const char *body,size_t body_bytes,const char *headers);
 uint32_t ink_python_ticks(void);
 void ink_python_delay(unsigned ms);
+
+int ink_python_set_time(int year,int month,int day,int hour,int minute,int second);

@@ -1,7 +1,8 @@
 #pragma once
+#include "ink_ui.h"
 #include <stdbool.h>
 #include <stdint.h>
-enum { INK_TEXT_ROWS=22, INK_TEXT_COLUMNS=24 };
+enum { INK_TEXT_ROWS=24, INK_TEXT_COLUMNS=INK_UI_COLUMNS };
 typedef struct {
     char lines[INK_TEXT_ROWS][INK_TEXT_COLUMNS*4+1];
     uint64_t offset,next_offset;

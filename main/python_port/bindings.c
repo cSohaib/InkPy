@@ -49,6 +49,19 @@ static mp_obj_t http(size_t n,const mp_obj_t *args,mp_map_t *kwargs)
     vstr_clear(&headers); if(status<0) mp_raise_OSError(-status); return mp_obj_new_int(status);
 }
 static MP_DEFINE_CONST_FUN_OBJ_KW(http_obj,2,http);
+static mp_obj_t set_time(size_t n,const mp_obj_t *args)
+{
+    int v[6]={0};for(size_t i=0;i<n;i++)v[i]=mp_obj_get_int(args[i]);
+    static const unsigned days[]={31,28,31,30,31,30,31,31,30,31,30,31};
+    if(v[0]<2000||v[0]>2099||v[1]<1||v[1]>12||v[2]<1||
+        v[2]>(int)(days[v[1]-1]+(v[1]==2&&v[0]%4==0))||
+        v[3]<0||v[3]>23||v[4]<0||v[4]>59||v[5]<0||v[5]>59)
+        mp_raise_ValueError(MP_ERROR_TEXT("invalid date/time"));
+    int e=ink_python_set_time(v[0],v[1],v[2],v[3],v[4],v[5]);
+    if(e)mp_raise_OSError(e);
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(set_time_obj,5,6,set_time);
 static mp_obj_t sleep_seconds(mp_obj_t seconds)
 {
     mp_float_t value=mp_obj_get_float(seconds);
@@ -66,6 +79,7 @@ static const mp_rom_map_elem_t ink_globals_table[]={
     {MP_ROM_QSTR(MP_QSTR_wifi_status),MP_ROM_PTR(&wifi_status_obj)},
     {MP_ROM_QSTR(MP_QSTR_wifi_off),MP_ROM_PTR(&wifi_off_obj)},
     {MP_ROM_QSTR(MP_QSTR_http),MP_ROM_PTR(&http_obj)},
+    {MP_ROM_QSTR(MP_QSTR_set_time),MP_ROM_PTR(&set_time_obj)},
 };
 static MP_DEFINE_CONST_DICT(ink_globals,ink_globals_table);
 const mp_obj_module_t ink_module={.base={&mp_type_module},.globals=(mp_obj_dict_t *)&ink_globals};

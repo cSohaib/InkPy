@@ -25,7 +25,8 @@ FIFO while rendering remains blocking; physical fast-typing verification is pend
 - Tap a folder to enter it. Side buttons change list pages.
 - Home goes to the parent folder; at the root it does nothing.
 - Tap a .md file to render Markdown. Tap another text file to open plain text. A binary file produces an error.
-- Long-press a file: exactly Edit and Execute.
+- Long-press a file: Edit, Execute, Delete. Delete removes that file and reloads the list.
+- A small file/folder icon distinguishes entries; large + and >_ controls sit below.
 - Edit opens any valid text file in the editor regardless of extension; reject binary files.
 - Execute runs a Python script; otherwise show the error icon (serial diagnostic: "not executable").
 - No implicit execution when tapping .py.
@@ -59,7 +60,7 @@ Console history needs SD-backed paging or an explicit retention policy, not unli
 - Tap a word to display its StarDict translation/definition.
 - The translation popup includes Change dictionary, opening a dictionary chooser.
 - This is the only place to change dictionary; do not add it to the power menu or another settings page.
-- Home menu: Go to chapter / Go to page / Close / Rotate.
+- Home menu: Go to chapter / Go to page / Exit / Rotate / Back.
 - Rotate toggles portrait/landscape for this book. Reader menus, dictionaries and
   the Power menu stay portrait. New books open portrait; rotation is not saved.
 - Rotation repaginates and preserves the approximate source position.
@@ -72,17 +73,17 @@ Proposed: page numbers are one-based and belong to the current font/orientation 
 - Sleep preserves whatever is currently visible. No sleep screen, clearing, clock overlay, or page replacement.
 - Long-press Power while awake sleeps; a single short Power press while asleep wakes (subject to hardware verification). From the user's perspective, waking re-enables touch and restores interaction.
 - Double-press Power toggles the light on/off.
-- Short-press Power opens exactly:
-  - Light brightness: + and - buttons only
-  - Light warmth: + and - buttons only
-  - Light on/off
-  - Night mode
-  - Time settings
-  - Font selector
-  - Refresh screen: close the menu and force a full refresh of the underlying screen to clear e-ink ghosting, keeping its page/cursor/session unchanged
-- Only while the power menu is open, its header shows time, date and battery level. Do not show these in the reader, browser, editor, console or any other screen. No persistent status bar.
+- Short-press Power opens a compact panel:
+  - Header: time/date at top left, battery at top right with percentage inside.
+  - First row: minus / bulb and brightness / plus. The center toggles light;
+    rays indicate on. No separate light button.
+  - Second row: minus / thermometer and warmth / plus.
+  - Third row: three square tiles for Aa/font, refresh and half-filled-circle contrast.
+  - No clock settings, close or orientation control. Power or Home dismisses it.
+- Time/date/battery appear only here. Python inkpy.set_time is the only clock-setting
+  interface; there is no time-settings screen.
 
-Proposed: disable touch and side-button interaction while asleep; consume the waking Power press so it does not also open the power menu, toggle light or put the device back to sleep. Turn the frontlight off for sleep and restore its prior state on wake; this changes illumination, not screen content. Night mode means inverted rendering within the fixed theme. Time is set locally, without a network time service.
+Proposed: disable touch and side-button interaction while asleep; consume the waking Power press so it does not also open the power menu, toggle light or put the device back to sleep. Turn the frontlight off for sleep and restore its prior state on wake; this changes illumination, not screen content. Night mode means inverted rendering within the fixed theme. Time is set through Python, without a firmware network time service.
 Sleep suspends Python execution and waking resumes it; it must not kill or restart the script. The existing automatic-sleep exception while a script runs remains in effect. Manual Power sleep can suspend a running script.
 Implementation note: preserve the VM, stack and local variables, but wall-clock time still passes. Network connections and external I/O may time out across a long sleep; suspension does not freeze the outside world.
 Implementation must distinguish idle power saving, state-preserving sleep and deep sleep. An unchanged e-ink image does not imply that the processor is already sleeping.
@@ -111,3 +112,14 @@ Errors show a circle containing a cross; details remain in serial diagnostics.
 Power uses sun, warmth, lamp, moon, clock, font and refresh icons, plus
 close. Brightness/warmth remain +/- with numeric values. Time uses numeric fields.
 Fonts rescan fonts/ when opened; dictionary choice remains inside word lookup.
+
+## Stage 34 appearance
+
+Body text uses one fixed 26-pixel height and 17-pixel cell in Markdown, text viewer,
+editor and console (headings retain their hierarchy). Text grids use 6-pixel margins;
+Markdown uses 8. Editor shows 16 rows above the bottom keyboard, console 14 output
+rows plus its input field, viewer 24 rows. Browser shows 15 entries, chapters 10
+per page; menu/list margins are reduced. Icons are line drawings: open-book chapters,
+page with #, AZ dictionary, door/arrow exits, crossed-save discard, Aa font,
+thermometer warmth, bulb brightness and half-filled contrast. Error is 100×100;
+browser +/>_ are 64 pixels and Power tiles use 96-pixel icons.

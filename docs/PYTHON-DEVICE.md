@@ -71,3 +71,18 @@ inside the active console; sleep retains it. Snapshot polling copies console
 content only when its revision changes. Repeated Close/reopen and sleep after
 this change require physical retesting. Stage 32 AI script is confirmed working
 on-device by the user before this resource-lifetime change.
+
+## Clock (Stage 34)
+
+Only Python changes the device clock; the former Power time settings were removed.
+
+```python
+import inkpy
+inkpy.set_time(2026, 10, 4, 12, 30, 0)
+```
+
+Arguments are year, month, day, hour, minute, optional seconds (default 0),
+using the device's wall-clock convention. Supported years: 2000–2099; hours 0–23.
+Returns None; invalid dates/times raise ValueError and RTC write failures raise
+OSError. Writes RTC and updates system time for HTTPS. There is no automatic
+timezone conversion or network time synchronization. Open Power to check the date.

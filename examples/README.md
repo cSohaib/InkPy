@@ -3,7 +3,8 @@
 Edit `agent.py`: set your Wi-Fi `SSID`, `PASSWORD` and OpenAI `API_KEY`.
 Copy it to microSD and choose Execute from its long-press menu. Use the current
 Stage 31 firmware; no firmware update or extra Python packages are needed.
-Set the correct device date/time for HTTPS. The API key uses your OpenAI API
+Set the correct device date/time for HTTPS. On Stage 34 or later, use
+`inkpy.set_time(year, month, day, hour, minute, second)` in Console. The API key uses your OpenAI API
 account, which has separate billing from a ChatGPT subscription.
 
 Enter prompts with the keyboard. `/quit` exits; Home → Close also stops the
