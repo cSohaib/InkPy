@@ -7,7 +7,6 @@
 #include <sys/stat.h>
 #ifdef INK_USE_FONTS
 #include "ink_font.h"
-#include "ink_view.h"
 #endif
 static int render(const char *s,int display,unsigned pixels,uint8_t *bits,unsigned *w,unsigned *h,unsigned *base)
 {
@@ -43,11 +42,21 @@ int main(int argc,char **argv)
     snprintf(path,sizeof(path),"%s/binary.md",argv[2]); out=fopen(path,"wb"); assert(out); fputs("text",out); fputc(0,out); fclose(out);
     assert(ink_reader_open(&r,path,argv[2],NULL,NULL)); assert(!r.draw&&!r.pages&&!r.chapters);
 #ifdef INK_USE_FONTS
-    ink_view_landscape=true;
     assert(!ink_reader_open(&r,argv[1],argv[2],render,NULL));
-    assert(!ink_reader_draw(&r,frame));
+    r.page=(unsigned)r.stats.pages; assert(!ink_reader_draw(&r,frame));
+    unsigned chapter_before=r.chapter;
+    ink_reader_home(&r);
+    FILE *page_draw=r.draw; r.draw=NULL; /* A menu must not render/read page runs. */
+    assert(!ink_reader_draw(&r,frame)); r.draw=page_draw;
+    assert(ink_reader_tap(&r,48,400)==INK_READER_ROTATE);
+    assert(!ink_reader_rotate(&r,argv[1],argv[2],render,NULL)&&r.landscape);
+    assert(!ink_reader_draw(&r,frame)&&r.chapter==chapter_before);
     snprintf(path,sizeof(path),"%s/landscape.bin",argv[2]); out=fopen(path,"wb"); assert(out);
-    assert(fwrite(frame,1,sizeof(frame),out)==sizeof(frame)); assert(!fclose(out)); ink_reader_close(&r);
+    assert(fwrite(frame,1,sizeof(frame),out)==sizeof(frame)); assert(!fclose(out));
+    ink_reader_home(&r); assert(!ink_reader_draw(&r,frame));
+    assert(ink_reader_tap(&r,48,400)==INK_READER_ROTATE);
+    assert(!ink_reader_rotate(&r,argv[1],argv[2],render,NULL)&&!r.landscape);
+    assert(!ink_reader_draw(&r,frame)&&r.chapter==chapter_before); ink_reader_close(&r);
 #endif
     ink_math_shutdown();
     puts("PASS: device renderer, formula bitmaps/fallback, H2 navigation, page entry/paging, Close cleanup, missing-math-assets fallback, binary rejection");

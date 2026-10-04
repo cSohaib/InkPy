@@ -52,31 +52,30 @@ static void worker(void *context)
 {
     ink_python_worker *s=context; int stack_top;
     ink_python_callbacks(control,output,s); ink_python_input_callback(input_line);
+    ink_python_init(s->heap,VM_HEAP,&stack_top);
     for(;;) {
-        lock(s); bool opening=s->opening; s->opening=false; unlock(s);
-        if(!opening) { ulTaskNotifyTake(pdTRUE,portMAX_DELAY); continue; }
-        ink_python_init(s->heap,VM_HEAP,&stack_top);
-        for(;;) {
-            lock(s);
-            if(s->closing) { unlock(s); break; }
-            bool run=s->queued&&!s->pause;
-            s->paused=s->pause;
-            if(run) { s->queued=false; s->paused=false; }
-            unlock(s);
-            if(!run) { ulTaskNotifyTake(pdTRUE,portMAX_DELAY); continue; }
-            bool more=!s->file_job&&ink_python_more(s->command);
-            int result=s->file_job?ink_python_file(s->path):more?0:ink_python_text(s->command,true);
-            if(result==2) { ink_python_close(); ink_python_init(s->heap,VM_HEAP,&stack_top); more=false; }
-            lock(s);
-            if(result==2) ink_console_output(&s->console,"Stopped; Python reset\n",22);
-            /* Closing wins over completion; no new jobs until Close acknowledgment. */
-            ink_console_completed(&s->console,more); s->stop=false; s->paused=false; s->revision++;
-            unlock(s);
-        }
-        ink_python_close();
-        lock(s); s->closed=true; s->paused=false; s->queued=false;
-        s->console.busy=false; s->revision++; unlock(s);
+        lock(s);
+        if(s->closing) { unlock(s); break; }
+        bool run=s->queued&&!s->pause;
+        s->paused=s->pause;
+        if(run) { s->queued=false; s->paused=false; }
+        unlock(s);
+        if(!run) { ulTaskNotifyTake(pdTRUE,portMAX_DELAY); continue; }
+        bool more=!s->file_job&&ink_python_more(s->command);
+        int result=s->file_job?ink_python_file(s->path):more?0:ink_python_text(s->command,true);
+        lock(s); bool closing=s->closing; unlock(s);
+        if(result==2&&!closing) { ink_python_close(); ink_python_init(s->heap,VM_HEAP,&stack_top); more=false; }
+        lock(s);
+        if(result==2&&!closing) ink_console_output(&s->console,"Stopped; Python reset\n",22);
+        ink_console_completed(&s->console,more); s->stop=false; s->paused=false; s->revision++;
+        unlock(s);
     }
+    ink_python_close();
+    lock(s); s->closed=true; s->paused=false; s->queued=false;
+    s->console.busy=false; s->revision++; unlock(s);
+    /* No locks/streams/VM remain. UI deletes this parked task after observing
+     * closed under the mutex, then releases its heap and mutex. */
+    for(;;) ulTaskNotifyTake(pdTRUE,portMAX_DELAY);
 }
 esp_err_t ink_python_worker_start(ink_python_worker *s)
 {
@@ -87,7 +86,6 @@ esp_err_t ink_python_worker_start(ink_python_worker *s)
         if(s->lock) vSemaphoreDelete(s->lock);
         free(s->heap); memset(s,0,sizeof(*s)); return ESP_ERR_NO_MEM;
     }
-    s->opening=true;
     /* ESP-IDF stack size is bytes; xTaskCreate allocates an internal task stack. */
     if(xTaskCreatePinnedToCore(worker,"inkpy-vm",VM_STACK,s,2,&s->task,1)!=pdPASS) {
         vSemaphoreDelete(s->lock); free(s->heap); memset(s,0,sizeof(*s)); return ESP_ERR_NO_MEM;
@@ -121,14 +119,14 @@ void ink_python_worker_pause(ink_python_worker *s,bool paused)
 { lock(s); s->pause=paused; if(!paused) s->paused=false; unlock(s); xTaskNotifyGive(s->task); }
 void ink_python_worker_close(ink_python_worker *s)
 { lock(s); s->closing=true; s->revision++; unlock(s); xTaskNotifyGive(s->task); }
-bool ink_python_worker_reopen(ink_python_worker *s)
+void ink_python_worker_release(ink_python_worker *s)
 {
-    lock(s); bool ready=s->closed;
-    if(ready) { ink_console_init(&s->console); s->closing=s->closed=s->stop=s->pause=s->paused=false; s->opening=true; s->revision++; }
-    unlock(s); if(ready) xTaskNotifyGive(s->task); return ready;
+    /* UI owner calls only after the Close acknowledgment. */
+    vTaskDelete(s->task); vSemaphoreDelete(s->lock); free(s->heap);
+    memset(s,0,sizeof(*s));
 }
-uint32_t ink_python_worker_snapshot(ink_python_worker *s,ink_console *console,bool *paused,bool *closed)
-{ lock(s); *console=s->console; *paused=s->paused; *closed=s->closed; uint32_t revision=s->revision; unlock(s); return revision; }
+uint32_t ink_python_worker_snapshot(ink_python_worker *s,ink_console *console,bool *paused,bool *closed,uint32_t seen)
+{ lock(s); if(seen!=s->revision) *console=s->console; *paused=s->paused; *closed=s->closed; uint32_t revision=s->revision; unlock(s); return revision; }
 
 void ink_python_worker_tap(ink_python_worker *s,unsigned x,unsigned y)
 {

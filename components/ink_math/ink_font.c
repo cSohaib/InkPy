@@ -4,14 +4,15 @@
 #include FT_SYNTHESIS_H
 #include <dirent.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
-bool ink_view_landscape;
 
 static FT_Library library;
 static FT_Face face;
-static char names[32][96],paths[32][512];
+static unsigned pixel_height;
+static char (*paths)[512]; /* Optional SD catalog; allocated only when needed. */
 static unsigned count=1,selected;
 #ifdef ESP_PLATFORM
 extern const unsigned char font_start[] asm("_binary_InkPyMono_ttf_start");
@@ -19,7 +20,7 @@ extern const unsigned char font_end[] asm("_binary_InkPyMono_ttf_end");
 #endif
 unsigned ink_font_count(void) { return count; }
 unsigned ink_font_selected(void) { return selected; }
-const char *ink_font_name(unsigned i) { return i<count?names[i]:""; }
+const char *ink_font_name(unsigned i) { return !i?"InkPy Mono":i<count?paths[i]+strlen("/sd/fonts/"):""; }
 int ink_font_select(unsigned i)
 {
     if(!library||i>=count) return -1;
@@ -33,7 +34,7 @@ int ink_font_select(unsigned i)
     if(e) return -1;
     if(FT_Select_Charmap(next,FT_ENCODING_UNICODE)) { FT_Done_Face(next); return -1; }
     if(face) FT_Done_Face(face);
-    face=next; selected=i; return 0;
+    face=next; pixel_height=0; selected=i; return 0;
 }
 static void scan_fonts(const char *folder,unsigned depth)
 {
@@ -46,20 +47,20 @@ static void scan_fonts(const char *folder,unsigned depth)
         if(S_ISDIR(st.st_mode)) { if(depth<4) scan_fonts(path,depth+1); continue; }
         const char *ext=strrchr(entry->d_name,'.');
         if(!S_ISREG(st.st_mode)||!ext||(strcasecmp(ext,".ttf")&&strcasecmp(ext,".otf"))) continue;
-        strcpy(paths[count],path);
-        snprintf(names[count],96,"%.95s",path+strlen("/sd/fonts/")); count++;
+        if(!paths) { paths=calloc(32,sizeof(*paths)); if(!paths) break; }
+        strcpy(paths[count++],path);
     }
     closedir(d);
 }
 void ink_font_scan(void)
 {
-    char active[512]; snprintf(active,sizeof(active),"%s",paths[selected]);
+    char active[512]; snprintf(active,sizeof(active),"%s",paths&&selected?paths[selected]:"");
     count=1; selected=0; scan_fonts("/sd/fonts",0);
     for(unsigned i=1;i<count;i++) if(!strcmp(paths[i],active)) { selected=i; break; }
+    if(count==1) { free(paths); paths=NULL; }
 }
 int ink_font_init(void)
 {
-    strcpy(names[0],"InkPy Mono");
     if(FT_Init_FreeType(&library)) return -1;
     ink_font_scan();
     return ink_font_select(0);
@@ -78,14 +79,11 @@ void ink_font_text(uint8_t *frame,unsigned x,unsigned y,const char *s,
     void (*pixel)(uint8_t *,unsigned,unsigned))
 {
     if(!face||!cell||height<4) return;
-    /* Compact controls keep their fixed hit grid in landscape; glyphs retain
-     * their aspect ratio instead of stretching with that grid. Reader pages
-     * reflow at native 800x480 and use the ordinary branch. */
-    bool compact=ink_view_landscape&&(limit==464||limit==480);
-    unsigned glyph_height=compact?height*480/800:height;
-    unsigned advance=compact&&!(style&256)?(cell*480/800)*480/800:cell;
-    if(!advance) advance=1;
-    FT_Set_Pixel_Sizes(face,0,glyph_height*7/8);
+    unsigned pixels=height*7/8;
+    if(pixel_height!=pixels) {
+        if(FT_Set_Pixel_Sizes(face,0,pixels)) return;
+        pixel_height=pixels;
+    }
     const unsigned char *p=(const unsigned char *)s;
     while(*p&&x+cell<=limit) {
         unsigned cp=decode(&p); FT_UInt glyph=FT_Get_Char_Index(face,cp);
@@ -96,22 +94,18 @@ void ink_font_text(uint8_t *frame,unsigned x,unsigned y,const char *s,
             if(style&2) FT_GlyphSlot_Oblique(face->glyph);
             if(!FT_Render_Glyph(face->glyph,FT_RENDER_MODE_MONO)) {
                 FT_GlyphSlot g=face->glyph; FT_Bitmap *b=&g->bitmap;
-                unsigned glyph_cell=compact?advance*800/480:cell;
-                int top=(int)(glyph_height*3/4)-g->bitmap_top;
-                int left=((int)glyph_cell-(int)b->width)/2;
+                int top=(int)(height*3/4)-g->bitmap_top;
+                int left=((int)cell-(int)b->width)/2;
                 for(unsigned row=0;row<b->rows;row++) for(unsigned col=0;col<b->width;col++) {
                     int px=left+(int)col,py=top+(int)row;
-                    if(px<0||px>=(int)glyph_cell||py<0||py>=(int)glyph_height) continue;
+                    if(px<0||px>=(int)cell||py<0||py>=(int)height) continue;
                     const unsigned char *bits=b->buffer+(b->pitch>=0?row:b->rows-1-row)*(unsigned)(b->pitch>=0?b->pitch:-b->pitch);
                     if(bits[col/8]&(0x80>>(col%8))) {
-                        if(compact) {
-                            unsigned nx=x*800/480+(unsigned)px,ny=y*480/800+(unsigned)py;
-                            if(nx<800&&ny<480) { unsigned dx=799-nx,dy=479-ny; frame[dy*100+dx/8]&=(uint8_t)~(0x80>>(dx%8)); }
-                        } else pixel(frame,x+(unsigned)px,y+(unsigned)py);
+                        pixel(frame,x+(unsigned)px,y+(unsigned)py);
                     }
                 }
             }
         }
-        x+=advance;
+        x+=cell;
     }
 }

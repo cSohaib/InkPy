@@ -10,19 +10,11 @@
 #include <unistd.h>
 #ifdef INK_USE_FONTS
 #include "ink_font.h"
-#include "ink_view.h"
 #endif
-static unsigned page_width(void) {
-#ifdef INK_USE_FONTS
-    return ink_view_landscape?800:480;
-#else
-    return 480;
-#endif
-}
-static unsigned page_height(void) { return page_width()==800?480:800; }
-#ifdef INK_USE_FONTS
-static bool page_drawing;
-#endif
+static unsigned page_width(const ink_reader *r) { return r->landscape?800:480; }
+static unsigned page_height(const ink_reader *r) { return r->landscape?480:800; }
+/* Drawing callbacks are synchronous and owned by the UI task. */
+static const ink_reader *drawing;
 
 static int error(ink_reader *r,const char *s)
 { snprintf(r->error,sizeof(r->error),"%s",s); return -1; }
@@ -64,9 +56,9 @@ void ink_reader_close(ink_reader *r)
         if(!path(r,p,names[i])) unlink(p);
     }
 }
-int ink_reader_open(ink_reader *r,const char *source,const char *root,ink_layout_math math,void (*progress)(void))
+static int open_book(ink_reader *r,const char *source,const char *root,ink_layout_math math,void (*progress)(void),bool landscape)
 {
-    memset(r,0,sizeof(*r)); char p[560];
+    memset(r,0,sizeof(*r)); r->landscape=landscape; char p[560];
     int n=snprintf(r->cache,sizeof(r->cache),"%s/.inkpy-reader",root);
     if(n<0||(size_t)n>=sizeof(r->cache)) { r->cache[0]=0; return error(r,"Cache path too long"); }
     struct stat st; bool exists=stat(r->cache,&st)==0;
@@ -94,7 +86,7 @@ int ink_reader_open(ink_reader *r,const char *source,const char *root,ink_layout
     int status=-1;
     if(!r->draw||!r->pages||!r->chapters||(math&&!spool)) error(r,"Cannot open reader cache");
     else {
-        ink_layout_config cfg={.width=page_width(),.height=page_height(),.font_pixels=22,.read_bytes=1024,
+        ink_layout_config cfg={.width=page_width(r),.height=page_height(r),.font_pixels=22,.read_bytes=1024,
             .render_math=math,.bitmap_spool=spool,.progress=progress};
         status=ink_layout_run(input,r->draw,r->pages,r->chapters,&cfg,&r->stats);
         if(status) error(r,r->stats.error);
@@ -106,6 +98,27 @@ int ink_reader_open(ink_reader *r,const char *source,const char *root,ink_layout
     path(r,p,"bitmap"); unlink(p);
     r->page=r->stats.pages?1:0; strcpy(r->title,"");
     if(r->page) { unsigned char b[32]; if(page_record(r,b)) { ink_reader_close(r); return -1; } }
+    return 0;
+}
+int ink_reader_open(ink_reader *r,const char *source,const char *root,ink_layout_math math,void (*progress)(void))
+{ return open_book(r,source,root,math,progress,false); }
+int ink_reader_rotate(ink_reader *r,const char *source,const char *root,ink_layout_math math,void (*progress)(void))
+{
+    unsigned char record[32]; uint64_t anchor=0;
+    if(r->page) { if(page_record(r,record)) return -1; anchor=number(record+16,8); }
+    bool landscape=!r->landscape; ink_dict *dictionary=r->dictionary;
+    ink_reader_close(r);
+    if(open_book(r,source,root,math,progress,landscape)) return -1;
+    r->dictionary=dictionary;
+    /* Keep the source position, not a page number from the previous layout. */
+    uint64_t first=1,last=r->stats.pages;
+    while(first<=last) {
+        uint64_t page=first+(last-first)/2;
+        if(seek_record(r->pages,page-1,32)||fread(record,1,32,r->pages)!=32)
+            return error(r,"Cannot locate reading position");
+        if(number(record+16,8)>anchor) last=page-1;
+        else { r->page=(unsigned)page; first=page+1; }
+    }
     return 0;
 }
 bool ink_reader_page(ink_reader *r,int direction)
@@ -155,7 +168,7 @@ static int lookup_word(ink_reader *r,unsigned tap_x,unsigned tap_y)
         unsigned x=(unsigned)number(h,2),y=(unsigned)number(h+2,2),cell=(unsigned)number(h+4,2),style=(unsigned)number(h+6,2);
         unsigned level=(style>>8)&7,height=22+(level?2*(7-level):0);
         if(size>end-at||!cell||cell>480) return error(r,"Invalid word geometry");
-        bool continuation=(x==prev_end&&y==prev_y)||(x==16&&prev_end>=page_width()-16-prev_cell&&y==prev_y+prev_height+8);
+        bool continuation=(x==prev_end&&y==prev_y)||(x==16&&prev_end>=page_width(r)-16-prev_cell&&y==prev_y+prev_height+8);
         if(used&&!continuation) { if(hit) goto found; used=0; overflow=false; }
         if(style==INK_BITMAP||(style&INK_MATH)) {
             if(hit) goto found;
@@ -194,7 +207,7 @@ found:
     else error(r,"No dictionaries found");
     return 1;
 }
-bool ink_reader_tap(ink_reader *r,unsigned x,unsigned y)
+int ink_reader_tap(ink_reader *r,unsigned x,unsigned y)
 {
     if(r->view==INK_READER_PAGE) { r->error[0]=0; lookup_word(r,x,y); }
     else if(r->view==INK_READER_DEFINITION&&y>=704&&y<768) {
@@ -207,9 +220,10 @@ bool ink_reader_tap(ink_reader *r,unsigned x,unsigned y)
             else if(r->word[0]) { r->error[0]=0; if(ink_dict_lookup(d,r->word)<0) error(r,d->error); }
             r->view=INK_READER_DEFINITION;
         }
-    } else if(r->view==INK_READER_MENU&&x>=32&&x<448&&y>=180&&y<372) {
+    } else if(r->view==INK_READER_MENU&&x>=32&&x<448&&y>=180&&y<436) {
         unsigned row=(y-180)/64;
-        if(row==2) return true;
+        if(row==2) return INK_READER_CLOSE;
+        if(row==3) return INK_READER_ROTATE;
         r->view=row?INK_READER_GOTO:INK_READER_CHAPTERS; r->digits[0]=0; r->chapter_first=1;
     } else if(r->view==INK_READER_CHAPTERS&&x>=16&&x<464&&y>=120&&y<632) {
         unsigned id=r->chapter_first+(y-120)/64,page; char title[INK_TITLE_BYTES];
@@ -230,16 +244,15 @@ bool ink_reader_tap(ink_reader *r,unsigned x,unsigned y)
 }
 static void pixel(uint8_t *f,unsigned x,unsigned y)
 {
-#ifdef INK_USE_FONTS
-    ink_view_pixel(f,x,y,page_drawing?page_width():480,page_drawing?page_height():800); return;
-#endif
-    if(x>=480||y>=800) return;
-    unsigned dx=799-y,dy=x; f[dy*100+dx/8]&=(uint8_t)~(0x80>>(dx%8));
+    bool landscape=drawing&&drawing->view==INK_READER_PAGE&&drawing->landscape;
+    if(x>=(landscape?800u:480u)||y>=(landscape?480u:800u)) return;
+    unsigned dx=landscape?799-x:799-y,dy=landscape?479-y:x;
+    f[dy*100+dx/8]&=(uint8_t)~(0x80>>(dx%8));
 }
 static void text(uint8_t *f,unsigned x,unsigned y,const char *s,unsigned cell,unsigned height,unsigned style)
 {
 #ifdef INK_USE_FONTS
-    ink_font_text(f,x,y,s,cell,height,style,page_drawing?page_width()-16:464,pixel); return;
+    ink_font_text(f,x,y,s,cell,height,style,drawing->view==INK_READER_PAGE?page_width(drawing)-16:464,pixel); return;
 #endif
     unsigned shift=0;
     for(;*s;s++) {
@@ -253,7 +266,7 @@ static void text(uint8_t *f,unsigned x,unsigned y,const char *s,unsigned cell,un
                 if(style&INK_BOLD) pixel(f,x+dx+shift+1,y+dy);
             }
         }
-        x+=cell; if(x>=464) break;
+        x+=cell; if(x>=page_width(drawing)-16) break;
     }
 }
 static void label(uint8_t *f,unsigned x,unsigned y,const char *s)
@@ -265,11 +278,9 @@ static void box(uint8_t *f,unsigned x,unsigned y,unsigned w,unsigned h)
 }
 int ink_reader_draw(ink_reader *r,uint8_t frame[48000])
 {
-#ifdef INK_USE_FONTS
-    page_drawing=r->view==INK_READER_PAGE;
-#endif
+    drawing=r;
     memset(frame,255,48000);
-    if(r->page) {
+    if(r->page&&r->view==INK_READER_PAGE) {
         unsigned char p[32]; if(page_record(r,p)) return -1;
         uint64_t begin=number(p,8),end=number(p+8,8);
         if(number(p+28,4)||begin>end||end>LONG_MAX||fseek(r->draw,(long)begin,SEEK_SET)) return error(r,"Invalid page offsets");
@@ -279,12 +290,12 @@ int ink_reader_draw(ink_reader *r,uint8_t frame[48000])
             at+=20;
             unsigned x=(unsigned)number(h,2),y=(unsigned)number(h+2,2),cell=(unsigned)number(h+4,2),style=(unsigned)number(h+6,2);
             uint64_t size=number(h+8,4);
-            if(!size||size>end-at||x>=page_width()||y>=page_height()||!cell) return error(r,"Invalid page run");
+            if(!size||size>end-at||x>=page_width(r)||y>=page_height(r)||!cell) return error(r,"Invalid page run");
             if(style==INK_BITMAP) {
                 unsigned char b[2],row[60];
                 if(size<2||cell>480||fread(b,1,2,r->draw)!=2) return error(r,"Invalid formula bitmap");
                 unsigned height=(unsigned)number(b,2),stride=(cell+7)/8;
-                if(!height||height>page_height()-y||cell>page_width()-x||size!=2+(uint64_t)stride*height) return error(r,"Formula outside page");
+                if(!height||height>page_height(r)-y||cell>page_width(r)-x||size!=2+(uint64_t)stride*height) return error(r,"Formula outside page");
                 for(unsigned dy=0;dy<height;dy++) {
                     if(fread(row,1,stride,r->draw)!=stride) return error(r,"Truncated formula bitmap");
                     for(unsigned dx=0;dx<cell;dx++) if(row[dx/8]&(0x80>>(dx%8))) pixel(frame,x+dx,y+dy);
@@ -299,7 +310,8 @@ int ink_reader_draw(ink_reader *r,uint8_t frame[48000])
         }
     }
     if(r->view!=INK_READER_PAGE) {
-        memset(frame,255,48000); char line[64];
+        char line[64];
+        if(r->page) { unsigned char p[32]; if(page_record(r,p)) return -1; }
         if(r->view==INK_READER_DEFINITION||r->view==INK_READER_DICTIONARIES) {
             ink_dict *d=r->dictionary; label(frame,16,16,r->word);
             if(r->view==INK_READER_DICTIONARIES) {
@@ -319,8 +331,8 @@ int ink_reader_draw(ink_reader *r,uint8_t frame[48000])
         snprintf(line,sizeof(line),"%u / %u",r->page,(unsigned)r->stats.pages); label(frame,16,16,line);
         label(frame,16,64,r->title);
         if(r->view==INK_READER_MENU) {
-            const unsigned icons[]={ICON_CHAPTER,ICON_PAGE,ICON_CLOSE};
-            for(unsigned i=0;i<3;i++) { box(frame,32,180+i*64,416,64); ink_icon(frame,224,196+i*64,icons[i],pixel); }
+            const unsigned icons[]={ICON_CHAPTER,ICON_PAGE,ICON_CLOSE,ICON_ROTATE};
+            for(unsigned i=0;i<4;i++) { box(frame,32,180+i*64,416,64); ink_icon(frame,224,196+i*64,icons[i],pixel); }
         } else if(r->view==INK_READER_CHAPTERS) {
             if(!r->stats.chapters) ink_icon(frame,224,120,ICON_ERROR,pixel);
             for(unsigned i=0;i<8&&r->chapter_first+i<=r->stats.chapters;i++) {

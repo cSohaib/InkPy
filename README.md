@@ -2,8 +2,8 @@
 
 Minimal firmware exclusively for the Xteink X4 Pro. The device browser, text
 editor, MicroPython console/script execution and Markdown reader with inline/display
-math now compile together into an ESP32-S3 application image. Device execution of
-the new integrations remains untested. See [the checkpoint](docs/CHECKPOINT.md)
+math now compile together into an ESP32-S3 application image. Stage 31 math and the Stage 32 AI Python script are confirmed working on-device;
+Stage 33 cleanup and reader-only rotation need retesting. See [the checkpoint](docs/CHECKPOINT.md)
 and [downloaded firmware version](docs/FIRMWARE.md). Stage 25 includes StarDict,
 Unicode fonts/selection, differential refresh, Power controls and Python SD
 files/imports plus Wi-Fi/HTTP. EPUB remains deferred. This exploratory build is
@@ -30,6 +30,7 @@ Keep layout separate from document parsing so a later restricted EPUB importer c
 “ChatGPT-style math” describes the intended use, not a fixed compatibility specification. The proposed acceptance corpus defines representative notation; actual supported coverage must be established by the rendering prototype. Delimiters alone do not make mathematical layout trivial.
 
 ## Interaction and implementation references
+- [Resource review](docs/RESOURCE-REVIEW.md): Stage 33 cleanup and remaining performance limits.
 - [OpenAI chat experiment](examples/README.md): SD Python agent using the Responses API.
 - [StarDict lookup](docs/STARDICT.md): dictionary files, supported formats and popup/selection behavior.
 - [MicroPython embedding](docs/MICROPYTHON.md): Stage 10 run commands, Python keyboard and current limits.

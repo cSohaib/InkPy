@@ -1,11 +1,12 @@
-# Stage 31 PSRAM allocation exploratory firmware
+# Stage 33 minimalism/resource cleanup firmware
 
 The non-EPUB feature set is integrated: browser/text/editor, Python console/scripts,
 Markdown/math, StarDict, Unicode fonts/selection, Power controls and differential
 refresh. EPUB remains deferred. The user tested an earlier image on an unlocked
 X4 Pro; Stage 27 boots on that device. Stage 29 plain Markdown, TTF, Python file writes and Wi-Fi/HTTP have now
 worked on-device. Stage 30 input(), JSON and sleep/wake are also confirmed on-device.
-Stage 31 math allocation corrections are build/host checked, not device verified.
+Stage 31 math and Stage 32 AI script are now confirmed working on-device.
+Stage 33 cleanup/reader rotation is build/host checked; device retesting is pending.
 
 Use the same X4 Pro application-image web installer that worked previously.
 firmware.bin is an **application-only ESP32-S3 image**, without bootloader or
@@ -33,10 +34,10 @@ initialization, which Stage 30 simplifies.
 - ESP-IDF v5.5.5: b774170ff46c393eeb5e495ea37936038d3f4f4f, pinned submodules.
 - Xtensa GCC 14.2.0, esp-14.2.0_20260121; ESP32-S3, 16 MiB DIO.
 - Browser ON, diagnostics OFF; 32 KiB main stack.
-- Application: 2,587,392 bytes; slot 8,257,536 bytes, 69% free.
-- SHA-256: 04ad4881ded7c563fca72fa5c132b27e096e6186d8017493afe5dbacd5606325.
+- Application: 2,587,056 bytes; slot 8,257,536 bytes, 69% free.
+- SHA-256: 603e774e23670237f9a609fd5912ba4bfebb7d5c5a230c8a8af93829a90dd9f3.
 - Build: bash scripts/build-browser.sh; output build-browser/firmware.bin.
-- Evidence: results/stage31/image.txt, valid esptool checksum and validation hash.
+- Evidence: results/stage33/image.txt, valid esptool checksum and validation hash.
 
 ## Physical checks and limits
 
@@ -45,20 +46,19 @@ files/imports, Wi-Fi/TLS, Stop/Close and sleep/wake. Runtime heap/stack/current 
 and refresh quality remain unmeasured. Three panel paths are source/build checked,
 not physically tested. Full refresh only at first paint/first redraw after controller
 sleep, or manual Refresh screen; normal draws are differential. Some ghosting is
-expected without periodic clears. Landscape Markdown reflows at 800x480; other
-screens retain compact fixed hit grids, with unstretched glyphs. Reflow retains
-nearest numeric page. Power settings are session-only; dictionary choice persists.
+expected without periodic clears. Landscape exists only in Markdown book pages, toggled from the Home menu.
+All other screens and menus stay portrait. Reflow retains the source anchor. Power settings are session-only; dictionary choice persists.
 
 RTC writes update system time for TLS. Battery readout requires a running CW2017
 and verified resident OEM profile; failures show --, with no profile writes.
 Wi-Fi starts only from Python and stops on Close. Sleep pauses Python and stops/
 restarts Wi-Fi; remote connections may expire. SDK DNS/handshake delays still need
-measurement. No task deletion or script runtime limit. Editor Save still uses
+measurement. No script runtime limit; only a worker that has acknowledged VM/I/O
+cleanup is deleted on Close. Editor Save still uses
 backup/replacement; power-loss/stale-backup cleanup and cache optimizations are polish.
 
-Stage 29 retains the existing Python worker resources on Close. The reported
-later console allocation failure and full resource-release requirement remain
-unresolved; no fix is claimed for either here. UI error detail is logged to serial
+Stage 33 releases the Python worker heap/task/mutex on acknowledged Close;
+repeated reopen and internal-heap recovery must be retested on-device. UI error detail is logged to serial
 while the screen displays a circled cross. SD resources are unchanged.
 
 Stage 30 removes the first-formula guarded whitelist initializer, adds whole-line

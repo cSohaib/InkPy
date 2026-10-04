@@ -26,7 +26,7 @@ int ink_power_tap(ink_power *p,unsigned x,unsigned y)
         if(y>=576&&y<640) p->view=0;
         return INK_POWER_NONE;
     }
-    if(x<32 || x>=448 || y<128 || y>=704) return INK_POWER_NONE;
+    if(x<32 || x>=448 || y<128 || y>=640) return INK_POWER_NONE;
     unsigned row=(y-128)/64; p->message[0]=0;
     if(row<2) {
         if(x<288) return INK_POWER_NONE;
@@ -37,10 +37,9 @@ int ink_power_tap(ink_power *p,unsigned x,unsigned y)
     }
     if(row==2) { p->on=!p->on; return INK_POWER_LIGHT; }
     if(row==3) { p->night=!p->night; return INK_POWER_NONE; }
-    if(row==4) { p->landscape=!p->landscape; return INK_POWER_ORIENTATION; }
-    if(row==5) { p->view=2; return INK_POWER_TIME; }
-    if(row==6) { p->view=1; p->font_first=0; return INK_POWER_FONTS; }
-    if(row==7) { p->open=false; return INK_POWER_REFRESH; }
-    if(row==8) p->open=false;
+    if(row==4) { p->view=2; return INK_POWER_TIME; }
+    if(row==5) { p->view=1; p->font_first=0; return INK_POWER_FONTS; }
+    if(row==6) { p->open=false; return INK_POWER_REFRESH; }
+    if(row==7) p->open=false;
     return INK_POWER_NONE;
 }

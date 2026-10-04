@@ -16,10 +16,12 @@ generates a separate embed package with `main/python_port/mpconfigport.h`.
 `main/python_worker.c` ports the host worker protocol to FreeRTOS: one VM owner,
 one command slot, locked bounded console/history snapshots, cooperative pause,
 uncatchable VM abort for Stop, and Close acknowledgment after VM deinitialization.
-Close discards globals; reopening creates a fresh VM. Heap and idle worker remain
-reserved for this boot: 256 KiB PSRAM GC heap, 48 KiB internal task stack, 32 KiB
-interpreter C-stack limit. One session/worker per boot; do not call Start twice.
-No Python thread module, execution timeout, forced task suspension/deletion,
+Stage 33: Close discards globals and closes VM streams/network, then acknowledges
+cleanup. The UI deletes the now-idle worker and releases its 256 KiB PSRAM heap
+and 48 KiB internal task stack/mutex. Reopening starts a new worker. The active
+interpreter C-stack limit remains 32 KiB; only one worker may be active.
+UI snapshots copy console state only when its revision changes.
+No Python thread module, execution timeout or interruption inside a held lock;
 network binding or file-write binding was introduced.
 VM loop polls periodically yield one tick so endless bytecode does not starve
 the core's idle watchdog task. Blocking native calls still need future cooperation.

@@ -62,3 +62,12 @@ Stage 30 smoke script: fixtures/python-device-test.py. Leave SSID empty to test
 input, files and JSON offline, or edit credentials for optional HTTP. It writes
 only its named test files. Wi-Fi prompts are explicitly out of scope; scripts
 connect with inkpy.wifi. Device testing of input and JSON correction is pending.
+
+## Stage 33 resource lifetime
+
+Close completes VM/files/network cleanup, then the UI releases the worker task,
+heap and mutex. Opening Python starts a fresh worker. Stop still resets the VM
+inside the active console; sleep retains it. Snapshot polling copies console
+content only when its revision changes. Repeated Close/reopen and sleep after
+this change require physical retesting. Stage 32 AI script is confirmed working
+on-device by the user before this resource-lifetime change.

@@ -1,0 +1,15 @@
+PASS: device renderer, formula bitmaps/fallback, H2 navigation, page entry/paging, Close cleanup, missing-math-assets fallback, binary rejection
+PASS: bundled Unicode face, selection validation, portrait Power submenus, split UTF-8 console output
+PASS: discovery/paging, plain/gzip/dictzip, 32/64-bit offsets, homographs, aliases, UTF-8, HTML/entities, typed fields/media omission, large paged definitions, choice persistence, invalid input rejection
+PASS: styled-word hit testing, punctuation/UTF-8/alias taps, definition/chooser paging, dictionary switch and retry, modal Home/Close, page preservation, missing/error dictionary recovery
+PASS: 6000 deterministic edit/navigation operations, exact save, UTF-8 preservation, invalid-text rejection; ESP branch also tests failed replacement rollback
+PASS: 6000 deterministic edit/navigation operations, exact save, UTF-8 preservation, invalid-text rejection; ESP branch also tests failed replacement rollback
+EOFError:
+Files/imports/Unicode/JSON passed
+PASS: native configuration, SD streams/imports/JSON/os/time, cleanup after abort and reopen
+agent: full history, failure rollback, Responses parsing, cleanup PASS
+PASS: all 384000 pixels rotate 180 degrees; touch coordinates agree; two rotations restore every byte
+Host structures (ABI dependent): console=16568 editor=3880 reader=1432 bytes
+PASS: actual display transfer byte order/padding for all panels, 12/15 batches, failure cleanup
+ESP32-S3 product build and slot fit PASS; app bytes=2587056; SHA256=603e774e23670237f9a609fd5912ba4bfebb7d5c5a230c8a8af93829a90dd9f3
+Python lifecycle diagnostic compiles; hardware Close/reopen, sleep, SPI/rotation timing pending.

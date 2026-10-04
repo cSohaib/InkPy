@@ -1,9 +1,9 @@
 # InkPy interaction specification
-Updated 2026-10-03. User-confirmed requirements unless explicitly marked proposed or open.
+Updated 2026-10-04. User-confirmed requirements unless explicitly marked proposed or open.
 
 ## General
 No swipe, slide, drag-to-scroll or touchpad navigation gestures anywhere. Side buttons page through content. One fixed UI with icon controls and one keyboard layout. User content, filenames,
-chapter titles, numeric values and Python output remain text. The power menu below is the complete requested settings surface; night mode and orientation are now explicitly in scope.
+chapter titles, numeric values and Python output remain text. The power menu below is the complete requested settings surface; night mode is global; orientation belongs only to Markdown book pages.
 Brightness and warmth use only + and - buttons; no sliders. Press durations, debounce and double-click timing are fixed implementation constants, not user settings. A long press must suppress its short-press action; a double power press must suppress the single-press menu.
 No screen displays an InkPy title/header. Power menu is global: accessible from
 the browser, editor, reader, console and their prompts, without losing their state.
@@ -59,7 +59,10 @@ Console history needs SD-backed paging or an explicit retention policy, not unli
 - Tap a word to display its StarDict translation/definition.
 - The translation popup includes Change dictionary, opening a dictionary chooser.
 - This is the only place to change dictionary; do not add it to the power menu or another settings page.
-- Home menu: Go to chapter / Go to page / Close.
+- Home menu: Go to chapter / Go to page / Close / Rotate.
+- Rotate toggles portrait/landscape for this book. Reader menus, dictionaries and
+  the Power menu stay portrait. New books open portrait; rotation is not saved.
+- Rotation repaginates and preserves the approximate source position.
 - This menu also shows the current page number and current chapter.
 - Markdown chapters are level-two headings (`##`, equivalent to `<h2>`), not all heading levels. H1 and H3–H6 do not create chapter entries. Use parsed heading levels, including Setext H2; headings inside code are not chapters.
 Proposed: page numbers are one-based and belong to the current font/orientation layout. Before the first H2, or in documents without H2, leave the chapter title blank. The current chapter is the last H2 at or before the page's reading-position source offset; retain duplicate titles as separate entries. Keep reading position by source offset when reflowing. If no dictionary is selected or found, still show the lookup popup and Change dictionary control. Modal Home/back behaviour should dismiss the topmost popup first.
@@ -74,7 +77,6 @@ Proposed: page numbers are one-based and belong to the current font/orientation 
   - Light warmth: + and - buttons only
   - Light on/off
   - Night mode
-  - Orientation: portrait/landscape
   - Time settings
   - Font selector
   - Refresh screen: close the menu and force a full refresh of the underlying screen to clear e-ink ghosting, keeping its page/cursor/session unchanged
@@ -106,6 +108,6 @@ accuracy remain subject to later font integration/device testing.
 Console has no title, history-page labels or Home-help footer. Editor close
 retains the filename in its icon menu. App exit rereads the browser folder.
 Errors show a circle containing a cross; details remain in serial diagnostics.
-Power uses sun, warmth, lamp, moon, rotation, clock, font and refresh icons, plus
+Power uses sun, warmth, lamp, moon, clock, font and refresh icons, plus
 close. Brightness/warmth remain +/- with numeric values. Time uses numeric fields.
 Fonts rescan fonts/ when opened; dictionary choice remains inside word lookup.

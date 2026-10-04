@@ -8,14 +8,10 @@
 #include <string.h>
 #ifdef INK_USE_FONTS
 #include "ink_font.h"
-#include "ink_view.h"
 #endif
 
 static void pixel(uint8_t *frame,unsigned x,unsigned y)
 {
-#ifdef INK_USE_FONTS
-    ink_view_pixel(frame,x,y,480,800); return;
-#endif
     if(x>=480 || y>=800) return;
     unsigned dx=799-y,dy=x;
     frame[dy*100+dx/8]&=(uint8_t)~(0x80>>(dx%8));
@@ -40,14 +36,6 @@ static void text_size(uint8_t *frame,unsigned x,unsigned y,const char *s,unsigne
 }
 static void text(uint8_t *frame,unsigned x,unsigned y,const char *s)
 { text_size(frame,x,y,s,2); }
-static void text_grid(uint8_t *frame,unsigned x,unsigned y,const char *s)
-{
-#ifdef INK_USE_FONTS
-    ink_font_text(frame,x,y,s,18,32,256,464,pixel);
-#else
-    text(frame,x,y,s);
-#endif
-}
 static void box(uint8_t *frame,unsigned x,unsigned y,unsigned w,unsigned h)
 {
     for(unsigned i=0;i<w;++i) { pixel(frame,x+i,y); pixel(frame,x+i,y+h-1); }
@@ -59,7 +47,7 @@ static void new_file(const ink_browser *b,uint8_t *frame)
     box(frame,16,96,448,64);
     size_t length=strlen(b->new_name);
     const char *visible=b->new_name+(length>23?length-23:0);
-    text_grid(frame,24,108,visible);
+    text(frame,24,108,visible);
     unsigned cursor=24+(unsigned)strlen(visible)*18;
     for(unsigned y=110;y<140;++y) pixel(frame,cursor,y);
     if(b->message[0]) ink_icon(frame,224,180,ICON_ERROR,pixel);
@@ -111,8 +99,8 @@ void ink_power_draw(const ink_power *p,uint8_t frame[48000])
         if(p->message[0]) ink_icon(frame,224,736,ICON_ERROR,pixel);
         return;
     }
-    const unsigned icons[]={ICON_SUN,ICON_WARM,ICON_LIGHT,ICON_MOON,ICON_ROTATE,ICON_CLOCK,ICON_FONT,ICON_REFRESH,ICON_CLOSE};
-    for(unsigned row=0;row<9;row++) {
+    const unsigned icons[]={ICON_SUN,ICON_WARM,ICON_LIGHT,ICON_MOON,ICON_CLOCK,ICON_FONT,ICON_REFRESH,ICON_CLOSE};
+    for(unsigned row=0;row<8;row++) {
         unsigned y=128+row*64; box(frame,32,y,416,64);
         if(row<2) {
             char label[20]; snprintf(label,sizeof(label),"%u",row==0?p->brightness:p->warmth);
@@ -120,7 +108,7 @@ void ink_power_draw(const ink_power *p,uint8_t frame[48000])
             box(frame,288,y,80,64); box(frame,368,y,80,64);
             text(frame,320,y+16,"-"); text(frame,400,y+16,"+");
         } else { ink_icon(frame,224,y+16,icons[row],pixel);
-            if((row==2&&p->on)||(row==3&&p->night)||(row==4&&p->landscape)) box(frame,276,y+26,12,12); }
+            if((row==2&&p->on)||(row==3&&p->night)) box(frame,276,y+26,12,12); }
     }
     if(p->message[0]) ink_icon(frame,224,736,ICON_ERROR,pixel);
 }
@@ -135,7 +123,7 @@ void ink_console_draw(const ink_console *c,uint8_t frame[48000])
         }
         return;
     }
-    for(unsigned row=0;row<INK_CONSOLE_PAGE_ROWS;row++) text_grid(frame,16,16+row*34,ink_console_line(c,row));
+    for(unsigned row=0;row<INK_CONSOLE_PAGE_ROWS;row++) text(frame,16,16+row*34,ink_console_line(c,row));
     box(frame,16,464,448,48);
     const char *visible=c->input+(c->used>23?c->used-23:0);
     char line[24]; size_t i=0;
@@ -152,7 +140,7 @@ void ink_editor_draw(const ink_editor *e,uint8_t frame[48000])
         const unsigned icons[]={ICON_SAVE,ICON_CLOSE,ICON_BACK};
         for(unsigned i=0;i<3;i++) { box(frame,32,180+i*64,416,64); ink_icon(frame,224,196+i*64,icons[i],pixel); }
     } else {
-        for(unsigned row=0;row<e->rows;row++) text_grid(frame,16,64+row*34,e->lines[row]);
+        for(unsigned row=0;row<e->rows;row++) text(frame,16,64+row*34,e->lines[row]);
         unsigned x=16+e->cursor_column*18,y=64+e->cursor_row*34;
         for(unsigned i=0;i<32;i++) pixel(frame,x,y+i);
         keyboard_draw_at(&e->keyboard,frame,INK_EDITOR_KEYBOARD_OFFSET);

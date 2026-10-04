@@ -110,13 +110,17 @@ static esp_err_t detect(void)
 }
 
 /* All SPI data, including PSRAM frame rows, passes through one internal DMA buffer. */
+static esp_err_t send_transfer(size_t n)
+{
+    spi_transaction_t t={.length=n*8,.tx_buffer=transfer};
+    return spi_device_polling_transmit(spi,&t);
+}
 static esp_err_t bytes(const uint8_t *data, size_t length)
 {
     while (length) {
         size_t n = length < sizeof(transfer) ? length : sizeof(transfer);
         memcpy(transfer, data, n);
-        spi_transaction_t t = {.length = n * 8, .tx_buffer = transfer};
-        esp_err_t e = spi_device_polling_transmit(spi, &t);
+        esp_err_t e = send_transfer(n);
         if (e != ESP_OK) return e;
         data += n; length -= n;
     }
@@ -207,14 +211,19 @@ static esp_err_t plane(uint8_t c, const uint8_t *frame)
     gpio_set_level(PIN_EPD_CS, 0); gpio_set_level(PIN_EPD_DC, 1);
     esp_err_t e = ESP_OK;
     unsigned rows = panel == INK_SSD1677 ? 480 : 600;
-    for (unsigned row = 0; row < rows && e == ESP_OK; ++row) {
-        const uint8_t *src = white;
-        if (frame) {
-            if (panel == INK_SSD1677) src = frame + row * PANEL_STRIDE;
-            else if (panel == INK_UC8179 && row < 480) src = frame + (479 - row) * PANEL_STRIDE;
-            else if (panel == INK_UC8279 && row >= 120) src = frame + (row - 120) * PANEL_STRIDE;
+    for(unsigned row=0;row<rows&&e==ESP_OK;) {
+        unsigned batch=sizeof(transfer)/PANEL_STRIDE;
+        if(batch>rows-row) batch=rows-row;
+        for(unsigned i=0;i<batch;i++) {
+            unsigned y=row+i; const uint8_t *src=white;
+            if(frame) {
+                if(panel==INK_SSD1677) src=frame+y*PANEL_STRIDE;
+                else if(panel==INK_UC8179&&y<480) src=frame+(479-y)*PANEL_STRIDE;
+                else if(panel==INK_UC8279&&y>=120) src=frame+(y-120)*PANEL_STRIDE;
+            }
+            memcpy(transfer+i*PANEL_STRIDE,src,PANEL_STRIDE);
         }
-        e = bytes(src, PANEL_STRIDE);
+        e=send_transfer(batch*PANEL_STRIDE); row+=batch;
     }
     gpio_set_level(PIN_EPD_CS, 1);
     return e;

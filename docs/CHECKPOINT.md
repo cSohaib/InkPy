@@ -1,5 +1,45 @@
 # InkPy checkpoint
 
+## Stage 33: reader-only rotation and resource cleanup (2026-10-04)
+
+User confirms the Stage 32 AI script works on-device. User requests a minimalism/
+performance review before feature expansion. Reviewed first-party application,
+UI, reader/layout, fonts/math adapter, editor/text, dictionaries, Python/I/O,
+input/display/sleep and product build choices; findings: RESOURCE-REVIEW.md.
+
+Removed global landscape state, shared pixel-scaling header, Power orientation
+row, font squeezing and special fixed-grid text style. Reader Home has Rotate;
+only book pages use landscape. Menus/translation/Power and all other apps stay
+portrait. Rotation reindexes, binary-searches the source anchor, retains dictionary;
+new books start portrait. The physical 180-degree mounting correction remains.
+Display rows batch into the existing 4 KiB DMA buffer (12/15 transactions per
+plane rather than 480/600); byte order/padding checked for all panel variants.
+Reader menus no longer render/read page runs only to erase them. Font size changes
+only as needed. Removed static 19,456-byte font names/path arrays; names derive
+from optional heap paths (16 KiB PSRAM-preferred catalog only if SD fonts exist).
+
+Python UI snapshots copy console only on changed revision. Close completes
+VM/streams/network cleanup and acknowledges, then UI deletes the parked task,
+heap and mutex. Frees 256 KiB PSRAM heap and 48 KiB internal task-stack allocation
+plus overhead (RTOS idle cleanup may delay stack reclamation). Removed retained-
+worker reopening state; a new console starts a new worker. Stop resets the active
+VM; sleep preserves it. Task deletion never interrupts live VM/I/O cleanup.
+
+Checks: font and bitmap reader host tests, both reader orientations and preserved
+chapter/source location, menu with draw stream unavailable, Power/fonts/UTF-8,
+StarDict core and popup suite, editor ASan/UBSan deterministic checks, native
+MicroPython files/input/JSON/abort cleanup and mocked AI script pass. Updated
+Python lifecycle diagnostic compiles but was not run on hardware. Product
+ESP32-S3 build, slot fit, esptool checksum/hash pass. Evidence: results/stage33.
+Application 2,587,056 bytes; SHA256 603e774e23670237f9a609fd5912ba4bfebb7d5c5a230c8a8af93829a90dd9f3.
+No device timing/current/heap measurement or hardware regression claim.
+
+Next bounded task: physical Python Close/reopen, math after Close, reader rotation/
+word taps and portrait menus; profile measured bottlenecks before further changes.
+Whole-document reader indexing, previous-page rescans, glyph caching and region
+refresh remain opportunities, not completed optimizations. Math-command expansion
+and EPUB deferred. Scoped commit/push and pause; preserve unrelated run.sh mode.
+
 ## Stage 32: SD Python OpenAI chat experiment (2026-10-04)
 
 User confirms the markdown-math fixture now works on-device. Wider ChatGPT math

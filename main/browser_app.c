@@ -9,7 +9,6 @@
 #include "ink_reader.h"
 #include "ink_math.h"
 #include "ink_font.h"
-#include "ink_view.h"
 #include "python_port/native.h"
 #include <sys/stat.h>
 #include "sdkconfig.h"
@@ -81,14 +80,6 @@ static void power_action(int action)
             if(ink_rtc_set(&t)!=ESP_OK) strcpy(power_menu.message,"Cannot set time");
             else { power_menu.view=0; power_header(); }
         }
-    } else if(action==INK_POWER_ORIENTATION) {
-        ink_view_landscape=power_menu.landscape;
-        if(reader_active) {
-            unsigned page=reader.page; ink_reader_close(&reader);
-            if(ink_reader_open(&reader,browser.selected,browser.root,math_ready?render_math:NULL,indexing_progress)) {
-                reader_active=false; notice(reader.error);
-            } else { reader.dictionary=&dictionary; reader.page=page>reader.stats.pages?(unsigned)reader.stats.pages:page; }
-        }
     }
 }
 static uint32_t milliseconds(void) { return (uint32_t)(esp_timer_get_time()/1000); }
@@ -130,13 +121,13 @@ static void open_requests(void)
         if(!python_started) {
             if(ink_python_worker_start(&python)!=ESP_OK) { notice("Cannot allocate Python session"); return; }
             python_started=true;
-        } else if(!ink_python_worker_reopen(&python)) { notice("Python session still closing"); return; }
+        }
         console_active=true;
         if(file&&!ink_python_worker_submit(&python,browser.selected,true)) {
             ink_python_worker_close(&python);
             /* Return only after the worker has acknowledged cleanup. */
         }
-        ink_python_worker_snapshot(&python,&console,&paused,&closed);
+        ink_python_worker_snapshot(&python,&console,&paused,&closed,UINT32_MAX);
     }
 }
 static void home(bool long_press)
@@ -164,9 +155,8 @@ static bool dispatch(const ink_event *event)
     case INK_EVENT_TOUCH:
         if(event->x>=800||event->y>=480) return false;
         ink_panel_to_ui(event->x,event->y,&x,&y);
-        if(power_menu.landscape) {
+        if(reader_active&&!power_menu.open&&reader.view==INK_READER_PAGE&&reader.landscape) {
             x=event->x; y=event->y;
-            if(!(reader_active&&!power_menu.open&&reader.view==INK_READER_PAGE)) { x=x*480/800; y=y*800/480; }
         }
         if(event->press==INK_PRESS_LONG) {
             if(!power_menu.open&&!editor_active&&!console_active&&!reader_active) return ink_browser_long_press(&browser,x,y);
@@ -177,7 +167,12 @@ static bool dispatch(const ink_event *event)
         } else if(editor_active) {
             if(ink_editor_tap(&editor,x,y)) { editor_active=false; ink_browser_home(&browser); }
         } else if(reader_active) {
-            if(ink_reader_tap(&reader,x,y)) { ink_reader_close(&reader); reader_active=false; ink_browser_home(&browser); }
+            int action=ink_reader_tap(&reader,x,y);
+            if(action==INK_READER_CLOSE) { ink_reader_close(&reader); reader_active=false; ink_browser_home(&browser); }
+            else if(action==INK_READER_ROTATE&&ink_reader_rotate(&reader,browser.selected,browser.root,
+                (reader.stats.formulas||reader.stats.math_fallbacks)?render_math:NULL,indexing_progress)) {
+                ink_reader_close(&reader); reader_active=false; notice(reader.error);
+            }
         } else if(console_active) ink_python_worker_tap(&python,x,y);
         else ink_browser_tap(&browser,x,y);
         return true;
@@ -235,9 +230,12 @@ void app_main(void)
         }
         uint32_t now=milliseconds();
         if(console_active) {
-            uint32_t next_revision=ink_python_worker_snapshot(&python,&console,&paused,&closed);
+            uint32_t next_revision=ink_python_worker_snapshot(&python,&console,&paused,&closed,revision);
             if(next_revision!=revision) { revision=next_revision; dirty=true; }
-            if(closed) { console_active=false; ink_browser_home(&browser); dirty=true; }
+            if(closed) {
+                ink_python_worker_release(&python); python_started=false; console_active=false;
+                ink_browser_home(&browser); dirty=true;
+            }
         }
         unsigned lost=ink_capture_dropped();
         if(lost!=dropped) {

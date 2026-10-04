@@ -3,7 +3,7 @@
 #include <stddef.h>
 /* One VM owner. Caller owns heap and supplies its worker's stack top.
  * Shared host/device embedding. main/python_worker provides the FreeRTOS adapter;
- * device console UI integration is still pending.
+ * The device worker owns this single VM; UI calls its serialized adapter.
  * Execution returns 0 success, 1 exception, 2 stopped. After 2, close/reset the
  * session before accepting more input; abort does not run Python finally blocks. */
 void ink_python_init(void *heap,size_t bytes,void *stack_top);
