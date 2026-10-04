@@ -1,0 +1,13 @@
+epub2-store: PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+epub2-deflate: PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+epub3-store: PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+epub3-deflate: PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+nav-ncx-fallback: PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+namespace-images: PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+no-toc: PASS: missing TOC uses document titles instead of filenames
+heavy: PASS: heavy chapter has no full pagination at open; cached reopen and Next/Previous work
+whitespace: PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+reader-device: PASS: device renderer, formula bitmaps/fallback, H2 navigation, page entry/paging, Close cleanup, missing-math-assets fallback, binary rejection
+reader-tables: PASS: all requested math commands, bordered/aligned/wrapped tables, inline math, tall-row/page continuation, landscape and missing-math fallback
+PASS: final whitespace fixture after cleanup rebuild; JPEG bitmap, table rules, body anchor, exact preformatted text
+Native Xtensa ink_zip_extract stack frame: 640 bytes (Stage 38: 8320 bytes)

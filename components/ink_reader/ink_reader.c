@@ -21,7 +21,7 @@ static unsigned page_height(const ink_reader *r) { return r->landscape?480:800; 
 static const ink_reader *drawing;
 
 static int error(ink_reader *r,const char *s)
-{ snprintf(r->error,sizeof(r->error),"%s",s);if(r->epub)ink_epub_debug("reader error: %s",s);return -1; }
+{ snprintf(r->error,sizeof(r->error),"%s",s);return -1; }
 static int path(ink_reader *r,char out[560],const char *name)
 { int n=snprintf(out,560,"%s/%s",r->cache,name); return n<0||n>=560?-1:0; }
 static uint64_t number(const unsigned char *b,unsigned n)
@@ -103,14 +103,7 @@ static int render_image(const char *resource,unsigned mw,unsigned mh,uint8_t *bi
     if(image_reader&&image_reader->epub) {
         if(ink_epub_image(image_reader->source,image_reader->cache,resource,file,sizeof(file),image_progress))return -1;
     }
-    if(image_reader&&image_reader->epub) {
-        FILE *f=fopen(file,"rb");unsigned char h[32]={0};struct stat st;
-        if(f){size_t got=fread(h,1,sizeof(h),f);if(got<sizeof(h))ink_epub_debug("short image header=%zu",got);fclose(f);}
-        ink_epub_debug("image file=%s bytes=%lld signature=%02x%02x%02x%02x png-depth=%u type=%u interlace=%u",
-            file,!stat(file,&st)?(long long)st.st_size:-1LL,h[0],h[1],h[2],h[3],h[24],h[25],h[28]);
-    }
     int status=ink_image_render(file,mw,mh,bits,w,h,image_progress);
-    if(image_reader&&image_reader->epub)ink_epub_debug("image decode status=%d width=%u height=%u resource=%s",status,*w,*h,resource);
     return status;
 }
 
@@ -141,9 +134,6 @@ static int extend(ink_reader *r,unsigned target)
     }
     r->stats=r->local_stats;r->stats.chapters=ink_epub_chapters(r->book_cache);
     if(save_layout(r))return -1;
-    ink_epub_debug("layout document=%u screens=%llu bytes=%llu eof=%d literal=%llu math-fallback=%llu",r->document,
-        (unsigned long long)r->stats.pages,(unsigned long long)r->stats.source_bytes,r->eof,
-        (unsigned long long)r->stats.literal_blocks,(unsigned long long)r->stats.math_fallbacks);
     return 0;
 }
 static int reach_anchor(ink_reader *r,uint64_t anchor)
@@ -191,7 +181,7 @@ static int load_document(ink_reader *r,unsigned document)
         r->layout=ink_layout_restore(state,r->input,r->draw,r->pages,r->chapters,&cfg,&r->local_stats);
     fclose(state);
         if(!r->layout) {
-            ink_epub_debug("cache continuation invalid document=%u; rebuilding",document);
+
             FILE *streams[]={r->draw,r->pages,r->chapters,r->bitmap,r->table};
             for(unsigned i=0;i<5;i++){if(ftruncate(fileno(streams[i]),0)||fseek(streams[i],0,SEEK_SET))return error(r,"Cannot reset invalid cache");}
             rewind(r->input);rewind(r->anchors);cached=false;
@@ -199,7 +189,6 @@ static int load_document(ink_reader *r,unsigned document)
     }
     if(!r->layout)r->layout=ink_layout_begin(r->input,r->draw,r->pages,r->chapters,&cfg,&r->local_stats);
     if(!r->layout)return error(r,r->local_stats.error);
-    ink_epub_debug("cache document=%u hit=%d converted=%d",document,cached,ready);
     /* A restored continuation reports EOF through step without reprocessing. */
     if(cached) {
         r->stats=r->local_stats;r->stats.chapters=ink_epub_chapters(r->book_cache);
@@ -230,7 +219,7 @@ static int epub_open(ink_reader *r,const char *source,ink_layout_math math,void 
     char font_path[640];snprintf(font_path,sizeof(font_path),"/sd/fonts/%s",font);
     if(!stat(font_path,&st)){key=hash_bytes(key,&st.st_size,sizeof(st.st_size));key=hash_bytes(key,&st.st_mtime,sizeof(st.st_mtime));}
 #endif
-    int n=snprintf(r->book_cache,sizeof(r->book_cache),"%s/e38b-%016llx",r->cache,(unsigned long long)key);
+    int n=snprintf(r->book_cache,sizeof(r->book_cache),"%s/e39-%016llx",r->cache,(unsigned long long)key);
     if(n<0||(size_t)n>=sizeof(r->book_cache))return error(r,"EPUB cache path too long");
     if(mkdir(r->book_cache,0700)&&errno!=EEXIST)return error(r,"Cannot create EPUB cache");
     char p[640];snprintf(p,sizeof(p),"%s/ready",r->book_cache);
@@ -240,7 +229,7 @@ static int epub_open(ink_reader *r,const char *source,ink_layout_math math,void 
         FILE *f=fopen(p,"wb");
     if(!f)return error(r,"Cannot mark EPUB cache");
     fclose(f);
-    }else ink_epub_debug("metadata cache hit");
+    }
     r->documents=ink_epub_documents(r->book_cache);
     if(!r->documents)return error(r,"EPUB has no documents");
     unsigned document=1,screen=1;
@@ -486,7 +475,7 @@ int ink_reader_tap(ink_reader *r,unsigned x,unsigned y)
                 if(ink_epub_get_chapter(r->book_cache,id,&c)||!c.document)return error(r,"Chapter target missing from spine");
                 if(load_document(r,c.document))return -1;
                 if(c.fragment[0]&&ink_epub_anchor(r->cache,id,&anchor)) {
-                    ink_epub_debug("chapter anchor missing id=%u fragment=%s; opening document start",id,c.fragment);anchor=0;
+                    anchor=0;
                 }else ink_epub_anchor(r->cache,id,&anchor);
                 if(reach_anchor(r,anchor))return -1;
                 unsigned char record[32];r->page=1;

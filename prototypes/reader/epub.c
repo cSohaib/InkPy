@@ -13,11 +13,11 @@ static int render(const char *s,int display,unsigned pixels,uint8_t *bits,unsign
     ink_math_result r;int status=ink_math_render(s,display,(int)pixels,bits,&r);
     *w=r.width;*h=r.height;*base=r.baseline;return status;
 }
-static unsigned images(ink_reader *r)
+static unsigned runs(ink_reader *r,unsigned match)
 {
     rewind(r->draw);unsigned char h[20];unsigned count=0;
     while(fread(h,1,20,r->draw)==20){unsigned style=h[6]|h[7]<<8,size=h[8]|h[9]<<8|h[10]<<16|h[11]<<24;
-        if(style==INK_BITMAP)count++;
+        if(style==match)count++;
         assert(!fseek(r->draw,(long)size,SEEK_CUR));}
     return count;
 }
@@ -30,7 +30,7 @@ static void screen(ink_reader *r,const char *root,const char *prefix,unsigned se
 int main(int argc,char **argv)
 {
     assert(argc==5);ink_reader r;char error[160];assert(!ink_font_init());
-    assert(!ink_math_init(argv[3],error,sizeof(error)));ink_epub_debug_start(argv[2],argv[1]);
+    assert(!ink_math_init(argv[3],error,sizeof(error)));
     assert(!ink_reader_open(&r,argv[1],argv[2],render,progress));bool fallback=!strcmp(argv[4],"fallback");
     assert(r.epub&&r.documents==2&&r.stats.chapters==(fallback?2u:3u));
     const char *names[]={"Chapter One","TOC Section","Chapter Two"};ink_epub_chapter c;
@@ -56,11 +56,20 @@ int main(int argc,char **argv)
     }
     unsigned serial=0;
     while(!(r.document==r.documents&&r.eof&&r.page==r.stats.pages)) {
+        if(!strcmp(argv[4],"whitespace")&&r.document==1&&r.eof)
+            assert(runs(&r,INK_RULE)>0); /* Table is rendered, not literal pipes. */
         screen(&r,argv[2],argv[4],++serial);unsigned doc=r.document,old=r.page;
         ink_reader_page(&r,1);assert(!r.error[0]);
         assert(r.document!=doc||r.page!=old||r.eof);assert(serial<200);
     }
-    screen(&r,argv[2],argv[4],++serial);assert(images(&r)>=1);
+    screen(&r,argv[2],argv[4],++serial);assert(runs(&r,INK_BITMAP)>=1);
+    if(!strcmp(argv[4],"whitespace")) {
+        char file[1024],body[4096];snprintf(file,sizeof(file),"%s/epub-body",r.cache);
+        FILE *f=fopen(file,"rb");assert(f);size_t n=fread(body,1,sizeof(body)-1,f);body[n]=0;fclose(f);
+        assert(strstr(body,"\n\n```\n  keep\n    indent\n\n```\n"));
+        uint64_t anchor;assert(!ink_epub_anchor(r.cache,3,&anchor)); /* body id */
+        assert(!r.stats.literal_blocks);
+    }
     /* Chapter navigation can load a document directly, including fragment targets. */
     ink_reader_home(&r);assert(!ink_reader_tap(&r,48,200));assert(!ink_reader_tap(&r,48,184));
     assert(r.document==1&&r.view==INK_READER_PAGE);assert(!ink_reader_draw(&r,again));

@@ -12,9 +12,6 @@ unsigned ink_epub_chapters(const char *cache);
 int ink_epub_get_chapter(const char *cache,unsigned id,ink_epub_chapter *chapter);
 int ink_epub_image(const char *source,const char *cache,const char *resource,char *out,size_t size,
     void (*progress)(void));
-void ink_epub_debug_start(const char *root,const char *source);
-void ink_epub_debug(const char *format,...);
-const char *ink_epub_phase(void);
 void ink_epub_cleanup(const char *cache);
 int ink_epub_anchor(const char *cache,unsigned chapter,uint64_t *offset);
 void ink_epub_cancel(void);

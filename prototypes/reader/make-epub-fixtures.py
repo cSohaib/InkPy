@@ -51,3 +51,12 @@ entries['OPS/text/one.xhtml']=entries['OPS/text/one.xhtml'].replace(b'<h3 id="pa
     (b'<p>'+b'Heavy chapter text. '*100+b'</p>')*100+b'<h3 id="part">')
 with zipfile.ZipFile(root/'heavy.epub','w',compression=zipfile.ZIP_DEFLATED) as z:
     for name,data in entries.items():z.writestr(name,data)
+
+# Publisher indentation must not create Markdown code blocks or split table rows.
+entries=dict(original)
+entries['OPS/text/one.xhtml']=chapter1.replace('><','>\n        <').encode()
+entries['OPS/text/two.xhtml']=chapter2.replace('<body>','<body id="start">').replace('cover.jpg','cover.jpeg').replace('</body>','<pre>  keep\n    indent</pre></body>').replace('><','>\n        <').encode()
+entries['OPS/nav.xhtml']=nav.replace('text/two.xhtml','text/two.xhtml#start').encode()
+entries['OPS/images/cover.jpeg']=entries.pop('OPS/images/cover.jpg')
+with zipfile.ZipFile(root/'whitespace.epub','w',compression=zipfile.ZIP_DEFLATED) as z:
+    for name,data in entries.items():z.writestr(name,data)

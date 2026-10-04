@@ -7,42 +7,22 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
-#include <stdarg.h>
 #include <sys/stat.h>
 
 typedef struct {
     char id[128], path[512];
 } Item;
 typedef ink_epub_chapter Chapter;
-static char debug_path[640];
 static bool cancelled;
 void ink_epub_cancel(void){cancelled=true;}
 void ink_epub_reset_cancel(void){cancelled=false;}
 bool ink_epub_cancelled(void){return cancelled;}
-static const char *phase="";
-const char *ink_epub_phase(void){return phase;}
-void ink_epub_debug(const char *format,...)
-{
-    if(!debug_path[0])return;
-    struct stat st;
-    if(!stat(debug_path,&st)&&st.st_size>524288)return;
-    FILE *f=fopen(debug_path,"ab");
-    if(!f)return;
-    va_list args;va_start(args,format);vfprintf(f,format,args);va_end(args);
-    fputc('\n',f);
-    fclose(f);
-}
-void ink_epub_debug_start(const char *root,const char *source)
-{
-    snprintf(debug_path,sizeof(debug_path),"%s/inkpy-epub-debug.txt",root);
-    ink_epub_debug("\nInkPy stage38 EPUB: %s",source);
-}
 typedef struct {
     ink_zip zip;
     const char *cache;
     FILE *map, *spine, *toc, *body, *chapters, *positions;
     ink_xml xml;
-    unsigned images, ticks;
+    unsigned ticks;
     void (*progress)(void);
 } Import;
 static int path(char *out, size_t size, const char *base, const char *name) {
@@ -254,7 +234,6 @@ static int chapter(Import *b, const char *document, const char *id, bool fallbac
         const char *name = strrchr(document, '/');
         (void)name;snprintf(c.title,sizeof(c.title),"%s",document);
     }
-    fputs("\n\n", b->body);
     long at = ftell(b->body);
     if (at < 0)
         return -1;
@@ -280,7 +259,7 @@ static int document(Import *b, const char *name, bool fallback) {
         return -1;
     bool body = false, pre = false;
     unsigned skip = 0, table = 0, cells = 0, rows = 0, list_depth = 0, list_next[16] = {0};
-    bool in_cell = false;
+    bool in_cell = false, pending_space = false, line_start = true;
     int kind;
     while ((kind = ink_xml_next(&b->xml)) > 0) {
         if(cancelled)return -1;
@@ -289,20 +268,27 @@ static int document(Import *b, const char *name, bool fallback) {
             if (!body || skip)
                 continue;
             ink_xml_entities(x->text);
+            /* XHTML indentation is layout whitespace, never Markdown code.
+             * Keep preformatted text exact and ignore gaps between table cells. */
+            if (table && !in_cell)
+                continue;
             for (char *p = x->text; *p; p++) {
-                if (in_cell && (*p == '\n' || *p == '\r'))
-                    fputc(' ', b->body);
-                else {
-                    if (in_cell && *p == '|')
-                        fputc('\\', b->body);
-                    fputc(*p, b->body);
+                if (!pre && isspace((unsigned char)*p)) {
+                    pending_space = true;
+                    continue;
                 }
+                if (!pre && pending_space && !line_start)
+                    fputc(' ', b->body);
+                pending_space = false;
+                if (in_cell && *p == '|')
+                    fputc('\\', b->body);
+                fputc(*p, b->body);
+                line_start = false;
             }
             continue;
         }
         if (!strcmp(x->name, "body")) {
             body = !x->closing;
-            continue;
         }
         if (!body)
             continue;
@@ -323,6 +309,26 @@ static int document(Import *b, const char *name, bool fallback) {
                 return -1;
         }
         const char *tag = x->name;
+        if (pre && strcmp(tag, "pre"))
+            continue;
+        bool block = !strcmp(tag,"table") || !strcmp(tag,"tr") ||
+            !strcmp(tag,"td") || !strcmp(tag,"th") || !strcmp(tag,"pre") ||
+            !strcmp(tag,"p") || !strcmp(tag,"div") || !strcmp(tag,"section") ||
+            !strcmp(tag,"ul") || !strcmp(tag,"ol") || !strcmp(tag,"li") ||
+            !strcmp(tag,"blockquote") || !strcmp(tag,"br") ||
+            (strlen(tag)==2 && tag[0]=='h' && tag[1]>='1' && tag[1]<='6');
+        if (block) {
+            pending_space = false;
+            line_start = !in_cell;
+        } else if (!strcmp(tag,"img") || !strcmp(tag,"image") ||
+                   !strcmp(tag,"code") || !strcmp(tag,"strong") || !strcmp(tag,"b") ||
+                   !strcmp(tag,"em") || !strcmp(tag,"i")) {
+            if (!x->closing && pending_space && !line_start)
+                fputc(' ', b->body);
+            if (!x->closing) pending_space = false;
+            line_start = false;
+        }
+
         if (!strcmp(tag, "table")) {
             if (x->closing) {
                 table = 0;
@@ -351,6 +357,7 @@ static int document(Import *b, const char *name, bool fallback) {
         }
         if (table && (!strcmp(tag, "td") || !strcmp(tag, "th"))) {
             in_cell = !x->closing;
+            line_start = true;
             if (x->closing)
                 fputs(" |", b->body);
             else {
@@ -373,7 +380,6 @@ static int document(Import *b, const char *name, bool fallback) {
                 /* Angle-bracket destination supports spaces and parentheses. */
                 fprintf(b->body,"![image](<%s>)",resource);
             } else {
-                ink_epub_debug("image unresolved document=%s src=%s",name,src);
                 fprintf(b->body,"[image: %s]",alt);
             }
             continue;
@@ -477,7 +483,6 @@ int ink_epub_prepare(const char *source, const char *cache, void (*progress)(voi
     b->map = scratch(b, "epub-map", "w+b");
     b->spine = scratch(b, "epub-spine", "w+b");
     b->toc = scratch(b, "epub-toc", "w+b");
-    phase="contents";
     why = "Cannot create EPUB cache";
     if (!b->map || !b->spine || !b->toc)
         goto done;
@@ -492,7 +497,7 @@ int ink_epub_prepare(const char *source, const char *cache, void (*progress)(voi
     if (!opf[0] || xml_open(b, opf))
         goto done;
     while ((kind = ink_xml_next(&b->xml)) > 0) {
-        if(cancelled)return -1;
+        if(cancelled)goto done;
         if (kind != 1 || b->xml.closing)
             continue;
         if (!strcmp(b->xml.name, "item")) {
@@ -541,7 +546,6 @@ int ink_epub_prepare(const char *source, const char *cache, void (*progress)(voi
         if(!nav_status&&!ftell(b->toc))nav_status=navigation(b,nav,false,true);
     }
     if(nav_status||!ftell(b->toc)) {
-        if(nav[0])ink_epub_debug("nav fallback path=%s status=%d entries=%ld",nav,nav_status,ftell(b->toc)/(long)sizeof(Chapter));
         fclose(b->toc);b->toc=scratch(b,"epub-toc","w+b");
         if(!b->toc)goto done;
         if(ncx[0])nav_status=navigation(b,ncx,true,false);
@@ -562,7 +566,7 @@ int ink_epub_prepare(const char *source, const char *cache, void (*progress)(voi
             snprintf(c.title,sizeof(c.title),"%u",i);
             if(fwrite(&c,1,sizeof(c),b->toc)!=sizeof(c))goto done;
         }
-        ink_epub_debug("no usable TOC; spine fallback=%u (titles resolved when opened)",count);
+
     } else {
         rewind(b->toc);rewind(b->spine);Chapter c;unsigned toc_id=0,spine_at=0;name[0]=0;
         while(fread(&c,1,sizeof(c),b->toc)==sizeof(c)) {
@@ -579,11 +583,9 @@ int ink_epub_prepare(const char *source, const char *cache, void (*progress)(voi
             if(!c.title[0])snprintf(c.title,sizeof(c.title),"%u",(unsigned)c.document);
             if(fseek(b->toc,next-(long)sizeof(c),SEEK_SET)||fwrite(&c,1,sizeof(c),b->toc)!=sizeof(c)||
                fseek(b->toc,next,SEEK_SET))goto done;
-            ink_epub_debug("toc document=%u title=%s path=%s fragment=%s",c.document,c.title,c.path,c.fragment);
         }
     }
     if(fflush(b->toc))goto done;
-    ink_epub_debug("metadata complete spine=%u chapters=%ld nav=%s ncx=%s",count,ftell(b->toc)/(long)sizeof(Chapter),nav,ncx);
     result = 0;
 done:
     if (b->xml.file)
@@ -594,8 +596,7 @@ done:
     for (unsigned i = 0; i < 5; i++)
         if (files[i] && fclose(files[i]))
             result = -1;
-    if (result){snprintf(error,cap,"%s",why);ink_epub_debug("prepare error: %s",why);}
-    phase="layout";
+    if (result){snprintf(error,cap,"%s",why);}
     free(b);
     return result;
 }
@@ -622,13 +623,12 @@ int ink_epub_document(const char *source,const char *cache,unsigned id,const cha
 {
     Import *b=calloc(1,sizeof(*b));
     if(!b)return -1;
-    b->cache=dest;b->progress=progress;phase="chapter";
+    b->cache=dest;b->progress=progress;
     char p[640],name[512];int result=-1;
     b->toc=!path(p,sizeof(p),cache,"epub-toc")?fopen(p,"r+b"):NULL;
     b->spine=!path(p,sizeof(p),cache,"epub-spine")?fopen(p,"rb"):NULL;
     if(!b->toc||!b->spine||!id||fseek(b->spine,(long)(id-1)*512,SEEK_SET)||
        fread(name,1,sizeof(name),b->spine)!=sizeof(name)||ink_zip_open(&b->zip,source,progress))goto done;
-    ink_epub_debug("convert document=%u path=%s",id,name);
     /* Resolve numeric fallback titles from the document's title or first heading.
      * Only this document is inspected; opening never scans the whole book. */
     rewind(b->toc);Chapter c;bool needs_title=false;char fallback[16];
@@ -664,12 +664,12 @@ int ink_epub_document(const char *source,const char *cache,unsigned id,const cha
     if(!b->body||!b->chapters||!b->positions||document(b,name,false)||fflush(b->body)||fflush(b->chapters))goto done;
     result=0;
 done:
-    if(result){snprintf(error,capacity,"Cannot read EPUB document %u",id);ink_epub_debug("document error=%u xml=%s",id,b->xml.name);}
+    if(result){snprintf(error,capacity,"Cannot read EPUB document %u",id);}
     if(b->xml.file)fclose(b->xml.file);
     if(b->zip.file)fclose(b->zip.file);
     FILE *files[]={b->toc,b->spine,b->body,b->chapters,b->positions};
     for(unsigned i=0;i<5;i++)if(files[i])fclose(files[i]);
-    free(b);phase="layout";
+    free(b);
     return result;
 }
 int ink_epub_image(const char *source,const char *cache,const char *resource,char *out,size_t size,void (*progress)(void))
@@ -680,13 +680,12 @@ int ink_epub_image(const char *source,const char *cache,const char *resource,cha
     if(path(out,size,cache,name))return -1;
     struct stat st;
     if(!stat(out,&st)&&st.st_size)return 0;
-    phase="image";ink_zip zip;
+    ink_zip zip;
     if(ink_zip_open(&zip,source,progress))return -1;
     FILE *f=fopen(out,"wb");int result=f?ink_zip_extract(&zip,resource,f):-1;
     if(f&&fclose(f))result=-1;
     fclose(zip.file);
     if(result)unlink(out);
-    ink_epub_debug("image extract status=%d resource=%s",result,resource);phase="layout";
     return result;
 }
 

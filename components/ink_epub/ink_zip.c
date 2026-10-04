@@ -2,6 +2,7 @@
 #include "ink_epub.h"
 #include "ink_inflate.h"
 #include <limits.h>
+#include <stdlib.h>
 #include <string.h>
 static uint32_t n(const unsigned char *p, unsigned count) {
     uint32_t v = 0;
@@ -69,22 +70,24 @@ int ink_zip_extract(ink_zip *z, const char *name, FILE *out) {
     uint64_t start = (uint64_t)local + 30 + n(h + 26, 2) + n(h + 28, 2);
     if (start > z->size || compressed > z->size - start || (method != 0 && method != 8) || size > 0x7fffffffU)
         return -1;
-    ink_epub_debug("zip resource=%s method=%u compressed=%u raw=%u",name,method,compressed,size);
     if (fseek(z->file, (long)start, SEEK_SET)) return -1;
-    unsigned char input[4096], output[4096];
+    /* Fixed-size scratch belongs on the heap, not the UI task stack. */
+    unsigned char *input=malloc(8192);
+    if(!input)return -1;
+    unsigned char *output=input+4096;
     size_t used = 0, have = 0;
     uint32_t written = 0, check = 0;
     int status = 0;
     void *inflate = method == 8 ? ink_inflate_open(0) : NULL;
-    if (method == 8 && !inflate) return -1;
+    if (method == 8 && !inflate) {free(input);return -1;}
     while (status != 1) {
         if (used == have) {
-            have = compressed > sizeof(input) ? sizeof(input) : compressed;
+            have = compressed > 4096 ? 4096 : compressed;
             used = 0;
             if (have && fread(input, 1, have, z->file) != have) goto bad;
             compressed -= (uint32_t)have;
         }
-        size_t take = have - used, got = sizeof(output);
+        size_t take = have - used, got = 4096;
         if (method == 8)
             status = ink_inflate_step(inflate, input + used, &take, output, &got);
         else {
@@ -101,8 +104,10 @@ int ink_zip_extract(ink_zip *z, const char *name, FILE *out) {
         if (!take && !got && status != 1) goto bad;
     }
     ink_inflate_close(inflate);
+    free(input);
     return written == size && check == crc && !compressed && used == have && !fflush(out) ? 0 : -1;
 bad:
     ink_inflate_close(inflate);
+    free(input);
     return -1;
 }

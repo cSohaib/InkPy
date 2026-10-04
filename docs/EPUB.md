@@ -58,19 +58,20 @@ behavior still need physical testing.
 Reproduce fixtures with prototypes/reader/make-epub-fixtures.py and use the
 reader-epub host target. Results: results/stage37/checks.txt.
 
-## Temporary Stage 38 diagnostics
+## Loading and whitespace
 
-SD-root inkpy-epub-debug.txt records book paths, TOC targets/fallbacks, ZIP methods
-and entry sizes, chapter conversion, cache hits, layout progress, image signatures
-and decoder failures. Device waiting updates also record heap/largest block/main
-stack headroom. The log appends up to roughly 512 KiB; delete it before a fresh
-reproduction if it reaches that limit. No source books are changed.
+Uncached work shows only a static hourglass. Long Home cancels and returns home.
+Temporary EPUB logging, phase strings and image-signature probes were removed in
+Stage 39. Existing inkpy-epub-debug.txt files are no longer appended to.
 
-An hourglass with the current processing phase is shown during uncached work.
-No invented percentage: the whole book's page count is intentionally unknown.
-Long Home cancels loading and returns home. Temporary logging/phase text should
-be removed after the four reported books have been diagnosed.
+XHTML whitespace collapses outside preformatted code; indentation between image
+wrappers or table rows cannot become Markdown code or interrupt a pipe table.
+Preformatted code preserves spacing; chapter anchors do not inject table-breaking
+blank lines. Body element IDs are valid chapter targets. JPEG recognition is by
+signature, so .jpeg and .jpg behave identically.
 
-For a device report: open each problematic book, try its contents and image pages,
-close/reopen it, then copy inkpy-epub-debug.txt from SD. Include the book name,
-what failed and, when shareable, the EPUB or a small excerpt reproducing it.
+Stage 39 uses a new cache namespace so old malformed conversions are not reused.
+The first opening after upgrading rebuilds the requested document; subsequent
+opens reuse it normally. Older derived cache folders can be deleted if desired.
+ZIP uses fixed 8 KiB heap scratch rather than task-stack buffers. The hourglass
+uses primitives only, avoiding a large font-rasterization stack during extraction.

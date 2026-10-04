@@ -1,5 +1,38 @@
 # InkPy checkpoint
 
+## Stage 39: EPUB whitespace, stack relief and diagnostic removal (2026-10-04)
+
+User confirms large books now open and some images work; other books crash or
+show literal image/table Markdown. Inspection of the supplied Stage 38 log finds
+about 8 MiB heap free but a historical task stack minimum of 40 bytes (the old
+stack-words label was incorrect: ESP-IDF returns bytes). Without a panic trace,
+stack overflow remains a strong suspect, not a confirmed cause for every book.
+Loading phase text called FreeType's monochrome renderer with a 16 KiB local
+pool from within EPUB/ZIP extraction; ZIP itself had 8 KiB local buffers.
+
+Loading now paints only one primitive hourglass, with no text/font call or
+periodic redraw; cancellation/yields remain. ZIP scratch is a checked fixed 8 KiB
+heap allocation freed on success/error; native extraction stack frame drops from
+8,320 to 640 bytes. Removed temporary SD logger, debug API,
+phase strings, image-header probes and calls from product/prototype code.
+Cancellation during OPF import goes through existing cleanup instead of leaking.
+
+XHTML whitespace collapses outside preformatted code, with row/cell boundaries
+kept intact. This fixes reproduced indented SVG/JPEG wrappers being parsed as
+Markdown code and whitespace splitting generated tables. JPEG extension never
+controlled decoding. Chapter markers no longer insert blank lines into content;
+body IDs now work. Existing table-layout limitations/publisher styling remain.
+Cache namespace e39 forces fresh conversions after upgrade without changing books.
+
+Checks: EPUB2/3 stored/deflate, nav/NCX fallback, aliased namespaces/image URI,
+missing TOC, heavy chapter, repeated reopen/rotation; new indented JPEG/table
+fixture asserts bitmap/rule runs, body anchor and exact preformatted spaces.
+Existing Markdown/math and table regressions pass. Evidence: results/stage39.
+Native ESP32-S3 build/partition fit and esptool checksum/hash pass. Application
+2,632,208 bytes; SHA-256 bb379bc4f00c0d7d5fb2084c93b4cc277c09431d456549f85a1b55a157f80b90.
+No physical testing/flashing here. Unrelated prototypes/python/run.sh mode preserved.
+Next: install/test formerly crashing books and indented covers/tables on X4 Pro.
+
 ## Stage 38: lazy EPUB, persistent cache and temporary diagnostics (2026-10-04)
 
 User device results for Stage 37: loading froze the UI, TOC filenames/errors,

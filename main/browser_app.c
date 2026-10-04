@@ -42,7 +42,7 @@ static int render_math(const char *source,int display,unsigned pixels,uint8_t *b
 }
 static uint8_t *loading_frame;
 static bool loading;
-static uint32_t loading_painted;
+static bool loading_painted;
 static void loading_pixel(uint8_t *f,unsigned x,unsigned y)
 {
     if(x>=480||y>=800)return;
@@ -52,22 +52,18 @@ static void indexing_progress(void)
 {
     uint32_t now=(uint32_t)(esp_timer_get_time()/1000);
     if(loading){ink_event event;while(ink_capture_next(&event,0))if(event.kind==INK_EVENT_HOME&&event.press==INK_PRESS_LONG)ink_epub_cancel();}
-    if(loading&&loading_frame&&(!loading_painted||now-loading_painted>=2000)) {
-        ink_epub_debug("loading phase=%s free-8bit=%u largest-8bit=%u stack-words=%u",ink_epub_phase(),
-            (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT),(unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT),
-            (unsigned)uxTaskGetStackHighWaterMark(NULL));
+    if(loading&&loading_frame&&!loading_painted) {
         memset(loading_frame,255,PANEL_BYTES);
         ink_icon_size(loading_frame,208,336,ICON_WAIT,64,loading_pixel);
-        ink_font_text(loading_frame,16,432,ink_epub_phase(),INK_UI_CELL,INK_UI_FONT,0,464,loading_pixel);
         ink_frame_rotate_180(loading_frame);
-        ink_display_update(loading_frame,false);loading_painted=(uint32_t)(esp_timer_get_time()/1000);
+        ink_display_update(loading_frame,false);loading_painted=true;
     }
     /* Do not add one RTOS tick of delay for every decompression chunk. */
     static uint32_t yielded;
     if(now-yielded>=100){vTaskDelay(1);yielded=(uint32_t)(esp_timer_get_time()/1000);}
     else taskYIELD();
 }
-static void loading_begin(void){ink_epub_reset_cancel();loading=true;loading_painted=0;}
+static void loading_begin(void){ink_epub_reset_cancel();loading=true;loading_painted=false;}
 static void loading_end(void){loading=false;}
 
 static ink_python_worker python;
@@ -124,7 +120,6 @@ static void open_requests(void)
     if(browser.view==INK_OPEN_MARKDOWN) {
         struct stat st;
         bool assets=!stat("/sd/inkpy/math",&st)&&S_ISDIR(st.st_mode);
-        ink_epub_debug_start(browser.root,browser.selected);
         loading_begin();
         if(ink_reader_open(&reader,browser.selected,browser.root,assets?render_math:NULL,indexing_progress)) notice(reader.error);
         else { reader.dictionary=&dictionary; reader_active=true; }

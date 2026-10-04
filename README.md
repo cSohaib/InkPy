@@ -3,7 +3,7 @@
 Minimal firmware exclusively for the Xteink X4 Pro. The device browser, text
 editor, MicroPython console/script execution and Markdown reader with inline/display
 math now compile together into an ESP32-S3 application image. Stage 31 math and the Stage 32 AI Python script are confirmed working on-device;
-Stage 38 adds lazy EPUB screen layout, persistent caches and temporary loading diagnostics; new firmware
+Stage 39 corrects EPUB image/table whitespace, reduces extraction stack usage and removes temporary diagnostics; new firmware
 needs device testing. See [the checkpoint](docs/CHECKPOINT.md)
 and [downloaded firmware version](docs/FIRMWARE.md). Stage 25 includes StarDict,
 Unicode fonts/selection, differential refresh, Power controls and Python SD
