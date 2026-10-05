@@ -1,5 +1,30 @@
 # InkPy checkpoint
 
+## Stage 42: UTF-8 SD filenames; Arabic report unresolved (2026-10-05)
+
+User reports reader Arabic still separated/LTR, missing Arabic-named EPUBs copied
+into books/, but Python-created Arabic-named Markdown visible. Reader shaping
+was present in the delivered Stage 41 image; host reader still shapes the fixture,
+including logical tap lookup and both orientations. No reproduced reader cause
+yet: do not mark Arabic on-device working. Need one failing source document and
+comparison with fixtures/reader-arabic.md in the freshly installed image.
+
+Confirmed filesystem mismatch: native FatFs API used ANSI/OEM CP437, while app
+and Python paths are UTF-8. Enable CONFIG_FATFS_API_ENCODING_UTF_8 in base and
+browser defaults; cached browser config is overridden too. Filename presentation
+unchanged. This addresses encoding compatibility; actual missing-file report
+needs device confirmation. No file conversion/renaming, formatting, or source
+modifications. Names previously created through the incorrect OEM API may have
+been stored as mojibake and can require correction from a computer.
+
+Browser regression covers Arabic EPUB visibility/routing in a subfolder. Reader
+fixture and 500 bidi cases pass, including host unsigned-char build matching
+Xtensa's char signedness. Native config confirms UTF-8; build/partition fit and
+esptool checksum/hash pass. App 2,729,536 bytes; SHA-256
+874c9054ec0837120d10571345f19ed278a9653d4ca98d5b16b800543fd8c379.
+Evidence: results/stage42. No physical testing. Next: test copied Arabic EPUB
+names and send failing Arabic reader document; no speculative rendering patch.
+
 ## Stage 41: Arabic in EPUB/Markdown (2026-10-05)
 
 Reader-only Arabic joining, lam-alef ligatures, basic vowel marks, mirrored

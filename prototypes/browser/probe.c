@@ -24,7 +24,11 @@ int main(int argc,char **argv)
     while(1) {
         for(unsigned i=0;i<b.count;++i) if(b.rows[i].directory) {
             assert(!ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+i*INK_BROWSER_ROW_HEIGHT));
-            ink_browser_tap(&b,20,INK_BROWSER_LIST_Y+i*INK_BROWSER_ROW_HEIGHT); assert(b.count==4);
+            ink_browser_tap(&b,20,INK_BROWSER_LIST_Y+i*INK_BROWSER_ROW_HEIGHT); assert(b.count==5);
+            unsigned arabic=row(&b,"كتاب عربي.epub");
+            ink_browser_tap(&b,20,INK_BROWSER_LIST_Y+arabic*INK_BROWSER_ROW_HEIGHT);
+            assert(b.view==INK_OPEN_MARKDOWN&&strstr(b.selected,"كتاب عربي.epub"));
+            ink_browser_home(&b);
             unsigned n=row(&b,"book.epub"); ink_browser_tap(&b,20,INK_BROWSER_LIST_Y+n*INK_BROWSER_ROW_HEIGHT); assert(b.view==INK_OPEN_MARKDOWN);
             ink_browser_home(&b); n=row(&b,"book.md"); ink_browser_tap(&b,20,INK_BROWSER_LIST_Y+n*INK_BROWSER_ROW_HEIGHT); assert(b.view==INK_OPEN_MARKDOWN);
             ink_browser_home(&b); n=row(&b,"script.py"); ink_browser_tap(&b,20,INK_BROWSER_LIST_Y+n*INK_BROWSER_ROW_HEIGHT); assert(b.view==INK_OPEN_TEXT);
@@ -38,7 +42,7 @@ int main(int argc,char **argv)
             ink_browser_home(&b); n=row(&b,"script.py"); ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+n*INK_BROWSER_ROW_HEIGHT);
             ink_browser_tap(&b,60,270); assert(b.view==INK_EXECUTE_PYTHON);
             ink_browser_home(&b); n=row(&b,"script.py");ink_browser_long_press(&b,20,INK_BROWSER_LIST_Y+n*INK_BROWSER_ROW_HEIGHT);
-            ink_browser_tap(&b,60,340);assert(b.view==INK_FILES&&b.count==3);
+            ink_browser_tap(&b,60,340);assert(b.view==INK_FILES&&b.count==4);
             for(unsigned j=0;j<b.count;j++)assert(strcmp(b.rows[j].name,"script.py"));
             ink_browser_root(&b); assert(!strcmp(b.folder,b.root)&&b.page==0&&b.view==INK_FILES);
             goto complete;

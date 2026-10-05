@@ -1,0 +1,7 @@
+PASS: browser sorted paging/folders, Arabic EPUB in subfolder visible and routed to reader, existing Edit/Execute/Delete gates
+PASS: reader Arabic fixture per-line direction, joined glyph runs, logical word lookup, portrait/landscape (host only)
+PASS: 500 mixed-script bidi cases compiled -Os -funsigned-char to match Xtensa char signedness
+PASS: native CONFIG_FATFS_API_ENCODING_UTF_8=y, OEM API disabled
+PASS: native ESP32-S3 application build, partition fit, image checksum and validation hash
+UNRESOLVED: user reports separated/LTR Arabic reader on-device; no failing source document supplied yet
+PENDING: physical confirmation of copied Arabic EPUB filenames after UTF-8 API change

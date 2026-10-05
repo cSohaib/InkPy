@@ -1,4 +1,4 @@
-# Stage 41 Arabic reader firmware
+# Stage 42 UTF-8 SD filenames firmware
 
 The feature set is integrated: browser/text/editor, Python console/scripts,
 Markdown/math, StarDict, Unicode fonts/selection, Power controls and differential
@@ -10,7 +10,10 @@ Stage 41 Arabic, Stage 40 justification/math and earlier reader/UI changes are
 build/host checked; device testing is pending. Stage 34 Power uses two light rows plus
 font/refresh/contrast tiles; only Python inkpy.set_time changes the clock.
 
-This build shapes Arabic in EPUB/Markdown only. Each displayed line uses its first
+Stage 42 enables UTF-8 FatFs paths for Arabic/non-ASCII filenames. Filename
+display remains unchanged. User reports Stage 41 Arabic still separated/LTR
+on-device; this remains unresolved despite passing host reader tests. A failing
+document is needed. This build contains reader-only Arabic shaping: each line uses its first
 logical letter to choose RTL (Arabic) or LTR (Latin/no letters), while preserving
 mixed Latin/numbers and original words for dictionary lookup. The bundled font
 supports Arabic; no new SD files are needed. Fixed-cell typography remains.
@@ -47,10 +50,10 @@ initialization, which Stage 30 simplifies.
 - ESP-IDF v5.5.5: b774170ff46c393eeb5e495ea37936038d3f4f4f, pinned submodules.
 - Xtensa GCC 14.2.0, esp-14.2.0_20260121; ESP32-S3, 16 MiB DIO.
 - Browser ON, diagnostics OFF; 32 KiB main stack.
-- Application: 2,729,104 bytes; slot 8,257,536 bytes.
-- SHA-256: b16b302cf0bac3a42a5cc589207e6b26f4c98982f3b5002f02751764e28acc35.
+- Application: 2,729,536 bytes; slot 8,257,536 bytes.
+- SHA-256: 874c9054ec0837120d10571345f19ed278a9653d4ca98d5b16b800543fd8c379.
 - Build: bash scripts/build-browser.sh; output build-browser/firmware.bin.
-- Evidence: results/stage41/image.txt, valid esptool checksum and validation hash.
+- Evidence: results/stage42/image.txt, valid esptool checksum and validation hash.
 
 ## Physical checks and limits
 
