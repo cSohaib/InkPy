@@ -1,0 +1,67 @@
+name: Release
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/release.yml]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: New release tag (vMAJOR.MINOR.PATCH)
+        required: true
+        default: v0.1.0
+permissions:
+  contents: read
+concurrency:
+  group: inkpy-release
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check source
+        run: python3 scripts/check-publication.py
+      - name: Build X4 Pro application
+        shell: bash
+        run: |
+          . "$IDF_PATH/export.sh"
+          bash scripts/build-browser.sh
+          python3 scripts/package-release.py build-browser/firmware.bin release
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: inkpy-release
+          path: release/*
+          if-no-files-found: error
+          retention-days: 14
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: inkpy-release
+          path: release
+      - name: Publish new release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_VERSION: ${{ inputs.version || 'v0.1.0' }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        shell: bash
+        run: |
+          [[ "$RELEASE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          if gh release view "$RELEASE_VERSION" >/dev/null 2>&1; then
+            echo "Release already exists; choose a new version." >&2
+            exit 1
+          fi
+          gh release create "$RELEASE_VERSION" release/* \
+            --target "$SOURCE_COMMIT" --title "InkPy $RELEASE_VERSION — X4 Pro" \
+            --notes-file .github/RELEASE-NOTES.md

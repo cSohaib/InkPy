@@ -17,5 +17,6 @@ prototypes/browser/build/
 build-browser/
 build-python/
 generated-python/
+release/
 prototypes/python/.deps/
 prototypes/python/build/

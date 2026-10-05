@@ -1,54 +1,121 @@
 # InkPy
 
-Minimal firmware exclusively for the Xteink X4 Pro. The device browser, text
-editor, MicroPython console/script execution and Markdown reader with inline/display
-math now compile together into an ESP32-S3 application image. Stage 31 math and the Stage 32 AI Python script are confirmed working on-device;
-Arabic reader rendering is confirmed on-device. Stage 43 removes selectable
-fonts, tightens the bundled text grid and adds Power-menu dictionary input;
-this stage needs device testing. See [the checkpoint](docs/CHECKPOINT.md)
-and [downloaded firmware version](docs/FIRMWARE.md). Stage 25 includes StarDict,
-Bundled Unicode text, differential refresh, Power controls and Python SD
-files/imports plus Wi-Fi/HTTP. Basic EPUB support is now integrated. This exploratory build is
-ready for physical testing; source/build checks do not establish hardware behavior.
+Turn an **Xteink X4 Pro** into a small mathematical device: read Markdown with
+LaTeX, write notes and formulas, and run Python on an e-ink screen.
 
-## Confirmed scope
-- Markdown reader with embedded LaTeX mathematics: inline `$…$` and display `$$…$$`, including multiline display blocks. Target the mathematical notation used in ChatGPT Markdown responses, not full LaTeX documents or packages.
-- Simple text editor designed for bounded RAM, including documents larger than available RAM.
-- MicroPython: run .py files and use an interactive onscreen Python console.
-- Closing the console stops its script; manual sleep suspends it until wake.
-  No script runtime limit. Sub-minute scripts are the expected workload, not a timeout.
-- One bundled Unicode font, fixed text size; StarDict tap-word and typed lookup.
-- Files supplied through microSD. Wi-Fi may be used by Python.
-- One fixed theme with night inversion, one UI language with hardcoded text, one keyboard layout, and the small power menu defined below.
-- EPUB with actual TOC chapters, shared Markdown rendering and images; publisher styling ignored.
+InkPy is deliberately minimal. One bundled font, one text size, a Python-friendly
+keyboard, files on microSD, and a small icon-based interface. No cloud, sync,
+USB file transfer, accounts, or app store. Wi-Fi is available to Python scripts.
 
-No cloud, synchronization, KOReader sync, USB file-transfer mode, file-transfer protocol, multiple themes, localization system, or additional device targets. These are deliberate scope boundaries.
+## What it does
 
-## Proposed technical direction
-A fresh, C-first application on ESP-IDF, reusing selected proven hardware drivers and libraries. Small C++ dependencies may be retained when translation would add work or risk. The component audit selects an IDF baseline and candidate components; their integration still needs prototypes.
+- **Markdown + LaTeX:** inline `$…$` and display `$$…$$` mathematics, fractions,
+  roots, Greek letters, accents, operators, and matrices; headings and tables.
+  Mathematical notation is supported, not full LaTeX documents or packages.
+- **MicroPython:** interactive console, `.py` scripts, `input()`, SD files,
+  JSON, Wi-Fi, and HTTP/HTTPS through the `inkpy` module.
+- **Text editor:** create and edit plain-text files, including Markdown and Python.
+- **StarDict:** tap a reader word or type a query from the Power menu's AZ button.
+  Dictionary selection lives in the lookup dialog.
+- **Arabic:** connected letters and mixed Arabic/Latin layout in Markdown and EPUB.
+- **EPUB:** basic chapters, text, and images through the shared Markdown renderer.
+  EPUB is secondary: publisher styling is ignored, compatibility is limited,
+  and navigation uses chapters rather than whole-book page numbers.
 
-Keep layout separate from document parsing so a later restricted EPUB importer can target the same renderer. Use bounded caches and SD-backed data structures; avoid loading entire documents into memory. MicroPython is for user scripts, while core firmware operations remain native.
+Text is justified in the reader. Landscape is available only inside the reader.
+There is no selectable text-font system; formula resources are separate.
 
-“ChatGPT-style math” describes the intended use, not a fixed compatibility specification. The proposed acceptance corpus defines representative notation; actual supported coverage must be established by the rendering prototype. Delimiters alone do not make mathematical layout trivial.
+## Downloads
 
-## Interaction and implementation references
-- [EPUB and images](docs/EPUB.md): supported content, chapter rules and limits.
-- [Resource review](docs/RESOURCE-REVIEW.md): Stage 33 cleanup and remaining performance limits.
-- [OpenAI chat experiment](examples/README.md): SD Python agent using the Responses API.
-- [StarDict lookup](docs/STARDICT.md): dictionary files, supported formats and popup/selection behavior.
-- [MicroPython embedding](docs/MICROPYTHON.md): Stage 10 run commands, Python keyboard and current limits.
-- [Keyboard and New file](docs/NEW-FILE.md): Stage 9 filename entry and empty-file creation.
-- [Plain text viewer](docs/TEXT-VIEWER.md): Stage 8 paging and current limits.
-- [Device file browser](docs/FILE-BROWSER.md): Stage 7 controls, optional build and current limits.
-- [Mixed text/math preview](docs/READER-MATH.md): Stage 6 run command and sample pages.
-- [Reader pagination prototype](docs/READER-PROTOTYPE.md): Stage 5 bounds, cache format, host checks and limitations.
-- [ESP32 math diagnostic](docs/MATH-DEVICE.md): Stage 4 build, SD resources, memory instrumentation and revised UI requirements.
-- [Math/font prototype](docs/MATH-PROTOTYPE.md): measured host results, preview and remaining gates.
-- [Hardware diagnostic](docs/BRINGUP.md): build instructions, diagnostic controls and device checklist.
-- [Port provenance](docs/PORTING.md): reused code, deliberate reductions and licences.
-- [UI specification](docs/UI.md): file browser home, file actions, editor/console/reader controls, no slide gestures, power menu and sleep.
-- [Component audit](docs/COMPONENT-AUDIT.md): pinned sources, hardware facts, reuse decisions, dependencies and feasibility gates.
-- [Markdown/math corpus](fixtures/markdown-math.md): proposed rendering coverage and failure cases, not a claim of implemented support.
+- [Latest release and release notes](https://github.com/cSohaib/InkPy/releases/latest)
+- [firmware.bin](https://github.com/cSohaib/InkPy/releases/latest/download/firmware.bin)
+- [Markdown/math SD assets](https://github.com/cSohaib/InkPy/releases/latest/download/inkpy-sd-resources.zip)
+- [Checksums](https://github.com/cSohaib/InkPy/releases/latest/download/SHA256SUMS)
+- [Markdown + LaTeX example](fixtures/markdown-math.md)
 
-## Working agreement
-Work in bounded stages; save research, decisions, and progress in GitHub, then pause for continuation. See [AGENTS.md](AGENTS.md) for execution rules and [the current checkpoint](docs/CHECKPOINT.md) for the next task.
+Release assets are supplied by the release workflow. These download links become
+available when the first release finishes publishing.
+
+## Installation
+
+**Only X4 Pro is supported.** Device testing used an unlocked X4 Pro and the
+CrossPoint web installer. Back up your microSD contents first.
+
+1. Download `firmware.bin` and `inkpy-sd-resources.zip` from the same release.
+2. Extract the ZIP at the microSD root. The resulting path must include
+   `inkpy/math/fonts/`, without an extra enclosing ZIP directory. The bundled
+   text font needs no installation; these assets supply mathematical glyphs.
+3. Copy your `.md`, `.py`, `.txt`, and `.epub` files to the card and insert it.
+4. Open the [CrossPoint web installer](https://crosspointreader.com/#flash-tools)
+   in a browser with Web Serial support. Connect the device and choose X4 Pro.
+   Use its custom/local firmware option to select `firmware.bin`.
+5. Flash the **application image** using the installer's existing X4 Pro layout,
+   then disconnect and restart the device.
+
+InkPy's binary is an application image, not a merged factory image. Keep the
+existing bootloader and partition table. Do not flash it at address zero or use
+an erase-all/factory-flash procedure. If the installer cannot accept an application
+image, stop and check its instructions. To recover, use the same supported
+installer route to reinstall CrossPoint; keep a known-working image available.
+InkPy does not intentionally change security fuses or disable recovery.
+
+## Using it
+
+The home screen lists files and folders, with **+** for a new file and **>_** for
+the console at the bottom. Tap to open; long-press a file to edit, execute, or
+delete. Markdown and EPUB open in the reader; other text opens as plain text.
+Side buttons turn pages. Touch swipes are not used.
+
+Home opens the current app's menu. In the editor, this is where you save or discard.
+**Long Home discards changes, stops Python, and returns home.** Short Power opens
+brightness, warmth, dictionary, refresh, and contrast controls. Double Power toggles
+the light; long Power sleeps. Short Power wakes. Sleep preserves app state and
+pauses Python; closing the console ends its running process. Scripts have no fixed
+runtime timeout, but short scripts suit this device best.
+
+### Dictionaries
+
+Copy unpacked StarDict dictionaries into `dictionaries/` on microSD, for example:
+
+```text
+dictionaries/en-fr/en-fr.ifo
+dictionaries/en-fr/en-fr.idx
+dictionaries/en-fr/en-fr.dict
+```
+
+The basename must match. `.idx.gz`, `.dict.dz`, and optional `.syn` aliases are
+also supported. First use may take time and requires space for generated indexes
+and decompressed data. Subsequent lookups reuse the SD cache. Dictionary files
+are your own downloads and retain their own licenses. See [StarDict details](docs/STARDICT.md).
+
+### Python makes it more than a reader
+
+Python opens the door to calculators, small utilities, network requests, file
+generation, and experiments. The [examples folder](examples/README.md) includes
+an OpenAI agent and a Markdown document generator: the device can ask an AI a
+question or generate a document to read locally. Supply your own Wi-Fi credentials
+and API key; do not publish a modified script containing them.
+
+The system clock is set only through Python:
+
+```python
+import inkpy
+inkpy.set_time(2026, 10, 5, 14, 30, 0)  # year, month, day, hour, minute, second
+```
+
+Set the correct clock before HTTPS requests. Python is MicroPython, not desktop
+CPython; desktop packages are not generally available. Scripts have access to
+the card and networking, so run scripts you trust.
+
+## Source and license
+
+[Build instructions](docs/BUILD.md) · [Security](SECURITY.md) ·
+[Dependency licenses](THIRD_PARTY.md) · [Development history](docs/README.md)
+
+InkPy's original code is licensed under the [MIT license](LICENSE).
+Bundled libraries and font resources retain their own licenses, including
+FriBidi's LGPL; the MIT license does not replace those terms.
+
+This is a hobby project developed and tested iteratively on one device.
+Reports with a small reproducing document or script are welcome. CrossPoint
+served as a hardware and interaction reference; InkPy is an independent project.

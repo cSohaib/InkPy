@@ -1,5 +1,36 @@
 # InkPy checkpoint
 
+## Stage 44: public documentation and release preparation (2026-10-05)
+
+User confirms Stage43 works and authorizes publishing InkPy publicly. No firmware
+behavior changed. README now presents a mathematical device: Markdown/LaTeX and
+MicroPython first, limited EPUB second, StarDict, installation/recovery, release
+asset links, examples and Python clock setting. MIT covers original InkPy code;
+dependency notices and licenses remain separate. Public docs index distinguishes
+historical stage reports from current usage. Remote AI examples are preserved.
+
+Release workflow builds the pinned ESP-IDF application, packages math SD assets,
+notices/checksums and source including fetched math/Python dependencies, then
+creates a new versioned GitHub Release. Build has read-only token; only publish
+has contents write. Existing releases are not overwritten. Actions are SHA-pinned.
+Added a small source/public-link/Python syntax check, monthly Actions Dependabot,
+and SECURITY.md. GitHub account switches still require authenticated admin UI.
+
+Review found no credential-pattern matches among 1,203 local historical Git
+objects; current remote examples have empty credential fields. This is a targeted
+publication review, not a comprehensive security audit or full remote-history scan.
+Checks passed: maintained public-page relative links, tracked Python AST syntax,
+current tracked-file credential patterns, staged whitespace, workflow YAML parse,
+release packaging, all artifact checksums, ZIP integrity/math paths/notices, and
+source archive contents including LGPL and fetched dependencies. No firmware
+rebuild needed locally: firmware behavior is unchanged. Publication state will
+be reported after the push and GitHub workflow inspection. Existing
+Stage43 binary: 2,728,224 bytes, SHA256
+6617b4fb50e8e7309234b27713d65695297e7a9bb6f6e1862da760383c79416b.
+Release rebuild may have a different binary hash; no new device test is inferred.
+Unrelated prototypes/python/run.sh mode change is not staged.
+
+
 ## Stage 43: one bundled font, denser text, Power dictionary (2026-10-05)
 
 User confirms Arabic works perfectly; prior failure used the wrong download.
