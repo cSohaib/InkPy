@@ -1,0 +1,11 @@
+PASS: device renderer, formula bitmaps/fallback, H2 navigation, page entry/paging, Close cleanup, missing-math-assets fallback, binary rejection
+PASS: all requested math commands, bordered/aligned/wrapped tables, inline math, tall-row/page continuation, landscape and missing-math fallback
+PASS: per-line first-letter direction, visual/logical map, Arabic/mixed/math/tables rendering, logical tap-word lookup, portrait/landscape
+PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+PASS: heavy chapter has no full pagination at open; cached reopen and Next/Previous work
+PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation
+PASS: checkpoint/restore at every step matches uninterrupted draw/page/chapter output byte-for-byte
+PASS: justified wraps/final lines in portrait and landscape; headings/code/hard breaks unchanged; mixed styles/math bounds; 64 expanded formulas without fallback
+PASS: ASan/UBSan bidi adapter/core, 500 bounded mixed-script/control/mark inputs; leak checks disabled because runtime /proc access is restricted

@@ -1,5 +1,34 @@
 # InkPy checkpoint
 
+## Stage 41: Arabic in EPUB/Markdown (2026-10-05)
+
+Reader-only Arabic joining, lam-alef ligatures, basic vowel marks, mirrored
+punctuation and mixed-script ordering. Each displayed line independently uses
+its first letter in logical order: Arabic chooses RTL; Latin or no letters
+chooses LTR. Digits/punctuation do not select direction. Final RTL lines align
+right; automatic prose wraps retain default justification. Tables keep explicit
+alignment. Inline formulas/images are neutral objects, not reversed internally.
+Chapter/dictionary labels also use reader shaping; other apps/keyboard unchanged.
+
+Small C adapter uses pinned FriBidi 1.0.16 (Unicode 16.0.0), LGPL-2.1-or-later;
+source, licence and provenance are in ink_layout/vendor/fribidi. Fixed 128-codepoint
+line budget; layout context size unchanged. Latin-only ordinary lines keep the
+old fast path. Shaped cache runs preserve original logical words for StarDict
+lookup. Bundled font already contains Arabic; selected SD fonts missing glyphs
+fall back to the bundled face. No new SD assets. Typography remains fixed-cell,
+not a full OpenType/calligraphic engine. EPUB cache namespace e41 rebuilds once.
+
+Checks: Arabic direction/maps/glyphs/logical tap in both orientations; existing
+Markdown/math/tables, stored/deflated/heavy EPUB, incremental restore and 64
+expanded formulas pass. ASan/UBSan passes 500 bounded mixed-script inputs
+(LeakSanitizer unavailable under runtime /proc restrictions). Rendered Arabic
+preview inspected. Evidence: results/stage41. ESP32-S3 build and image validation
+pass; app 2,729,104 bytes, SHA-256
+b16b302cf0bac3a42a5cc589207e6b26f4c98982f3b5002f02751764e28acc35.
+No physical flashing/testing. Unrelated prototypes/python/run.sh mode preserved.
+Next: user tests mixed Arabic/Latin documents and original-word dictionary lookup
+on X4 Pro. Stop here; no additional feature work in this stage.
+
 ## Stage 40: default justification and expanded math (2026-10-05)
 
 User confirms Stage 39 works and requests justified EPUB/Markdown paragraphs

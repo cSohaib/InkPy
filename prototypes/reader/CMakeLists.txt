@@ -11,9 +11,14 @@ target_include_directories(math-vendor BEFORE PRIVATE "${OVERLAY}" "${INK_MATH_R
 target_compile_definitions(math-vendor PRIVATE FT2_BUILD_LIBRARY FT_CONFIG_MODULES_H="ink_ft_modules.h" FT_CONFIG_OPTIONS_H="ink_ft_options.h")
 set(CORE "${CMAKE_CURRENT_SOURCE_DIR}/../../components/ink_layout")
 add_library(md4c STATIC "${DEPS}/md4c/src/md4c.c")
+include(../../cmake/bidi-sources.cmake)
+target_sources(md4c PRIVATE ${INK_BIDI_SOURCES})
+target_include_directories(md4c PRIVATE "${INK_BIDI_VENDOR}")
+target_compile_definitions(md4c PRIVATE ${INK_BIDI_DEFINITIONS})
 target_include_directories(md4c PUBLIC "${DEPS}/md4c/src")
-target_compile_options(md4c PRIVATE -include "${CORE}/md_budget.h")
-target_compile_definitions(md4c PRIVATE malloc=ink_md_malloc realloc=ink_md_realloc free=ink_md_free)
+set_source_files_properties("${DEPS}/md4c/src/md4c.c" PROPERTIES
+    COMPILE_OPTIONS "-include;${CORE}/md_budget.h"
+    COMPILE_DEFINITIONS "malloc=ink_md_malloc;realloc=ink_md_realloc;free=ink_md_free")
 add_executable(reader-math probe.c "${CORE}/ink_layout.c" "${CORE}/md_budget.c" "${INK_MATH_ROOT}/ink_math.cpp")
 target_include_directories(reader-math PRIVATE "${CORE}" "${INK_MATH_ROOT}")
 target_compile_definitions(reader-math PRIVATE INK_READER_MATH _FILE_OFFSET_BITS=64)
@@ -78,6 +83,15 @@ target_include_directories(reader-epub SYSTEM PRIVATE "${FT}/include")
 target_compile_definitions(reader-epub PRIVATE INK_USE_FONTS=1)
 target_compile_options(reader-epub PRIVATE -Wall -Wextra -Werror -UNDEBUG)
 target_link_libraries(reader-epub PRIVATE md4c book-input)
+
+add_executable(reader-arabic arabic.c "../../components/ink_reader/ink_reader.c"
+    "../../components/ink_dict/ink_dict.c" "../../components/ink_dict/ink_dict_gzip.c"
+    "../../components/ink_math/ink_font.c" "${CORE}/ink_layout.c" "${CORE}/md_budget.c" "${INK_MATH_ROOT}/ink_math.cpp")
+target_include_directories(reader-arabic PRIVATE "${CORE}" "${INK_MATH_ROOT}" "../../components/ink_reader" "../../components/ink_dict")
+target_include_directories(reader-arabic SYSTEM PRIVATE "${FT}/include")
+target_compile_definitions(reader-arabic PRIVATE INK_USE_FONTS=1)
+target_compile_options(reader-arabic PRIVATE -Wall -Wextra -Werror -UNDEBUG)
+target_link_libraries(reader-arabic PRIVATE md4c book-input)
 
 add_executable(reader-incremental incremental.c "${CORE}/ink_layout.c" "${CORE}/md_budget.c")
 target_include_directories(reader-incremental PRIVATE "${CORE}")

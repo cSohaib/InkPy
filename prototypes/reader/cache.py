@@ -45,6 +45,14 @@ def page(root, number):
                 if not cell or not height or len(payload)!=2+stride*height or x+cell>meta['width']-8 or y+height>meta['height']-8:
                     raise ValueError('bitmap outside page')
                 runs.append(dict(x=x,y=y,width=cell,height=height,style=style,source=anchor,bitmap=payload[2:]))
+            elif style & 128:
+                import unicodedata
+                visual_bytes=struct.unpack('<H',payload[:2])[0]
+                text=payload[2:2+visual_bytes].decode('utf-8')
+                logical=payload[2+visual_bytes:].decode('utf-8')
+                width=sum(unicodedata.bidirectional(c)!='NSM' for c in text)*cell
+                if not text or x+width>meta['width']-8: raise ValueError('shaped run outside page')
+                runs.append(dict(x=x,y=y,cell=cell,style=style,source=anchor,text=text,logical=logical,width=width))
             else:
                 if size>512: raise ValueError('invalid text size')
                 text=payload.decode('utf-8',errors='strict')

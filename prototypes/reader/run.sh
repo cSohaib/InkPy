@@ -18,5 +18,7 @@ core=../../components/ink_layout
     -Dmalloc=ink_md_malloc -Drealloc=ink_md_realloc -Dfree=ink_md_free \
     -c .deps/md4c/src/md4c.c -o build/md4c.o
 "$cc" "${flags[@]}" -I"$core" -I.deps/md4c/src \
-    "$core/ink_layout.c" "$core/md_budget.c" probe.c build/md4c.o -o build/reader-probe
+    -I"$core/vendor/fribidi" -DDONT_HAVE_FRIBIDI_CONFIG_H -DHAVE_STDLIB_H -DHAVE_STRING_H -DHAVE_STRINGS_H -DHAVE_STRINGIZE -DSTDC_HEADERS=1 \
+    "$core/ink_layout.c" "$core/ink_bidi.c" "$core/md_budget.c" \
+    "$core"/vendor/fribidi/*.c probe.c build/md4c.o -o build/reader-probe
 "${PYTHON:-python3}" tests.py

@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include "ink_reader.h"
+#include "ink_bidi.h"
 #include "ink_epub.h"
 #include "ink_image.h"
 #include <strings.h>
@@ -219,7 +220,7 @@ static int epub_open(ink_reader *r,const char *source,ink_layout_math math,void 
     char font_path[640];snprintf(font_path,sizeof(font_path),"/sd/fonts/%s",font);
     if(!stat(font_path,&st)){key=hash_bytes(key,&st.st_size,sizeof(st.st_size));key=hash_bytes(key,&st.st_mtime,sizeof(st.st_mtime));}
 #endif
-    int n=snprintf(r->book_cache,sizeof(r->book_cache),"%s/e40-%016llx",r->cache,(unsigned long long)key);
+    int n=snprintf(r->book_cache,sizeof(r->book_cache),"%s/e41-%016llx",r->cache,(unsigned long long)key);
     if(n<0||(size_t)n>=sizeof(r->book_cache))return error(r,"EPUB cache path too long");
     if(mkdir(r->book_cache,0700)&&errno!=EEXIST)return error(r,"Cannot create EPUB cache");
     char p[640];snprintf(p,sizeof(p),"%s/ready",r->book_cache);
@@ -406,6 +407,30 @@ static int lookup_word(ink_reader *r,unsigned tap_x,unsigned tap_y)
             if(hit) goto found;
             used=0; overflow=false;
             if(size>LONG_MAX||fseek(r->draw,(long)size,SEEK_CUR)) return error(r,"Cannot skip formula");
+        } else if(style&INK_SHAPED) {
+            char payload[1027];
+            if(size<3||size>1026||fread(payload,1,(size_t)size,r->draw)!=size)return error(r,"Invalid shaped word");
+            unsigned visual=(unsigned)number((unsigned char*)payload,2),width=0;
+            if(visual>size-2)return error(r,"Invalid shaped word size");
+            for(unsigned i=2;i<2+visual;) {
+                unsigned char c=(unsigned char)payload[i++];uint32_t cp=c;
+                unsigned n=c<128?0:(c&0xe0)==0xc0?1:(c&0xf0)==0xe0?2:3;
+                if(n>2+visual-i)return error(r,"Invalid shaped UTF-8");
+                if(n){cp=c&((1u<<(6-n))-1);while(n--)cp=(cp<<6)|((unsigned char)payload[i++]&63);}
+                if(!ink_bidi_mark(cp))width+=cell;
+            }
+            if(tap_x>=x&&tap_x<x+width&&tap_y>=y&&tap_y<y+height) {
+                unsigned logical=(unsigned)size-2-visual;
+                if(logical>=sizeof(word))return error(r,"Tapped word exceeds 255 bytes");
+                memcpy(word,payload+2+visual,logical);word[logical]=0;
+                if(!logical)return 0;
+                unsigned char first=(unsigned char)word[0];uint32_t cp=first;
+                unsigned more=first<128?0:(first&0xe0)==0xc0?1:(first&0xf0)==0xe0?2:3;
+                if(more){cp=first&((1u<<(6-more))-1);for(unsigned k=1;k<=more;k++)cp=(cp<<6)|((unsigned char)word[k]&63);}
+                if(!ink_bidi_word(cp))return 0;
+                used=logical;hit=true;goto found;
+            }
+            used=0;overflow=false;
         } else {
             char payload[513];
             if(size>512||fread(payload,1,(size_t)size,r->draw)!=size) return error(r,"Cannot read tapped word");
@@ -512,7 +537,35 @@ static void pixel(uint8_t *f,unsigned x,unsigned y)
 static void text(uint8_t *f,unsigned x,unsigned y,const char *s,unsigned cell,unsigned height,unsigned style)
 {
 #ifdef INK_USE_FONTS
-    ink_font_text(f,x,y,s,cell,height,style,drawing->view==INK_READER_PAGE?page_width(drawing)-8:464,pixel); return;
+    unsigned limit=drawing->view==INK_READER_PAGE?page_width(drawing)-8:464;
+    if(drawing->view!=INK_READER_PAGE) {
+        uint32_t logical[INK_BIDI_CELLS];unsigned n=0;bool arabic=false;
+        const unsigned char *p=(const unsigned char*)s;
+        while(*p&&n<INK_BIDI_CELLS) {
+            unsigned first=*p++,more=first<128?0:first<0xe0?1:first<0xf0?2:3;
+            uint32_t cp=more?first&((1u<<(6-more))-1):first;
+            while(more--&&*p)cp=(cp<<6)|(*p++&63);
+            logical[n++]=cp;arabic|=ink_bidi_arabic(cp);
+        }
+        if(arabic) {
+            ink_bidi *b=malloc(sizeof(*b));
+            if(b&&!ink_bidi_shape(logical,n,b)) {
+                char visual[INK_BIDI_CELLS*4+1];unsigned bytes=0,width=0;
+                for(unsigned i=0;i<n;i++) {
+                    uint32_t cp=b->visual[i];if(ink_bidi_hidden(cp))continue;
+                    if(!ink_bidi_mark(cp))width+=cell;
+                    if(cp<128)visual[bytes++]=(char)cp;
+                    else if(cp<0x800){visual[bytes++]=(char)(0xc0|(cp>>6));visual[bytes++]=(char)(0x80|(cp&63));}
+                    else if(cp<0x10000){visual[bytes++]=(char)(0xe0|(cp>>12));visual[bytes++]=(char)(0x80|((cp>>6)&63));visual[bytes++]=(char)(0x80|(cp&63));}
+                    else{visual[bytes++]=(char)(0xf0|(cp>>18));visual[bytes++]=(char)(0x80|((cp>>12)&63));visual[bytes++]=(char)(0x80|((cp>>6)&63));visual[bytes++]=(char)(0x80|(cp&63));}
+                }
+                visual[bytes]=0;if(b->rtl&&width<limit-x)x=limit-width;
+                ink_font_text(f,x,y,visual,cell,height,style|INK_SHAPED,limit,pixel);free(b);return;
+            }
+            free(b);
+        }
+    }
+    ink_font_text(f,x,y,s,cell,height,style,limit,pixel);return;
 #endif
     unsigned shift=0;
     for(;*s;s++) {
@@ -567,6 +620,13 @@ int ink_reader_draw(ink_reader *r,uint8_t frame[48000])
                     if(fread(row,1,stride,r->draw)!=stride) return error(r,"Truncated formula bitmap");
                     for(unsigned dx=0;dx<cell;dx++) if(row[dx/8]&(0x80>>(dx%8))) pixel(frame,x+dx,y+dy);
                 }
+            } else if(style&INK_SHAPED) {
+                char payload[1027];
+                if(size<3||size>1026||fread(payload,1,(size_t)size,r->draw)!=size)return error(r,"Invalid shaped text");
+                unsigned visual=(unsigned)number((unsigned char*)payload,2);
+                if(!visual||visual>size-2)return error(r,"Invalid shaped text size");
+                payload[2+visual]=0;unsigned level=(style>>8)&7,height=INK_UI_FONT+(level?2*(7-level):0);
+                text(frame,x,y,payload+2,cell,height,style|(level?INK_BOLD:0));
             } else {
                 char payload[513];
                 if(size>512||cell>100||fread(payload,1,(size_t)size,r->draw)!=size) return error(r,"Invalid text run");

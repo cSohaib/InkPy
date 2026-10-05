@@ -6,7 +6,7 @@
  * edits. Caller publishes them only after success; errors leave partial output.
  * Monospaced codepoint metrics today, not a complete shaping/font engine. */
 enum { INK_BLOCK_BYTES=8192, INK_MD_HEAP_BYTES=131072, INK_TITLE_BYTES=192 };
-enum { INK_BOLD=1, INK_ITALIC=2, INK_CODE=4, INK_LITERAL=8, INK_MATH=16, INK_IMAGE=32, INK_RULE=64, INK_BITMAP=32768 };
+enum { INK_BOLD=1, INK_ITALIC=2, INK_CODE=4, INK_LITERAL=8, INK_MATH=16, INK_IMAGE=32, INK_RULE=64, INK_SHAPED=128, INK_BITMAP=32768 };
 /* Optional math callback writes a 480x800, 1=black bitmap, stride 60 bytes.
  * Return nonzero for literal fallback. Storage remains owned by layout. */
 typedef int (*ink_layout_math)(const char *source, int display, unsigned pixels,
@@ -34,6 +34,8 @@ typedef struct {
  * INK_BITMAP runs: cell is image width, payload is u16 height followed by packed
  * rows (ceil(width/8) bytes each), 1=black. Requires cache version 2.
  * INK_RULE runs: cell is rectangle width, payload is u16 height (solid black).
+ * INK_SHAPED runs: payload is u16 visual-byte count, visual UTF8, then original
+ * logical-word UTF8 for lookup. Cell is normal advance; marks have zero advance.
  * pages: fixed 32 bytes [u64 draw_begin,draw_end,source; u32 chapter,reserved]
  * chapters: fixed 212 bytes [u64 source; u32 page,id; u16 length,truncated; 192 bytes]
  * Integers little-endian. Page and chapter IDs are one-based; chapter 0 means none.

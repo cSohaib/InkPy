@@ -77,3 +77,15 @@ scratch is closed/removed after indexing. Layout context is 75,560 host bytes,
 
 Fixture: fixtures/markdown-tables-math.md. Host test: build reader-tables through
 prototypes/reader/CMakeLists.txt, then run with fixture/output folder/math resources.
+# Arabic reader text (Stage 41)
+
+EPUB and Markdown share bounded Arabic shaping and mixed-direction layout. Each
+displayed line chooses its base direction from the first logical letter; Arabic
+is RTL, Latin/no letters LTR. Numeric prefixes do not choose direction. Formulas
+remain LTR objects inside the surrounding line. Original Arabic words remain
+available for StarDict lookup. Chapter/dictionary labels are shaped too.
+
+The bundled font provides Arabic and missing-glyph fallback for selected SD
+fonts, without new assets. Fixed-cell joining and basic marks are supported;
+this is not full OpenType typography. Other applications and keyboard are unchanged.
+Vendored FriBidi provenance/licence: components/ink_layout/vendor/fribidi/SOURCE.md.

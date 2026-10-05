@@ -2,6 +2,7 @@
 #include "ink_layout.h"
 #include "md_budget.h"
 #include "md4c.h"
+#include "ink_bidi.h"
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -104,14 +105,92 @@ static void open_page(Layout *l,uint64_t source)
     l->page_open=true; l->page_begin=l->draw_bytes; l->page_source=source;
     l->page_chapter=l->chapter;
 }
-static unsigned item_width(Layout *l,const Cell *c) { return c->width?c->width:cell_width(l); }
+static unsigned item_width(Layout *l,const Cell *c)
+{ return c->width?c->width:ink_bidi_mark(c->cp)||ink_bidi_hidden(c->cp)?0:cell_width(l); }
 static unsigned line_width(Layout *l)
 { unsigned n=0; for (unsigned i=0;i<l->count;++i) n+=item_width(l,&l->line[i]); return n; }
 static bool word_space(const Cell *c)
 { return !c->width && c->cp==' ' && !(c->style&(INK_CODE|INK_LITERAL|INK_MATH)); }
+static unsigned shaped_width(Layout *l,const Cell *c,uint32_t cp)
+{ return c->width?c->width:ink_bidi_hidden(cp)||ink_bidi_mark(cp)?0:cell_width(l); }
+static unsigned word_start(Layout *l,unsigned i)
+{
+    if(l->line[i].width||!ink_bidi_word(l->line[i].cp))return i;
+    while(i&&!l->line[i-1].width&&(ink_bidi_word(l->line[i-1].cp)||ink_bidi_hidden(l->line[i-1].cp))) --i;
+    return i;
+}
+static void output_arabic(Layout *l,unsigned n,bool wrapped)
+{
+    while(n&&!l->line[n-1].width&&l->line[n-1].cp==' ') --n;
+    if(!n)return;
+    ink_bidi *b=malloc(sizeof(*b));if(!b){fail(l,"Arabic line allocation failed",l->position);return;}
+    uint32_t logical[CELLS];
+    for(unsigned i=0;i<n;i++)logical[i]=l->line[i].width?0xfffc:l->line[i].cp;
+    if(ink_bidi_shape(logical,n,b)){free(b);fail(l,"Arabic line shaping failed",l->position);return;}
+    unsigned used=0,gaps=0,above=pixels(l),below=0;
+    bool justify=wrapped&&!l->head&&!l->code&&!l->literal&&!l->table_drawing;
+    for(unsigned i=0;i<n;i++) {
+        Cell *c=&l->line[b->map[i]];used+=shaped_width(l,c,b->visual[i]);
+        if(word_space(c))gaps++;
+        if(c->width){if(c->baseline>above)above=c->baseline;if(c->height-c->baseline>below)below=c->height-c->baseline;}
+    }
+    if(l->table_drawing){above=l->table_above;below=l->table_below;}
+    unsigned height=above+below+8;
+    if(l->y+height>l->cfg.height-MARGIN)end_page(l);
+    open_page(l,l->line[0].source);
+    if(l->head==2&&l->title_active&&!l->title_located){l->title_located=true;l->title_page=(unsigned)l->stats->pages+1;l->title_source=l->line[0].source;}
+    unsigned available=l->cfg.width-2*MARGIN,x=MARGIN;
+    if(l->table_drawing){unsigned width=available/l->table_columns;available=width-2*TABLE_PAD;x+=l->table_column*width+TABLE_PAD;}
+    unsigned spare=used<available?available-used:0,extra=justify&&gaps?spare:0,gap=0;
+    if(l->table_drawing){
+        unsigned align=l->table_align[l->table_column];
+        if(align==MD_ALIGN_CENTER)x+=spare/2;
+        else if(align==MD_ALIGN_RIGHT||(align==MD_ALIGN_DEFAULT&&b->rtl))x+=spare;
+    }else if(b->rtl&&!extra)x+=spare;
+    for(unsigned i=0;i<n;) {
+        unsigned index=(unsigned)b->map[i];Cell *c=&l->line[index];uint32_t cp=b->visual[i];
+        if(!c->width&&(ink_bidi_hidden(cp)||cp==' ')) {
+            x+=shaped_width(l,c,cp);
+            if(extra&&word_space(c)){x+=extra/gaps+(gap<extra%gaps);gap++;}
+            i++;continue;
+        }
+        unsigned y=l->y+above-pixels(l),len=0,j=i+1,advance=0;
+        char visual[CELLS*4],original[CELLS*4];unsigned original_n=0;
+        if(c->width){
+            y=l->y+above-c->baseline;advance=c->width;
+            if(c->display)x=(l->cfg.width-c->width)/2;
+            len=2+((c->width+7)/8)*c->height;
+        }else{
+            unsigned start=word_start(l,index),end=index+1;
+            if(ink_bidi_word(c->cp))while(end<n&&!l->line[end].width&&(ink_bidi_word(l->line[end].cp)||ink_bidi_hidden(l->line[end].cp)))end++;
+            for(unsigned k=start;k<end;k++)if(!ink_bidi_hidden(l->line[k].cp))original_n+=encode(l->line[k].cp,original+original_n);
+            j=i;
+            while(j<n) {
+                unsigned k=(unsigned)b->map[j];Cell *next=&l->line[k];uint32_t v=b->visual[j];
+                if(next->width||next->style!=c->style||word_start(l,k)!=start)break;
+                if(!ink_bidi_hidden(v)){len+=encode(v,visual+len);advance+=shaped_width(l,next,v);}
+                j++;
+            }
+        }
+        unsigned payload=c->width?len:2+len+original_n;
+        number(l,l->draw,x,2);number(l,l->draw,y,2);number(l,l->draw,c->width?c->width:cell_width(l),2);
+        number(l,l->draw,c->width?INK_BITMAP:c->style|INK_SHAPED,2);number(l,l->draw,payload,4);number(l,l->draw,c->source,8);
+        if(c->width){
+            number(l,l->draw,c->height,2);
+            if(fseeko(l->bitmaps,(off_t)c->bitmap_offset,SEEK_SET))fail(l,"bitmap seek failed",c->source);
+            for(unsigned remaining=len-2;remaining&&!l->failed;){unsigned chunk=remaining>sizeof(visual)?sizeof(visual):remaining;
+                if(fread(visual,1,chunk,l->bitmaps)!=chunk){fail(l,"bitmap read failed",c->source);break;}
+                bytes(l,l->draw,visual,chunk);remaining-=chunk;}
+        }else{number(l,l->draw,len,2);bytes(l,l->draw,visual,len);bytes(l,l->draw,original,original_n);}
+        l->draw_bytes+=20+payload;l->stats->runs++;x+=advance;i=j;
+    }
+    l->y+=height;free(b);
+}
 static void output_line(Layout *l,unsigned n,bool wrapped)
 {
     if (!n || l->failed) return;
+    for(unsigned i=0;i<n;i++)if(!l->line[i].width&&
+        (ink_bidi_arabic(l->line[i].cp)||ink_bidi_mark(l->line[i].cp)||ink_bidi_hidden(l->line[i].cp))){output_arabic(l,n,wrapped);return;}
     /* Only automatic prose wraps stretch. Final/hard-break lines, headings,
      * code, display math and table-cell alignment keep their natural spacing. */
     bool justify=wrapped&&!l->head&&!l->literal&&!l->code&&!l->table_drawing;
@@ -209,7 +288,8 @@ static void emit(Layout *l,uint32_t cp,uint64_t source,bool preserve)
         else l->title_cut=true;
     }
     unsigned max=l->cfg.width-2*MARGIN;
-    if (line_width(l)+cell_width(l)>max || l->count==CELLS) {
+    unsigned advance=ink_bidi_mark(cp)||ink_bidi_hidden(cp)?0:cell_width(l);
+    if (line_width(l)+advance>max || l->count==CELLS) {
         unsigned cut=l->count;
         if (!preserve) {
             for (unsigned i=l->count;i>0;--i) if (l->line[i-1].cp==' ') { cut=i; break; }
