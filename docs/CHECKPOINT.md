@@ -1,5 +1,25 @@
 # InkPy checkpoint
 
+## Stage 45: README wording and Dependabot maintenance (2026-10-05)
+
+Removed the requested introductory font/size phrase and Arabic feature bullet
+from README; device features are unchanged. Merged reviewed Dependabot PRs
+#2 (checkout 7.0.1), #3 (upload-artifact 7.0.1), #1 (download-artifact 8.0.1).
+Diffs only update SHA-pinned official GitHub Actions. Inspected upstream action
+definitions: Node24 on hosted runners, existing input names/default archive and
+extraction behavior fit our workflow; download now fails on digest mismatch.
+Checkout still disables credential persistence; job token permissions unchanged.
+No firmware dependencies, code or released assets changed. No open PRs remain.
+
+Release workflow now runs only via workflow_dispatch: maintenance merges must
+not build or try republishing v0.1.0. Build guide updated. Local publication checks,
+workflow YAML/input/pin/permissions inspection and whitespace checks passed.
+PR #3 source check succeeded; other checks were canceled amid earlier runner
+issues. Full automated build/artifact cycle still needs validation before the
+next release. Preserve unrelated prototypes/python/run.sh mode change.
+Next: user feedback; no device reflash needed for this stage.
+
+
 ## Stage 44: public documentation and release preparation (2026-10-05)
 
 User confirms Stage43 works and authorizes publishing InkPy publicly. No firmware
