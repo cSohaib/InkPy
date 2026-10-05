@@ -30,6 +30,17 @@ Stage43 binary: 2,728,224 bytes, SHA256
 Release rebuild may have a different binary hash; no new device test is inferred.
 Unrelated prototypes/python/run.sh mode change is not staged.
 
+Publication outcome: pushed main commit 94013c0f6939bc60695e67610277048635fabf32.
+GitHub accepted both workflows and began Dependabot processing. Source review
+and Release run 37365050279 are queued; no Release/assets exist yet. Browser
+passkey sign-in did not establish a session (GitHub reports partial passkey
+support and waits for browser interaction); fresh repository view is logged out.
+Repository remains private. Connector has no visibility/security-admin setters.
+Next: finish browser sign-in, make repository public, enable available private
+vulnerability reporting/secret protection/alerts, then inspect Release completion
+and resolve any build error before announcing the downloads. No settings were
+claimed enabled. Owner may also use the GitHub settings instructions in BUILD.md.
+
 
 ## Stage 43: one bundled font, denser text, Power dictionary (2026-10-05)
 
