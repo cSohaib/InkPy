@@ -3,8 +3,8 @@
 Turn an **Xteink X4 Pro** into a small mathematical device: read Markdown with
 LaTeX, write notes and formulas, and run Python on an e-ink screen.
 
-InkPy is deliberately minimal. One bundled font, one text size, a Python-friendly
-keyboard, files on microSD, and a small icon-based interface. No cloud, sync,
+InkPy is deliberately minimal: a Python-friendly keyboard, files on microSD,
+and a small icon-based interface. No cloud, sync,
 USB file transfer, accounts, or app store. Wi-Fi is available to Python scripts.
 
 ## What it does
@@ -17,7 +17,6 @@ USB file transfer, accounts, or app store. Wi-Fi is available to Python scripts.
 - **Text editor:** create and edit plain-text files, including Markdown and Python.
 - **StarDict:** tap a reader word or type a query from the Power menu's AZ button.
   Dictionary selection lives in the lookup dialog.
-- **Arabic:** connected letters and mixed Arabic/Latin layout in Markdown and EPUB.
 - **EPUB:** basic chapters, text, and images through the shared Markdown renderer.
   EPUB is secondary: publisher styling is ignored, compatibility is limited,
   and navigation uses chapters rather than whole-book page numbers.

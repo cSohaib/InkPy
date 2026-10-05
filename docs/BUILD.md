@@ -31,7 +31,8 @@ The first release, `v0.1.0`, was published with the exact device-tested Stage43
 image and locally verified assets. `.github/workflows/release.yml` provides builds
 for subsequent releases: use **Actions → Release → Run workflow** with a new
 `vMAJOR.MINOR.PATCH` version, for example `v0.1.1`. Existing releases are never
-overwritten. The workflow's initial push trigger was used during setup.
+overwritten. Releases run only on manual dispatch; workflow maintenance and
+Dependabot updates do not rebuild or republish firmware.
 
 The publish job alone has `contents: write`; build and review jobs use read access.
 GitHub Actions must be enabled. A release is available only after the build and
