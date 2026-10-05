@@ -23,7 +23,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Check source
-        run: python3 scripts/check-publication.py
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          python3 scripts/check-publication.py
       - name: Build X4 Pro application
         shell: bash
         run: |
