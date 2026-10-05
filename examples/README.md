@@ -1,27 +1,54 @@
-# OpenAI chat on InkPy
+# OpenAI examples on InkPy
 
-Edit `agent.py`: set your Wi-Fi `SSID`, `PASSWORD` and OpenAI `API_KEY`.
-Copy it to microSD and choose Execute from its long-press menu. Use the current
-Stage 31 firmware; no firmware update or extra Python packages are needed.
-Set the correct device date/time for HTTPS. On Stage 34 or later, use
-`inkpy.set_time(year, month, day, hour, minute, second)` in Console. The API key uses your OpenAI API
-account, which has separate billing from a ChatGPT subscription.
+Both scripts use the OpenAI Responses API. Set `SSID`, `PASSWORD`, and
+`API_KEY` near the top of the script, copy it to microSD, then choose Execute
+from its long-press menu. Set the correct device date/time before HTTPS requests.
 
-Enter prompts with the keyboard. `/quit` exits; Home → Close also stops the
-script. Every request sends all successful user/assistant turns in this run,
-plus the new prompt. Failed requests remove that prompt so you can try again.
-The instructions request short plain-text answers; output is capped at 256 tokens.
-The default model is `gpt-4.1-mini` (editable at the top of the script).
+The API key is for the OpenAI API account, whose billing is separate from a
+ChatGPT subscription. Both examples use `store: false`.
 
-History exists only in Python memory and is never saved or restored. The HTTP
-helper uses the reserved SD file `/sd/.openai-response.json`, removed after each
-request and on ordinary exit. Hard Close or a reset can interrupt cleanup and
-leave the last response there; the next run deletes it. Do not put your own file
-at this reserved path. `store: false` disables Responses API application storage;
-it is not a promise about all provider retention. Credentials stay in your script.
-Long conversations can exhaust the small Python heap; start a fresh chat then.
+## agent.py
 
-No live API/device test has been performed for this example. Host mocked tests
-check payload history, raw Responses JSON parsing, error recovery and file cleanup.
-API reference: https://developers.openai.com/api/docs/guides/conversation-state
-and https://developers.openai.com/api/docs/guides/text.
+`agent.py` is deliberately one-shot. It asks for one prompt, sends that prompt
+without conversation history, prints the short plain-text answer, and exits.
+
+The HTTP helper stores the API response temporarily at
+`/sd/.openai-response.json` and the script removes it on exit.
+
+## document.py
+
+`document.py` asks for a document request such as:
+
+```
+difference between Python and MicroPython
+```
+
+It enables the Responses API `web_search` tool and requests Structured Output
+with exactly two fields: `filename` and `content`. The generated filename ends
+in `.md`; the content is a complete Markdown document. Normal Markdown, fenced
+code blocks, tables, links, and LaTeX using `$...$` or `$$...$$` are allowed.
+Mermaid and HTML are explicitly excluded.
+
+The request uses `stream: true`. InkPy's current native `http()` helper writes
+the HTTP/SSE response to `/sd/.openai-document.sse` in bounded chunks. After the
+request completes, `document.py` reads that temporary stream incrementally and
+writes decoded `response.output_text.delta` text into the final Markdown file
+using a small buffer. The complete document is therefore never loaded into the
+MicroPython heap.
+
+This is not simultaneous network-to-final-file streaming: the current
+`inkpy.http()` API does not expose incoming network chunks to Python. The
+temporary SSE file is removed after processing. Existing Markdown files are not
+overwritten; a numeric suffix is added when necessary.
+
+The Structured Output schema declares `filename` before `content`. OpenAI
+Structured Outputs preserve schema key ordering, allowing the script to know the
+destination filename before the potentially large content starts arriving.
+
+No live API/device test is implied by repository-side checks. Device testing is
+still required.
+
+API references:
+- https://developers.openai.com/api/docs/guides/structured-outputs
+- https://developers.openai.com/api/docs/guides/streaming-responses
+- https://developers.openai.com/api/docs/guides/tools-web-search
