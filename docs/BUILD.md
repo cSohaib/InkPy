@@ -27,13 +27,19 @@ The build script checks the IDF commit even inside that container.
 
 ## Release automation
 
-`.github/workflows/release.yml` builds and publishes `v0.1.0` when first added to
-`main`. Later releases use **Actions → Release → Run workflow** with a new
-`vMAJOR.MINOR.PATCH` version. Existing releases are never overwritten.
+The first release, `v0.1.0`, was published with the exact device-tested Stage43
+image and locally verified assets. `.github/workflows/release.yml` provides builds
+for subsequent releases: use **Actions → Release → Run workflow** with a new
+`vMAJOR.MINOR.PATCH` version, for example `v0.1.1`. Existing releases are never
+overwritten. The workflow's initial push trigger was used during setup.
 
 The publish job alone has `contents: write`; build and review jobs use read access.
 GitHub Actions must be enabled. A release is available only after the build and
 publish jobs succeed. Review the firmware on a device before announcing a release.
+The first CI build hit Git's container ownership guard before compilation; the
+workflow now trusts only its own checkout path. Its next run was canceled while
+queued so the first release could use the tested image. A full CI rebuild remains
+to be validated before relying on automation for the next firmware version.
 
 The source archive includes InkPy and the fetched math/Python dependency sources,
 without their Git metadata. ESP-IDF is obtained at the exact revision above.

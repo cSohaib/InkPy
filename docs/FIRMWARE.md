@@ -26,9 +26,9 @@ confusion. It adds denser bundled text and typed dictionary lookup in Power.
 - Build: `bash scripts/build-browser.sh`; output `build-browser/firmware.bin`.
 - Build validation: `results/stage43/image.txt`.
 
-The public release rebuilds the same firmware behavior with publication tooling.
-Build metadata can change the hash; use that release's SHA256SUMS, not the hash
-above, to verify its downloads.
+Public release v0.1.0 republishes this exact tested binary. Future rebuilds can
+change the hash through build metadata; use each release's SHA256SUMS to verify
+its downloads.
 
 ## Limits
 

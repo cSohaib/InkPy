@@ -33,8 +33,8 @@ There is no selectable text-font system; formula resources are separate.
 - [Checksums](https://github.com/cSohaib/InkPy/releases/latest/download/SHA256SUMS)
 - [Markdown + LaTeX example](fixtures/markdown-math.md)
 
-Release assets are supplied by the release workflow. These download links become
-available when the first release finishes publishing.
+The first release contains the tested Stage43 firmware. Firmware binaries and
+SD assets live in Releases, outside the source repository.
 
 ## Installation
 

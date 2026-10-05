@@ -30,16 +30,26 @@ Stage43 binary: 2,728,224 bytes, SHA256
 Release rebuild may have a different binary hash; no new device test is inferred.
 Unrelated prototypes/python/run.sh mode change is not staged.
 
-Publication outcome: pushed main commit 94013c0f6939bc60695e67610277048635fabf32.
-GitHub accepted both workflows and began Dependabot processing. Source review
-and Release run 37365050279 are queued; no Release/assets exist yet. Browser
-passkey sign-in did not establish a session (GitHub reports partial passkey
-support and waits for browser interaction); fresh repository view is logged out.
-Repository remains private. Connector has no visibility/security-admin setters.
-Next: finish browser sign-in, make repository public, enable available private
-vulnerability reporting/secret protection/alerts, then inspect Release completion
-and resolve any build error before announcing the downloads. No settings were
-claimed enabled. Owner may also use the GitHub settings instructions in BUILD.md.
+Publication completed after user finished browser sign-in. Repository is public;
+v0.1.0 is published at https://github.com/cSohaib/InkPy/releases/tag/v0.1.0.
+GitHub confirms all five assets uploaded: exact tested Stage43 firmware.bin,
+inkpy-sd-resources.zip, inkpy-source.tar.gz, licenses.zip, SHA256SUMS. GitHub's
+firmware digest matches the Stage43 SHA above. All local archive checksums and
+ZIP integrity passed. Device-build active code matches remote modulo trailing
+blank lines; source archive contains the local build sources plus fetched deps,
+while GitHub's standard source archives include the full tagged repository.
+
+Enabled private vulnerability reporting, dependency graph, Dependabot alerts and
+security updates, secret scanning and push protection. Active ruleset 24528086
+protects the default branch against deletion and force pushes, with no bypass;
+normal direct commits remain allowed. No expensive/custom CodeQL setup added.
+Source-review workflow has passed on GitHub. Initial Release run 37365050279
+failed at Git dubious ownership inside the ESP-IDF container before compilation.
+Fixed by trusting only GITHUB_WORKSPACE (commit 06539669342c8864c4cc31d230b8171f3065f046).
+Run 37367095137 was canceled while queued; first release published manually from
+the already tested binary. Full CI rebuild/publish still needs validation before
+next release; automation does not overwrite existing releases. Next bounded task:
+user feedback or validate CI with a new version when firmware changes are ready.
 
 
 ## Stage 43: one bundled font, denser text, Power dictionary (2026-10-05)
