@@ -1,0 +1,8 @@
+PASS: native ESP32-S3 application build, partition fit, esptool checksum/validation hash
+PASS: Arabic shaping/mixed direction/logical word lookup in portrait/landscape
+PASS: default justification and 64 expanded formulas without fallback
+PASS: dictionary suite plain/gzip/dictzip, aliases, offsets, paged definitions, invalid source rejection
+PASS: dictionary index/data reuse on unchanged reopen, truncated index regeneration, changed-source regeneration
+PASS: bundled-font UI, Power AZ action and input prompt preview; font-selection API/icon/catalog removed
+VISUAL: denser Arabic/Latin reader and dictionary keyboard prompt inspected
+PENDING: device spacing preference and typed dictionary modal while editor/Python/reader active

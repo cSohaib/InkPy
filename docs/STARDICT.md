@@ -1,7 +1,7 @@
 # Stage 24: StarDict reader lookup
 
-The device reader now supports tap-word lookup, paged definitions and Change
-dictionary. This is the only dictionary-selection UI. Selection retries the same
+The reader supports tap-word lookup; Power's AZ tile also provides keyboard input
+and paged definitions. Both use the same Change dictionary picker. Selection retries the same
 word and preserves the book page; Home dismisses the topmost prompt first. The
 choice is saved on microSD and restored after reboot. No settings/cloud/transfer
 feature was added.
@@ -50,16 +50,18 @@ enable binary search without an in-memory word list. Definition text and page
 offsets also live on SD; only 16 visible lines are retained in RAM.
 
 Indexes are validated for counts, ordering, UTF-8 keys and data bounds. First
-selection each boot, or changing dictionaries, prepares the index/decompresses
-the selected data. The active dictionary is reused across book sessions during
+selection prepares the index/decompresses the selected data. A source signature
+(paths, sizes, modification times) and ordinal lengths enable disk-cache reuse
+on reopen/reboot, rebuilding when sources change or indexes are missing/truncated.
+The active dictionary is reused across book sessions during
 that boot. Source `.ifo`/`.idx`/`.dict`/`.syn` files are opened read-only. Editing
 files in the dictionary folder first releases cached source handles. Ordinary
 lookups do not rewrite dictionary files or require networking.
 
 First preparation can take time and requires free SD space for uncompressed data
 and offset files. It yields to input capture, but UI dispatch waits for completion.
-Persistent prepared-cache reuse and asynchronous progress/cancellation are future
-optimizations. Native file seeks limit files/cache offsets to LONG_MAX (2 GiB
+Asynchronous preparation/cancellation remains a future optimization. Native file
+seeks limit files/cache offsets to LONG_MAX (2 GiB
 minus one on this target), despite accepting 64-bit offset records within that range.
 Deleting the generated cache forces preparation/default selection again; preserve
 source dictionary folders. A foreign/unmarked cache directory is never overwritten.
@@ -71,8 +73,7 @@ line-wrapped words, strips edge punctuation and excludes math bitmaps. Definitio
 and chooser paging uses side buttons; Close/Home returns without changing the
 book page. Power remains an overlay on completed reader/lookup/chooser views.
 
-UTF-8 data is preserved, but the current bitmap font still substitutes missing
-non-ASCII glyphs. Selectable/proper text fonts are the next task. Typographic
+UTF-8 data uses the bundled Unicode font; no SD text-font loading. Typographic
 apostrophe normalization and full Unicode word segmentation/case folding are not
 implemented. Tests cover the supported paths, not every possible dictionary.
 

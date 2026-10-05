@@ -170,13 +170,37 @@ static int make_ord(ink_dict *d,FILE *in,FILE *out,uint32_t count,bool synonym,u
     if(fgetc(in)!=EOF||ferror(in)||fflush(out)) return fail(d,"Index count or write mismatch");
     return 0;
 }
-static FILE *source_file(ink_dict *d,const char *base,const char *ext,const char *compressed,const char *cache)
+static uint64_t source_signature(const char *base)
+{
+    const char *extensions[]={".ifo",".idx",".idx.gz",".dict",".dict.dz",".syn"};
+    uint64_t hash=1469598103934665603ULL;
+    for(const unsigned char *p=(const unsigned char*)base;*p;p++)hash=(hash^*p)*1099511628211ULL;
+    for(unsigned i=0;i<6;i++) {
+        char path[560];struct stat st;uint64_t values[2]={0};
+        snprintf(path,sizeof(path),"%s%s",base,extensions[i]);
+        if(!stat(path,&st)){values[0]=(uint64_t)st.st_size;values[1]=(uint64_t)st.st_mtime;}
+        for(unsigned j=0;j<2;j++)for(unsigned k=0;k<8;k++)hash=(hash^((values[j]>>(k*8))&255))*1099511628211ULL;
+    }
+    return hash;
+}
+static FILE *ordinal(ink_dict *d,FILE *index,const char *name,uint32_t count,bool synonym,uint64_t size,bool reuse)
+{
+    char path[560];cache_path(d,path,name);
+    FILE *f=reuse?fopen(path,"r+b"):NULL;
+    if(f&&file_size(f)==(uint64_t)count*8)return f;
+    if(f)fclose(f);
+    f=fopen(path,"w+b");
+    if(f&&make_ord(d,index,f,count,synonym,size)){fclose(f);f=NULL;}
+    return f;
+}
+static FILE *source_file(ink_dict *d,const char *base,const char *ext,const char *compressed,const char *cache,bool reuse)
 {
     char p[560],out[560]; int n=snprintf(p,sizeof(p),"%s%s",base,ext);
     if(n<0||(size_t)n>=sizeof(p)) return NULL;
     FILE *f=fopen(p,"rb"); if(f) { cache_path(d,out,cache); remove(out); return f; }
     n=snprintf(p,sizeof(p),"%s%s",base,compressed); if(n<0||(size_t)n>=sizeof(p)) return NULL;
     cache_path(d,out,cache);
+    if(reuse) {f=fopen(out,"rb");if(f)return f;}
     if(ink_dict_gunzip(p,out,d->progress)) { fail(d,"Cannot decompress dictionary"); return NULL; }
     return fopen(out,"rb");
 }
@@ -190,23 +214,30 @@ int ink_dict_select(ink_dict *d,const char *ifo)
     d->words=info.words; d->synonyms=info.synonyms; d->offset_bytes=info.offset;
     size_t n=strlen(selected); if(n<4||strcmp(selected+n-4,".ifo")) return fail(d,"Not a dictionary file");
     selected[n-4]=0;
-    d->idx=source_file(d,selected,".idx",".idx.gz","idx");
-    d->data=source_file(d,selected,".dict",".dict.dz","dict");
+    uint64_t signature=source_signature(selected);char stamp[560];cache_path(d,stamp,"source-v2");
+    unsigned char saved_signature[8];FILE *stamp_file=fopen(stamp,"rb");
+    bool reuse=stamp_file&&fread(saved_signature,1,8,stamp_file)==8&&be(saved_signature,8)==signature;
+    if(stamp_file)fclose(stamp_file);
+    remove(stamp); /* Publish validity only after all streams/indexes succeed. */
+    d->idx=source_file(d,selected,".idx",".idx.gz","idx",reuse);
+    d->data=source_file(d,selected,".dict",".dict.dz","dict",reuse);
     if(!d->idx||!d->data) goto bad;
     uint64_t size=file_size(d->data);
     if(size==UINT64_MAX||file_size(d->idx)!=info.idxsize) { fail(d,"Dictionary size mismatch"); goto bad; }
-    char p[560]; cache_path(d,p,"ord"); d->ord=fopen(p,"w+b");
-    if(!d->ord||make_ord(d,d->idx,d->ord,d->words,false,size)) goto bad;
+    char p[560];d->ord=ordinal(d,d->idx,"ord",d->words,false,size,reuse);
+    if(!d->ord) goto bad;
     snprintf(p,sizeof(p),"%s.syn",selected); d->syn=fopen(p,"rb");
     if(d->syn||d->synonyms) {
         if(!d->syn) { fail(d,"Missing synonym file"); goto bad; }
-        cache_path(d,p,"sord"); d->sord=fopen(p,"w+b");
-        if(!d->sord||make_ord(d,d->syn,d->sord,d->synonyms,true,size)) goto bad;
+        d->sord=ordinal(d,d->syn,"sord",d->synonyms,true,size,reuse);
+        if(!d->sord) goto bad;
     }
     cache_path(d,p,"selected"); FILE *f=fopen(p,"wb");
     if(!f) { fail(d,"Cannot save dictionary choice"); goto bad; }
     bool saved=fprintf(f,"%s\n",d->selected)>0; if(fclose(f)) saved=false;
     if(!saved) { fail(d,"Cannot save dictionary choice"); goto bad; }
+    stamp_file=fopen(stamp,"wb");
+    if(stamp_file){write_number(stamp_file,signature);fclose(stamp_file);}
     d->ready=true; return 0;
 bad:
     if(!d->error[0]) fail(d,"Cannot open dictionary files");

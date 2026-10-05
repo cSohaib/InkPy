@@ -2,69 +2,23 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include FT_SYNTHESIS_H
-#include <dirent.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <strings.h>
-#include <sys/stat.h>
 
 static FT_Library library;
 static FT_Face face;
-static FT_Face arabic_fallback;
 static unsigned pixel_height;
-static char (*paths)[512]; /* Optional SD catalog; allocated only when needed. */
-static unsigned count=1,selected;
 #ifdef ESP_PLATFORM
 extern const unsigned char font_start[] asm("_binary_InkPyMono_ttf_start");
 extern const unsigned char font_end[] asm("_binary_InkPyMono_ttf_end");
 #endif
-unsigned ink_font_count(void) { return count; }
-unsigned ink_font_selected(void) { return selected; }
-const char *ink_font_name(unsigned i) { return !i?"InkPy Mono":i<count?paths[i]+strlen("/sd/fonts/"):""; }
-int ink_font_select(unsigned i)
-{
-    if(!library||i>=count) return -1;
-    FT_Face next=NULL; FT_Error e;
-    if(i) e=FT_New_Face(library,paths[i],0,&next);
-#ifdef ESP_PLATFORM
-    else e=FT_New_Memory_Face(library,font_start,font_end-font_start,0,&next);
-#else
-    else e=FT_New_Face(library,"/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",0,&next);
-#endif
-    if(e) return -1;
-    if(FT_Select_Charmap(next,FT_ENCODING_UNICODE)) { FT_Done_Face(next); return -1; }
-    if(face) FT_Done_Face(face);
-    face=next; pixel_height=0; selected=i; return 0;
-}
-static void scan_fonts(const char *folder,unsigned depth)
-{
-    DIR *d=opendir(folder); if(!d) return; struct dirent *entry;
-    while(count<32&&(entry=readdir(d))) {
-        if(entry->d_name[0]=='.') continue;
-        char path[512]; struct stat st;
-        int n=snprintf(path,sizeof(path),"%s/%s",folder,entry->d_name);
-        if(n<0||(size_t)n>=sizeof(path)||stat(path,&st)) continue;
-        if(S_ISDIR(st.st_mode)) { if(depth<4) scan_fonts(path,depth+1); continue; }
-        const char *ext=strrchr(entry->d_name,'.');
-        if(!S_ISREG(st.st_mode)||!ext||(strcasecmp(ext,".ttf")&&strcasecmp(ext,".otf"))) continue;
-        if(!paths) { paths=calloc(32,sizeof(*paths)); if(!paths) break; }
-        strcpy(paths[count++],path);
-    }
-    closedir(d);
-}
-void ink_font_scan(void)
-{
-    char active[512]; snprintf(active,sizeof(active),"%s",paths&&selected?paths[selected]:"");
-    count=1; selected=0; scan_fonts("/sd/fonts",0);
-    for(unsigned i=1;i<count;i++) if(!strcmp(paths[i],active)) { selected=i; break; }
-    if(count==1) { free(paths); paths=NULL; }
-}
 int ink_font_init(void)
 {
     if(FT_Init_FreeType(&library)) return -1;
-    ink_font_scan();
-    return ink_font_select(0);
+#ifdef ESP_PLATFORM
+    if(FT_New_Memory_Face(library,font_start,font_end-font_start,0,&face)) return -1;
+#else
+    if(FT_New_Face(library,"/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",0,&face)) return -1;
+#endif
+    return FT_Select_Charmap(face,FT_ENCODING_UNICODE)?-1:0;
 }
 static unsigned decode(const unsigned char **p)
 {
@@ -82,19 +36,6 @@ static bool arabic_mark(unsigned cp)
         (cp>=0x6ea&&cp<=0x6ed)||(cp>=0x8ca&&cp<=0x8e1)||(cp>=0x8e3&&cp<=0x8ff)||
         (cp>=0x300&&cp<=0x36f);
 }
-static FT_Face book_face(unsigned cp)
-{
-    if(FT_Get_Char_Index(face,cp))return face;
-    if(!arabic_fallback) {
-#ifdef ESP_PLATFORM
-        if(FT_New_Memory_Face(library,font_start,font_end-font_start,0,&arabic_fallback))return face;
-#else
-        if(FT_New_Face(library,"/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",0,&arabic_fallback))return face;
-#endif
-        FT_Select_Charmap(arabic_fallback,FT_ENCODING_UNICODE);
-    }
-    return arabic_fallback;
-}
 void ink_font_text(uint8_t *frame,unsigned x,unsigned y,const char *s,
     unsigned cell,unsigned height,unsigned style,unsigned limit,
     void (*pixel)(uint8_t *,unsigned,unsigned))
@@ -109,8 +50,7 @@ void ink_font_text(uint8_t *frame,unsigned x,unsigned y,const char *s,
     while(*p) {
         unsigned cp=decode(&p);bool shaped=(style&128)!=0,mark=shaped&&arabic_mark(cp);
         if(!mark&&x+cell>limit)break;
-        FT_Face active=shaped?book_face(cp):face;
-        if(active!=face)FT_Set_Pixel_Sizes(active,0,pixels);
+        FT_Face active=face;
         FT_UInt glyph=FT_Get_Char_Index(active,cp);
         if(!glyph) glyph=FT_Get_Char_Index(active,0xfffd);
         if(!glyph) glyph=FT_Get_Char_Index(active,'?');

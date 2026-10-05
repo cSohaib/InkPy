@@ -74,18 +74,22 @@ static void keyboard_draw_at(const ink_keyboard *keyboard,uint8_t *frame,unsigne
 }
 static void keyboard_draw(const ink_keyboard *keyboard,uint8_t *frame)
 { keyboard_draw_at(keyboard,frame,0); }
+void ink_lookup_input_draw(const char *word,const ink_keyboard *keyboard,uint8_t frame[48000])
+{
+    memset(frame,255,48000);
+    size_t n=strlen(word);const char *visible=word+(n>32?n-32:0);
+    text(frame,8,32,visible);
+    unsigned x=8+(unsigned)strlen(visible)*INK_UI_CELL;
+    if(x<472) for(unsigned i=0;i<INK_UI_FONT;i++)pixel(frame,x,32+i);
+    keyboard_draw(keyboard,frame);
+    box(frame,8,712,464,80);ink_icon_size(frame,216,728,ICON_DICT,48,pixel);
+}
 void ink_power_draw(const ink_power *p,uint8_t frame[48000])
 {
     memset(frame,255,48000);
     text_size(frame,8,20,p->time[0]?p->time:"--",1);
     box(frame,386,14,80,32);box(frame,466,24,6,12);
     text_at(frame,396,20,p->battery[0]?p->battery:"--",11,20,462);
-    if(p->view) {
-        for(unsigned i=0;i<8&&p->font_first+i<p->font_count;i++) {
-            box(frame,8,96+i*64,464,64);text(frame,16,114+i*64,p->font_names[i]);
-        }
-        box(frame,8,624,464,64);ink_icon(frame,224,640,ICON_BACK,pixel);
-    } else {
         for(unsigned row=0;row<2;row++) {
             unsigned y=96+row*96;char value[8];snprintf(value,sizeof(value),"%u",row?p->warmth:p->brightness);
             box(frame,8,y,96,96);box(frame,104,y,272,96);box(frame,376,y,96,96);
@@ -93,11 +97,10 @@ void ink_power_draw(const ink_power *p,uint8_t frame[48000])
             ink_icon_size(frame,154,y+16,row?ICON_WARM:p->on?ICON_BULB_ON:ICON_BULB,64,pixel);
             text(frame,242,y+34,value);
         }
-        const unsigned icons[]={ICON_FONT,ICON_REFRESH,ICON_CONTRAST};
+        const unsigned icons[]={ICON_DICT,ICON_REFRESH,ICON_CONTRAST};
         for(unsigned i=0;i<3;i++) { unsigned x=8+i*155;
             box(frame,x,304,154,152);ink_icon_size(frame,x+29,332,icons[i],96,pixel);
         }
-    }
     if(p->message[0]) ink_icon(frame,224,720,ICON_ERROR,pixel);
 }
 void ink_console_draw(const ink_console *c,uint8_t frame[48000])

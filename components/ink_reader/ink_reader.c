@@ -215,12 +215,7 @@ static int epub_open(ink_reader *r,const char *source,ink_layout_math math,void 
     uint64_t key=hash_bytes(1469598103934665603ULL,source,strlen(source));
     key=hash_bytes(key,&st.st_size,sizeof(st.st_size));key=hash_bytes(key,&st.st_mtime,sizeof(st.st_mtime));
     key=hash_bytes(key,&r->landscape,sizeof(r->landscape));
-#ifdef INK_USE_FONTS
-    const char *font=ink_font_name(ink_font_selected());key=hash_bytes(key,font,strlen(font));
-    char font_path[640];snprintf(font_path,sizeof(font_path),"/sd/fonts/%s",font);
-    if(!stat(font_path,&st)){key=hash_bytes(key,&st.st_size,sizeof(st.st_size));key=hash_bytes(key,&st.st_mtime,sizeof(st.st_mtime));}
-#endif
-    int n=snprintf(r->book_cache,sizeof(r->book_cache),"%s/e41-%016llx",r->cache,(unsigned long long)key);
+    int n=snprintf(r->book_cache,sizeof(r->book_cache),"%s/e43-%016llx",r->cache,(unsigned long long)key);
     if(n<0||(size_t)n>=sizeof(r->book_cache))return error(r,"EPUB cache path too long");
     if(mkdir(r->book_cache,0700)&&errno!=EEXIST)return error(r,"Cannot create EPUB cache");
     char p[640];snprintf(p,sizeof(p),"%s/ready",r->book_cache);
@@ -399,7 +394,7 @@ static int lookup_word(ink_reader *r,unsigned tap_x,unsigned tap_y)
         if(end-at<20||fread(h,1,20,r->draw)!=20) return error(r,"Invalid word run");
         at+=20; uint64_t size=number(h+8,4);
         unsigned x=(unsigned)number(h,2),y=(unsigned)number(h+2,2),cell=(unsigned)number(h+4,2),style=(unsigned)number(h+6,2);
-        unsigned level=(style>>8)&7,height=INK_UI_FONT+(level?2*(7-level):0);
+        unsigned height=INK_UI_FONT;
         if(size>end-at||!cell||cell>page_width(r)) return error(r,"Invalid word geometry");
         bool continuation=(x==prev_end&&y==prev_y)||(x==8&&prev_end>=page_width(r)-8-prev_cell&&y==prev_y+prev_height+8);
         if(used&&!continuation) { if(hit) goto found; used=0; overflow=false; }
@@ -625,12 +620,12 @@ int ink_reader_draw(ink_reader *r,uint8_t frame[48000])
                 if(size<3||size>1026||fread(payload,1,(size_t)size,r->draw)!=size)return error(r,"Invalid shaped text");
                 unsigned visual=(unsigned)number((unsigned char*)payload,2);
                 if(!visual||visual>size-2)return error(r,"Invalid shaped text size");
-                payload[2+visual]=0;unsigned level=(style>>8)&7,height=INK_UI_FONT+(level?2*(7-level):0);
+                payload[2+visual]=0;unsigned level=(style>>8)&7,height=INK_UI_FONT;
                 text(frame,x,y,payload+2,cell,height,style|(level?INK_BOLD:0));
             } else {
                 char payload[513];
                 if(size>512||cell>100||fread(payload,1,(size_t)size,r->draw)!=size) return error(r,"Invalid text run");
-                payload[size]=0; unsigned level=(style>>8)&7,height=INK_UI_FONT+(level?2*(7-level):0);
+                payload[size]=0; unsigned level=(style>>8)&7,height=INK_UI_FONT;
                 text(frame,x,y,payload,cell,height,style|(level?INK_BOLD:0));
             }
             at+=size;

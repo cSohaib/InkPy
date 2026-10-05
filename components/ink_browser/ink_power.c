@@ -1,21 +1,7 @@
 #include "ink_power.h"
-void ink_power_page(ink_power *p,int direction)
-{
-    if(!p->view) return;
-    if(direction>0&&p->font_first+8<p->font_count) p->font_first+=8;
-    else if(direction<0&&p->font_first>=8) p->font_first-=8;
-}
 int ink_power_tap(ink_power *p,unsigned x,unsigned y)
 {
     if(x<8||x>=472) return INK_POWER_NONE;
-    if(p->view) {
-        if(y>=96&&y<608) {
-            unsigned i=p->font_first+(y-96)/64;
-            if(i<p->font_count) { p->font_choice=i; return INK_POWER_FONT_SELECT; }
-        }
-        if(y>=624&&y<688) p->view=0;
-        return INK_POWER_NONE;
-    }
     p->message[0]=0;
     if(y>=96&&y<288) {
         unsigned *value=y<192?&p->brightness:&p->warmth;
@@ -27,7 +13,7 @@ int ink_power_tap(ink_power *p,unsigned x,unsigned y)
     }
     if(y>=304&&y<456) {
         unsigned col=(x-8)/155;
-        if(col==0) { p->view=1;p->font_first=0;return INK_POWER_FONTS; }
+        if(col==0) { p->open=false;return INK_POWER_DICTIONARY; }
         if(col==1) { p->open=false;return INK_POWER_REFRESH; }
         p->night=!p->night;
     }

@@ -76,8 +76,8 @@ static void bytes(Layout *l,FILE *f,const void *p,size_t n)
 { if (fwrite(p,1,n,f)!=n) fail(l,"cache write failed",l->position); }
 static void number(Layout *l,FILE *f,uint64_t v,unsigned n)
 { unsigned char p[8]; for (unsigned i=0;i<n;++i) { p[i]=(unsigned char)v; v>>=8; } bytes(l,f,p,n); }
-static unsigned pixels(const Layout *l) { return l->cfg.font_pixels+(l->head?2*(7-l->head):0); }
-static unsigned cell_width(const Layout *l) { return (pixels(l)*62+99)/100; }
+static unsigned pixels(const Layout *l) { return l->cfg.font_pixels; }
+static unsigned cell_width(const Layout *l) { return (pixels(l)*53+99)/100; }
 static unsigned row_height(const Layout *l) { return pixels(l)+8; }
 static unsigned style(const Layout *l)
 { return (l->bold?INK_BOLD:0)|(l->italic?INK_ITALIC:0)|(l->code?INK_CODE:0)|(l->literal?INK_LITERAL:0)|(l->math?INK_MATH:0)|(l->image?INK_IMAGE:0)|(l->head<<8); }

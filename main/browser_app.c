@@ -71,10 +71,36 @@ static ink_console console;
 static bool editor_active,console_active,python_started,paused,closed,home_requested;
 static ink_power power_menu={.brightness=20,.warmth=50};
 static bool full_refresh;
-static void font_names(void)
+static bool dictionary_active,dictionary_input;
+static ink_keyboard lookup_keyboard;
+static ink_reader lookup_popup;
+static void lookup_submit(void)
 {
-    power_menu.font_count=ink_font_count();
-    for(unsigned i=0;i<8;i++) snprintf(power_menu.font_names[i],96,"%s",ink_font_name(power_menu.font_first+i));
+    lookup_popup.dictionary=&dictionary;
+    lookup_popup.view=INK_READER_DEFINITION;
+    lookup_popup.error[0]=0;
+    dictionary_input=false;
+    loading_begin();ink_dict_lookup(&dictionary,lookup_popup.word);loading_end();
+}
+static void lookup_tap(unsigned x,unsigned y)
+{
+    if(!dictionary_input) {
+        loading_begin();ink_reader_tap(&lookup_popup,x,y);loading_end();
+        if(lookup_popup.view==INK_READER_PAGE)dictionary_input=true;
+        if(lookup_popup.view==INK_READER_DEFINITION&&!lookup_popup.word[0])dictionary_input=true;
+        return;
+    }
+    if(y>=712) {
+        lookup_popup.view=INK_READER_DICTIONARIES;lookup_popup.dictionary=&dictionary;
+        ink_dict_catalog(&dictionary,0);dictionary_input=false;return;
+    }
+    int key=ink_keyboard_tap(&lookup_keyboard,x,y);
+    size_t n=strlen(lookup_popup.word);
+    if(key==INK_KEY_ENTER) {if(n)lookup_submit();}
+    else if(key==INK_KEY_DELETE) {if(n)lookup_popup.word[n-1]=0;}
+    else if(key>0&&key<128&&n+1<sizeof(lookup_popup.word)) {
+        lookup_popup.word[n]=(char)key;lookup_popup.word[n+1]=0;
+    }
 }
 static void power_header(void)
 {
@@ -91,16 +117,19 @@ static void power_action(int action)
     if(action==INK_POWER_LIGHT&&ink_light_set(power_menu.brightness,power_menu.warmth,power_menu.on)!=ESP_OK)
         strcpy(power_menu.message,"Light update failed");
     else if(action==INK_POWER_REFRESH) full_refresh=true;
-    else if(action==INK_POWER_FONTS) { ink_font_scan(); font_names(); }
-    else if(action==INK_POWER_FONT_SELECT) {
-        if(ink_font_select(power_menu.font_choice)) strcpy(power_menu.message,"Cannot load this font");
-        else { power_menu.view=0; power_menu.message[0]=0; }
+    else if(action==INK_POWER_DICTIONARY) {
+        dictionary_active=dictionary_input=true;
+        memset(&lookup_popup,0,sizeof(lookup_popup));lookup_keyboard=(ink_keyboard){0};
     }
 }
 static uint32_t milliseconds(void) { return (uint32_t)(esp_timer_get_time()/1000); }
 static void draw(uint8_t *frame)
 {
     if(power_menu.open) ink_power_draw(&power_menu,frame);
+    else if(dictionary_active) {
+        if(dictionary_input) ink_lookup_input_draw(lookup_popup.word,&lookup_keyboard,frame);
+        else ink_reader_draw(&lookup_popup,frame);
+    }
     else if(editor_active) ink_editor_draw(&editor,frame);
     else if(console_active) ink_console_draw(&console,frame);
     else if(reader_active) {
@@ -116,7 +145,7 @@ static void notice(const char *text)
 { ESP_LOGW("ui","%s",text); snprintf(browser.message,sizeof(browser.message),"%s",text); browser.view=INK_NOTICE; }
 static void open_requests(void)
 {
-    if(editor_active||console_active||reader_active) return;
+    if(dictionary_active||editor_active||console_active||reader_active) return;
     if(browser.view==INK_OPEN_MARKDOWN) {
         struct stat st;
         bool assets=!stat("/sd/inkpy/math",&st)&&S_ISDIR(st.st_mode);
@@ -151,7 +180,7 @@ static void open_requests(void)
 static void home(bool long_press)
 {
     if(long_press) {
-        power_menu.open=false; power_menu.view=0;
+        power_menu.open=false; dictionary_active=false;
         if(reader_active) { ink_reader_close(&reader); reader_active=false; }
         if(editor_active) { ink_editor_discard(&editor); editor_active=false; }
         if(console_active) {
@@ -159,7 +188,12 @@ static void home(bool long_press)
         } else ink_browser_root(&browser);
         return;
     }
-    if(power_menu.open) { if(power_menu.view) power_menu.view=0; else power_menu.open=false; }
+    if(power_menu.open) power_menu.open=false;
+    else if(dictionary_active) {
+        if(dictionary_input)dictionary_active=false;
+        else if(lookup_popup.view==INK_READER_DICTIONARIES)lookup_popup.view=INK_READER_DEFINITION;
+        else dictionary_input=true;
+    }
     else if(reader_active) ink_reader_home(&reader);
     else if(console_active) ink_python_worker_home(&python,long_press);
     else if(editor_active) {
@@ -172,7 +206,8 @@ static bool dispatch(const ink_event *event)
     switch(event->kind) {
     case INK_EVENT_PREV: case INK_EVENT_NEXT:
         if(event->press!=INK_PRESS_SHORT) return false;
-        if(power_menu.open) { ink_power_page(&power_menu,event->kind==INK_EVENT_PREV?-1:1); font_names(); return true; }
+        if(power_menu.open) return true;
+        if(dictionary_active) {if(!dictionary_input)ink_reader_page(&lookup_popup,event->kind==INK_EVENT_PREV?-1:1);return true;}
         if(editor_active) ink_editor_page(&editor,event->kind==INK_EVENT_PREV?-1:1);
         else if(reader_active){loading_begin();ink_reader_page(&reader,event->kind==INK_EVENT_PREV?-1:1);loading_end();if(ink_epub_cancelled())home(true);}
         else if(console_active) ink_python_worker_page(&python,event->kind==INK_EVENT_PREV?-1:1);
@@ -182,16 +217,17 @@ static bool dispatch(const ink_event *event)
     case INK_EVENT_TOUCH:
         if(event->x>=800||event->y>=480) return false;
         ink_panel_to_ui(event->x,event->y,&x,&y);
-        if(reader_active&&!power_menu.open&&reader.view==INK_READER_PAGE&&reader.landscape) {
+        if(reader_active&&!power_menu.open&&!dictionary_active&&reader.view==INK_READER_PAGE&&reader.landscape) {
             x=event->x; y=event->y;
         }
         if(event->press==INK_PRESS_LONG) {
-            if(!power_menu.open&&!editor_active&&!console_active&&!reader_active) return ink_browser_long_press(&browser,x,y);
+            if(!power_menu.open&&!dictionary_active&&!editor_active&&!console_active&&!reader_active) return ink_browser_long_press(&browser,x,y);
             return false;
         }
         if(power_menu.open) {
             power_action(ink_power_tap(&power_menu,x,y));
-        } else if(editor_active) {
+        } else if(dictionary_active) lookup_tap(x,y);
+        else if(editor_active) {
             if(ink_editor_tap(&editor,x,y)) { editor_active=false; ink_browser_home(&browser); }
         } else if(reader_active) {
             loading_begin();int action=ink_reader_tap(&reader,x,y);
@@ -207,7 +243,7 @@ static bool dispatch(const ink_event *event)
         return true;
     case INK_EVENT_POWER:
         if(event->press==INK_PRESS_SHORT) {
-            power_menu.open=!power_menu.open; power_menu.view=0; power_menu.message[0]=0;
+            power_menu.open=!power_menu.open; power_menu.message[0]=0;
             if(power_menu.open) {
                 power_header();
             }

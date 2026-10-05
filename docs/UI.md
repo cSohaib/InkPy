@@ -142,3 +142,9 @@ Markdown still uses H2 headings. PNG/JPEG images use formula-like bitmap runs.
 Stage 38: EPUB reader menu is Chapters / Rotate / Exit / Back. No page counter
 or Go to page for EPUB. Uncached work shows an hourglass/phase; long Home can
 cancel it. Cached screen turns remain normal differential updates.
+Stage 43 supersedes historical font-picker descriptions below: one bundled text
+font, fixed normal height 26 and cell width 14. Power tiles are AZ dictionary,
+refresh and contrast. Dictionary input uses the existing keyboard; Enter looks
+up the word, bottom AZ changes dictionary. Results reuse reader popup/paging;
+Home returns to input, then the underlying app. Long Home still discards/kills
+and returns to the browser root. Headings use the same text size with emphasis.

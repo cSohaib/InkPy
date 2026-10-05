@@ -3,11 +3,11 @@
 Minimal firmware exclusively for the Xteink X4 Pro. The device browser, text
 editor, MicroPython console/script execution and Markdown reader with inline/display
 math now compile together into an ESP32-S3 application image. Stage 31 math and the Stage 32 AI Python script are confirmed working on-device;
-Stage 41 adds reader-only Arabic shaping and per-line mixed-direction layout,
-following Stage 40 justification and expanded math notation; new firmware
-needs device testing. See [the checkpoint](docs/CHECKPOINT.md)
+Arabic reader rendering is confirmed on-device. Stage 43 removes selectable
+fonts, tightens the bundled text grid and adds Power-menu dictionary input;
+this stage needs device testing. See [the checkpoint](docs/CHECKPOINT.md)
 and [downloaded firmware version](docs/FIRMWARE.md). Stage 25 includes StarDict,
-Unicode fonts/selection, differential refresh, Power controls and Python SD
+Bundled Unicode text, differential refresh, Power controls and Python SD
 files/imports plus Wi-Fi/HTTP. Basic EPUB support is now integrated. This exploratory build is
 ready for physical testing; source/build checks do not establish hardware behavior.
 
@@ -17,7 +17,7 @@ ready for physical testing; source/build checks do not establish hardware behavi
 - MicroPython: run .py files and use an interactive onscreen Python console.
 - Closing the console stops its script; manual sleep suspends it until wake.
   No script runtime limit. Sub-minute scripts are the expected workload, not a timeout.
-- Fonts and StarDict tap-word lookup.
+- One bundled Unicode font, fixed text size; StarDict tap-word and typed lookup.
 - Files supplied through microSD. Wi-Fi may be used by Python.
 - One fixed theme with night inversion, one UI language with hardcoded text, one keyboard layout, and the small power menu defined below.
 - EPUB with actual TOC chapters, shared Markdown rendering and images; publisher styling ignored.

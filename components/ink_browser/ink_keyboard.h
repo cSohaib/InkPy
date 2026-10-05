@@ -6,3 +6,4 @@ typedef struct { bool shift,symbols; } ink_keyboard;
 /* ASCII character or control code, zero for unused cells. One fixed English layout. */
 int ink_keyboard_key(const ink_keyboard *k,unsigned row,unsigned column);
 int ink_keyboard_tap(ink_keyboard *k,unsigned x,unsigned y);
+void ink_lookup_input_draw(const char *word,const ink_keyboard *keyboard,unsigned char frame[48000]);

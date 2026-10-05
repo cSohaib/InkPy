@@ -1,4 +1,4 @@
-# Stage 42 UTF-8 SD filenames firmware
+# Stage 43 bundled text and typed dictionary firmware
 
 The feature set is integrated: browser/text/editor, Python console/scripts,
 Markdown/math, StarDict, Unicode fonts/selection, Power controls and differential
@@ -8,12 +8,14 @@ worked on-device. Stage 30 input(), JSON and sleep/wake are also confirmed on-de
 Stage 31 math and Stage 32 AI script are now confirmed working on-device.
 Stage 41 Arabic, Stage 40 justification/math and earlier reader/UI changes are
 build/host checked; device testing is pending. Stage 34 Power uses two light rows plus
-font/refresh/contrast tiles; only Python inkpy.set_time changes the clock.
+dictionary/refresh/contrast tiles; only Python inkpy.set_time changes the clock.
 
-Stage 42 enables UTF-8 FatFs paths for Arabic/non-ASCII filenames. Filename
-display remains unchanged. User reports Stage 41 Arabic still separated/LTR
-on-device; this remains unresolved despite passing host reader tests. A failing
-document is needed. This build contains reader-only Arabic shaping: each line uses its first
+Arabic is confirmed working on-device; the earlier report used an old download.
+Stage 43 removes SD font loading/selection and uses one bundled Unicode font.
+Normal text retains its 26-pixel height with a tighter 14-pixel grid (33 columns).
+Power's AZ tile opens keyboard lookup and definition/dictionary selection.
+Unchanged dictionary decompression/order caches are reused across reopen/reboot.
+This build contains reader-only Arabic shaping: each line uses its first
 logical letter to choose RTL (Arabic) or LTR (Latin/no letters), while preserving
 mixed Latin/numbers and original words for dictionary lookup. The bundled font
 supports Arabic; no new SD files are needed. Fixed-cell typography remains.
@@ -31,8 +33,7 @@ was performed here; other generated build outputs are not supplied for installat
 
 Extract inkpy-sd-resources.zip and copy its inkpy folder onto the microSD root.
 Math fonts belong at inkpy/math/fonts/; missing assets preserve formula source.
-The bundled text font needs no SD assets. Optional text fonts: SD-root fonts/ and family subfolders (TTF or
-TrueType-outline OTF; cpfont and CFF OTF unsupported).
+The bundled text font needs no SD assets; fonts/ is no longer scanned or used.
 StarDict companions: dictionaries/, supplied by the user. Resources include font
 licences/hash manifest. TrueType outlines work; CFF OTF faces are unsupported.
 Python API: [PYTHON-DEVICE.md](PYTHON-DEVICE.md).
@@ -50,10 +51,10 @@ initialization, which Stage 30 simplifies.
 - ESP-IDF v5.5.5: b774170ff46c393eeb5e495ea37936038d3f4f4f, pinned submodules.
 - Xtensa GCC 14.2.0, esp-14.2.0_20260121; ESP32-S3, 16 MiB DIO.
 - Browser ON, diagnostics OFF; 32 KiB main stack.
-- Application: 2,729,536 bytes; slot 8,257,536 bytes.
-- SHA-256: 874c9054ec0837120d10571345f19ed278a9653d4ca98d5b16b800543fd8c379.
+- Application: 2,728,224 bytes; slot 8,257,536 bytes.
+- SHA-256: 6617b4fb50e8e7309234b27713d65695297e7a9bb6f6e1862da760383c79416b.
 - Build: bash scripts/build-browser.sh; output build-browser/firmware.bin.
-- Evidence: results/stage42/image.txt, valid esptool checksum and validation hash.
+- Evidence: results/stage43/image.txt, valid esptool checksum and validation hash.
 
 ## Physical checks and limits
 

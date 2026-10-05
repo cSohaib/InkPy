@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-enum { INK_DICT_ROWS=8,INK_DICT_LINES=16,INK_DICT_COLUMNS=24 };
+enum { INK_DICT_ROWS=8,INK_DICT_LINES=16,INK_DICT_COLUMNS=33 };
 typedef struct { char path[512],name[96]; } ink_dict_choice;
 typedef struct {
     char root[512],cache[512],selected[512],name[96],types[64],error[160];

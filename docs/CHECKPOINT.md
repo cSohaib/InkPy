@@ -1,5 +1,39 @@
 # InkPy checkpoint
 
+## Stage 43: one bundled font, denser text, Power dictionary (2026-10-05)
+
+User confirms Arabic works perfectly; prior failure used the wrong download.
+Removed SD font catalog/scan/select APIs, fallback face, Power picker state/icon,
+font-dependent EPUB keys and heap path catalog. One bundled Unicode face remains;
+math's separate formula resources are still necessary and unchanged. Text height
+stays 26; cell 17 -> 14, editor/viewer/console grid 27 -> 33 columns, dictionary
+24 -> 33 columns. Reader headings keep emphasis but use the same height. EPUB
+e43 namespace rebuilds geometry once. No proportional-layout framework added.
+
+Power's former Aa tile is AZ: opens keyboard query, Enter submits, bottom AZ
+opens shared dictionary picker. Definition/picker/paging reuse reader drawing
+and dictionary APIs through a separate zero-page popup; underlying app state is
+kept. Home returns to input then app; long Home still discards/kills/goes root.
+Keyboard input queues remain unchanged. Font rendering means rasterizing the
+one bundled face, not allowing font selection; host bitmap fallback is test-only.
+
+CrossPoint reference inspected: https://github.com/crosspoint-reader/crosspoint-reader/blob/develop/docs/dictionary.md
+describes persistent .qidx/.sidx sidecars. InkPy already has fixed-width SD ordinal
+indexes and binary search, so no source copied/dependency added. Reuse existing
+decompressed data/ordinal caches using source path/size/mtime signature; rebuild
+on change/missing/truncated ordinal. Signature published after successful setup.
+Same-size changes with unchanged mtime and undetected cache corruption remain
+ordinary cache limits. Source dictionaries are read-only; RAM stays bounded.
+
+Checks: native build/image validation; Arabic reader both orientations/tap,
+justification/64 formulas, StarDict formats/aliases/errors plus reuse/truncation/
+invalidation regressions; Power/input/font UI and visual preview. Evidence:
+results/stage43. App 2,728,224 bytes; SHA-256
+6617b4fb50e8e7309234b27713d65695297e7a9bb6f6e1862da760383c79416b.
+No physical test here. Unrelated Python script changes on remote preserved;
+local prototypes/python/run.sh mode untouched. Next: user tests spacing and
+typed lookup, including Power overlay while Python/editor/reader active.
+
 ## Stage 42: UTF-8 SD filenames; Arabic report unresolved (2026-10-05)
 
 User reports reader Arabic still separated/LTR, missing Arabic-named EPUBs copied

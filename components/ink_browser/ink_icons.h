@@ -2,7 +2,7 @@
 #include <stdint.h>
 /* Monochrome line icons in a 32-unit grid. Sizes are fixed at their call sites. */
 enum { ICON_ADD,ICON_CONSOLE,ICON_ERROR,ICON_BULB,ICON_BULB_ON,ICON_WARM,ICON_CONTRAST,
- ICON_ROTATE,ICON_FONT,ICON_REFRESH,ICON_CLOSE,ICON_SAVE,ICON_DISCARD,ICON_BACK,
+ ICON_ROTATE,ICON_REFRESH,ICON_CLOSE,ICON_SAVE,ICON_DISCARD,ICON_BACK,
  ICON_PLAY,ICON_EDIT,ICON_CHAPTER,ICON_PAGE,ICON_DICT,ICON_STOP,ICON_ENTER,
  ICON_DELETE,ICON_SHIFT,ICON_SPACE,ICON_TAB,ICON_EXIT,ICON_FOLDER,ICON_FILE,ICON_TRASH,ICON_WAIT };
 typedef void (*ink_icon_pixel)(uint8_t *,unsigned,unsigned);
@@ -30,13 +30,6 @@ static inline void ink_icon_size(uint8_t *f,unsigned x,unsigned y,unsigned kind,
  case ICON_WARM:R(13,2,19,23);L(16,7,16,24);R(10,23,22,29);L(22,5,26,5);L(22,11,26,11);L(22,17,26,17);break;
  case ICON_CONTRAST:C(13,0);for(unsigned i=0;i<size/2;i++)for(unsigned j=0;j<size;j++){int dx=(int)i-(int)size/2,dy=(int)j-(int)size/2,r=13*(int)size/32;if(dx*dx+dy*dy<=r*r)p(f,x+i,y+j);}break;
  case ICON_ROTATE:R(5,3,17,23);L(22,8,29,8);L(29,8,29,26);L(24,21,29,26);L(29,26,31,21);break;
- case ICON_FONT: {
-  /* Aa glyphs from the bundled bitmap font; see FONT-LICENSE.txt. */
-  static const uint16_t letters[2][16]={{0x0,0x0,0x0,0x10,0x28,0x28,0x28,0x28,0x44,0x7c,0x44,0x82,0x82,0x0,0x0,0x0},{0x0,0x0,0x0,0x0,0x0,0x38,0x44,0x40,0x7c,0x42,0x42,0x62,0x5c,0x0,0x0,0x0}};
-  for(unsigned row=0;row<24;row++)for(unsigned col=0;col<13;col++) {
-   if(letters[0][row*16/24]&(1u<<(col*9/13)))L(2+(int)col,4+(int)row,2+(int)col,4+(int)row);
-   if(letters[1][row*16/24]&(1u<<(col*9/13)))L(17+(int)col,4+(int)row,17+(int)col,4+(int)row);
-  }break; }
  case ICON_WAIT:L(7,3,25,3);L(7,29,25,29);L(8,4,8,9);L(24,4,24,9);L(8,9,24,23);L(24,9,8,23);L(8,23,8,28);L(24,23,24,28);L(12,26,20,26);break;
  case ICON_REFRESH:L(5,15,9,5);L(9,5,24,5);L(24,5,29,14);L(24,13,29,14);L(29,14,30,9);L(27,19,23,27);L(23,27,8,27);L(8,27,3,18);L(3,18,2,23);L(3,18,8,19);break;
  case ICON_DISCARD:L(2,2,30,30);L(2,30,30,2); /* fall through */
