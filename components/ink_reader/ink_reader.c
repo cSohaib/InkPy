@@ -219,7 +219,7 @@ static int epub_open(ink_reader *r,const char *source,ink_layout_math math,void 
     char font_path[640];snprintf(font_path,sizeof(font_path),"/sd/fonts/%s",font);
     if(!stat(font_path,&st)){key=hash_bytes(key,&st.st_size,sizeof(st.st_size));key=hash_bytes(key,&st.st_mtime,sizeof(st.st_mtime));}
 #endif
-    int n=snprintf(r->book_cache,sizeof(r->book_cache),"%s/e39-%016llx",r->cache,(unsigned long long)key);
+    int n=snprintf(r->book_cache,sizeof(r->book_cache),"%s/e40-%016llx",r->cache,(unsigned long long)key);
     if(n<0||(size_t)n>=sizeof(r->book_cache))return error(r,"EPUB cache path too long");
     if(mkdir(r->book_cache,0700)&&errno!=EEXIST)return error(r,"Cannot create EPUB cache");
     char p[640];snprintf(p,sizeof(p),"%s/ready",r->book_cache);

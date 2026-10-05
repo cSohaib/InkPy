@@ -1,5 +1,17 @@
 # Stage 6: text and math together
 
+Current Stage 40 behavior: EPUB and Markdown automatically justify wrapped prose;
+paragraph-final and explicit-break lines stay naturally aligned. Headings, code,
+display formulas and table alignment do not stretch. Fixed monospaced text metrics
+remain; no alignment setting was added.
+
+The requested Greek, comparison, arithmetic, function, accent, set/logic, arrow,
+dot/product and common-variant commands now pass native preflight. matrix, bmatrix
+and vmatrix join pmatrix/aligned/cases. Every requested command is exercised in
+fixtures/markdown-math-expanded.md (64 formulas, zero fallback in both orientations).
+Existing math size/complexity budgets and unsupported-source fallback remain.
+No new SD fonts or dependencies. Check: prototypes/reader/test-justify.py.
+
 The host reader now composes native math bitmaps alongside Markdown text.
 Inline math is an indivisible line item with baseline and size; display math gets
 its own centered line. This connects the existing MicroTeX renderer to the C

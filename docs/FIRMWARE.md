@@ -1,4 +1,4 @@
-# Stage 39 EPUB fixes firmware
+# Stage 40 justification and math firmware
 
 The feature set is integrated: browser/text/editor, Python console/scripts,
 Markdown/math, StarDict, Unicode fonts/selection, Power controls and differential
@@ -6,15 +6,16 @@ refresh, EPUB chapters and raster images. The user tested an earlier image on an
 X4 Pro; Stage 27 boots on that device. Stage 29 plain Markdown, TTF, Python file writes and Wi-Fi/HTTP have now
 worked on-device. Stage 30 input(), JSON and sleep/wake are also confirmed on-device.
 Stage 31 math and Stage 32 AI script are now confirmed working on-device.
-Stage 39 EPUB whitespace/stack fixes and earlier reader/UI changes are
+Stage 40 justification/math and earlier reader/UI changes are
 build/host checked; device testing is pending. Stage 34 Power uses two light rows plus
 font/refresh/contrast tiles; only Python inkpy.set_time changes the clock.
 
-This build fixes indented EPUB images/tables and reduces stack pressure during
-extraction. Loading shows only an hourglass. Temporary EPUB debugging code is
-removed. EPUB caches rebuild on the first opening after upgrading, then reuse
-normally; SD resources are unchanged. Device confirmation of the reported crashes
-is still needed. EPUB has no page-number jump; Markdown retains it.
+This build justifies wrapped EPUB/Markdown prose by default, keeping final lines
+naturally aligned. The requested math commands and matrix/bmatrix/vmatrix work
+through the existing engine. EPUB caches rebuild on first opening after upgrading,
+then reuse normally; SD resources are unchanged. Loading still shows only an
+hourglass, with no temporary EPUB debugging. Device testing of this stage is needed.
+EPUB has no page-number jump; Markdown retains it.
 
 Use the same X4 Pro application-image web installer that worked previously.
 firmware.bin is an **application-only ESP32-S3 image**, without bootloader or
@@ -42,10 +43,10 @@ initialization, which Stage 30 simplifies.
 - ESP-IDF v5.5.5: b774170ff46c393eeb5e495ea37936038d3f4f4f, pinned submodules.
 - Xtensa GCC 14.2.0, esp-14.2.0_20260121; ESP32-S3, 16 MiB DIO.
 - Browser ON, diagnostics OFF; 32 KiB main stack.
-- Application: 2,632,208 bytes; slot 8,257,536 bytes.
-- SHA-256: bb379bc4f00c0d7d5fb2084c93b4cc277c09431d456549f85a1b55a157f80b90.
+- Application: 2,632,928 bytes; slot 8,257,536 bytes.
+- SHA-256: d922933ad07132441f6281850a61b81c0f0c3257efa68d56a1ed5fe207f09eb3.
 - Build: bash scripts/build-browser.sh; output build-browser/firmware.bin.
-- Evidence: results/stage39/image.txt, valid esptool checksum and validation hash.
+- Evidence: results/stage40/image.txt, valid esptool checksum and validation hash.
 
 ## Physical checks and limits
 

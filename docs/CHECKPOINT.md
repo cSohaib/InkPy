@@ -1,5 +1,34 @@
 # InkPy checkpoint
 
+## Stage 40: default justification and expanded math (2026-10-05)
+
+User confirms Stage 39 works and requests justified EPUB/Markdown paragraphs
+plus the exact supplied math commands and matrix/bmatrix/vmatrix environments.
+Shared C layout distributes spare line width over eligible interword spaces on
+automatic wraps only. Final lines/hard breaks, headings, code, display formulas
+and table-cell alignment retain natural spacing. Existing run format, word lookup,
+fixed line buffer and continuation ABI remain unchanged; runs split at stretched
+spaces rather than adding a per-character renderer or configurable alignment.
+Inline math/images participate in width calculation. EPUB namespace e40 prevents
+old layout caches masking the change; first opening rebuilds the current document.
+
+Expanded the small preflight command/environment allowlist in ink_math.cpp.
+Pinned MicroTeX already implements all requested notation; no new dependency,
+engine patch or SD assets. Existing complexity/size limits and source fallback
+remain. fixtures/markdown-math-expanded.md exercises 64 formulas including every
+requested command and all three environments; no fallback in portrait/landscape.
+
+Checks: test-justify.py verifies filled wrapped lines, natural final lines, exact
+text, headings/code/hard breaks, mixed styles/Unicode/math and bounds. Existing
+Markdown/math, tables, stored/deflated EPUB, indented images/tables, chapter/cache
+navigation and incremental restore pass. Matrix preview inspected. Evidence:
+results/stage40. Native ESP32-S3 build, partition fit and esptool checksum/hash pass.
+Application 2,632,928 bytes; SHA-256
+d922933ad07132441f6281850a61b81c0f0c3257efa68d56a1ed5fe207f09eb3.
+No physical testing/flashing here; unrelated prototypes/python/run.sh preserved.
+Next bounded task: user tests justification and expanded math on X4 Pro, then
+reports concrete issues. Existing parser/math resource limits remain intentional.
+
 ## Stage 39: EPUB whitespace, stack relief and diagnostic removal (2026-10-04)
 
 User confirms large books now open and some images work; other books crash or

@@ -11,7 +11,8 @@ spine and contents, then imports only the current XHTML document. Screens are
 laid out on demand; one bounded parser block can produce several screens ahead.
 EPUB has no total screen count, page-number display or Go to page. Go to chapter,
 Previous/Next, dictionary lookup and reader-only rotation remain available.
-Markdown keeps its full pagination and Go to page.
+Markdown keeps its full pagination and Go to page. Both formats justify wrapped
+prose by default; final lines, headings/code and table alignment do not stretch.
 
 Converted documents, screen runs and pointer-free layout continuations survive
 Close and reboot on SD. Reopening resumes the last document/screen without

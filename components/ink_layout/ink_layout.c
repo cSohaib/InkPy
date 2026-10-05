@@ -107,9 +107,23 @@ static void open_page(Layout *l,uint64_t source)
 static unsigned item_width(Layout *l,const Cell *c) { return c->width?c->width:cell_width(l); }
 static unsigned line_width(Layout *l)
 { unsigned n=0; for (unsigned i=0;i<l->count;++i) n+=item_width(l,&l->line[i]); return n; }
-static void output_line(Layout *l,unsigned n)
+static bool word_space(const Cell *c)
+{ return !c->width && c->cp==' ' && !(c->style&(INK_CODE|INK_LITERAL|INK_MATH)); }
+static void output_line(Layout *l,unsigned n,bool wrapped)
 {
     if (!n || l->failed) return;
+    /* Only automatic prose wraps stretch. Final/hard-break lines, headings,
+     * code, display math and table-cell alignment keep their natural spacing. */
+    bool justify=wrapped&&!l->head&&!l->literal&&!l->code&&!l->table_drawing;
+    if(justify) while(n&&word_space(&l->line[n-1])) --n;
+    if(!n)return;
+    unsigned used=0,gaps=0,gap=0;
+    for(unsigned i=0;i<n;i++) {
+        used+=item_width(l,&l->line[i]);
+        if(i&&i+1<n&&word_space(&l->line[i])) ++gaps;
+    }
+    unsigned available=l->cfg.width-2*MARGIN;
+    unsigned extra=justify&&gaps&&used<available?available-used:0;
     unsigned above=pixels(l),below=0;
     for (unsigned i=0;i<n;++i) if (l->line[i].width) {
         Cell *c=&l->line[i]; if(c->baseline>above) above=c->baseline;
@@ -140,7 +154,10 @@ static void output_line(Layout *l,unsigned n)
             len=2+((c->width+7)/8)*c->height;
         } else {
             j=i;
-            while (j<n && !l->line[j].width && l->line[j].style==c->style) { len+=encode(l->line[j].cp,text+len); ++j; }
+            while (j<n && !l->line[j].width && l->line[j].style==c->style) {
+                len+=encode(l->line[j].cp,text+len); ++j;
+                if(extra&&j>1&&word_space(&l->line[j-1])) break;
+            }
         }
         number(l,l->draw,x,2); number(l,l->draw,y,2); number(l,l->draw,c->width?c->width:step,2);
         number(l,l->draw,c->width?INK_BITMAP:c->style,2); number(l,l->draw,len,4);
@@ -154,12 +171,18 @@ static void output_line(Layout *l,unsigned n)
                 bytes(l,l->draw,text,chunk); remaining-=chunk;
             }
         } else bytes(l,l->draw,text,len);
-        l->draw_bytes+=20+len; l->stats->runs++; x+=c->width?c->width:(j-i)*step; i=j;
+        l->draw_bytes+=20+len; l->stats->runs++; x+=c->width?c->width:(j-i)*step;
+        if(extra&&j>1&&word_space(&l->line[j-1])) {
+            x+=extra/gaps+(gap<extra%gaps); ++gap;
+        }
+        i=j;
     }
     l->y+=height;
 }
 static void finish_line(Layout *l)
-{ output_line(l,l->count); l->count=0; }
+{ output_line(l,l->count,false); l->count=0; }
+static void wrap_line(Layout *l)
+{ output_line(l,l->count,true); l->count=0; }
 static void paragraph(Layout *l)
 { finish_line(l); if (l->page_open) l->y+=6; }
 static void table_store(Layout *l,const Cell *cell)
@@ -191,7 +214,7 @@ static void emit(Layout *l,uint32_t cp,uint64_t source,bool preserve)
         if (!preserve) {
             for (unsigned i=l->count;i>0;--i) if (l->line[i-1].cp==' ') { cut=i; break; }
         }
-        output_line(l,cut);
+        output_line(l,cut,!preserve);
         memmove(l->line,l->line+cut,(l->count-cut)*sizeof(Cell)); l->count-=cut;
         if (!preserve && cp==' ' && !l->count) return;
     }
@@ -366,7 +389,7 @@ static void formula(Layout *l)
         return;
     }
     if(l->display_math&&!l->table_collect) paragraph(l);
-    if(!l->table_collect&&(line_width(l)+w>available || l->count==CELLS)) finish_line(l);
+    if(!l->table_collect&&(line_width(l)+w>available || l->count==CELLS)) wrap_line(l);
     if(fseeko(l->bitmaps,0,SEEK_END)) { fail(l,"bitmap spool seek failed",l->formula_source); return; }
     off_t offset=ftello(l->bitmaps);
     if(offset<0) { fail(l,"bitmap spool position failed",l->formula_source); return; }
@@ -386,7 +409,7 @@ static bool picture(Layout *l,const MD_ATTRIBUTE *src)
     if(l->cfg.render_image(resource,available,l->cfg.height-2*MARGIN-8,l->bitmap,&w,&h)||!w||w>available||!h||h>l->cfg.height-2*MARGIN-8) return false;
     bool display=!l->table_collect&&(w>pixels(l)*3||h>pixels(l)*2);
     if(display)paragraph(l);
-    if(!l->table_collect&&(line_width(l)+w>available||l->count==CELLS))finish_line(l);
+    if(!l->table_collect&&(line_width(l)+w>available||l->count==CELLS))wrap_line(l);
     if(fseeko(l->bitmaps,0,SEEK_END)) {fail(l,"image spool seek failed",l->last_source);return false;}
     off_t offset=ftello(l->bitmaps);if(offset<0){fail(l,"image spool offset failed",l->last_source);return false;}
     unsigned stride=(w+7)/8;bytes(l,l->bitmaps,l->bitmap,(size_t)stride*h);

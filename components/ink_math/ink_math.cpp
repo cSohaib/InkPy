@@ -169,7 +169,15 @@ void preflight(const char *s) {
     static constexpr const char *allowed[]={
         "bar","epsilon","mu","sigma","times","alpha","beta","gamma","leq","geq","forall","in","mathbb","nabla","infty",
         "partial","frac","sqrt","sum","int","text","mathrm","mathbf","mathcal",
-        "pm","left","right","lVert","rVert","begin","end","min","quad","lim","to"
+        "pm","left","right","lVert","rVert","begin","end","min","quad","lim","to",
+        "delta","Delta","theta","lambda","pi","rho","tau","phi","omega","Omega","varepsilon","varphi",
+        "neq","approx","equiv","sim","ll","gg","cdot","div","mp",
+        "sin","cos","tan","log","ln","exp","max",
+        "hat","tilde","vec","overline","underline","dot","ddot",
+        "notin","subset","subseteq","cup","cap","emptyset","exists","neg","land","lor",
+        "rightarrow","leftarrow","Rightarrow","Leftrightarrow","mapsto",
+        "prod","ldots","cdots","vdots","ddots",
+        "dfrac","tfrac","displaystyle","operatorname","langle","rangle","lvert","rvert"
     };
     int depth=0, commands=0, cells=0, rows=0, environments=0;
     for(size_t i=0;s[i];++i) {
@@ -194,7 +202,7 @@ void preflight(const char *s) {
         require(supported,"unsupported command; show source");
         if(command=="begin"||command=="end") {
             bool known=false;
-            for(auto name:{"{pmatrix}","{aligned}","{cases}"})
+            for(auto name:{"{matrix}","{bmatrix}","{vmatrix}","{pmatrix}","{aligned}","{cases}"})
                 if(std::strncmp(s+i,name,std::strlen(name))==0) known=true;
             require(known,"unsupported environment");
             if(command=="begin") require(++environments<=4,"too many environments");
@@ -262,5 +270,4 @@ extern "C" void ink_math_shutdown(void) {
     for(auto& e:faces) if(e.face) { FT_Done_Face(e.face); e.face=nullptr; }
     if(library) { FT_Done_FreeType(library); library=nullptr; }
 }
-
 
