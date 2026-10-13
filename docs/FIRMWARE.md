@@ -30,13 +30,25 @@ Public release v0.1.0 republishes this exact tested binary. Future rebuilds can
 change the hash through build metadata; use each release's SHA256SUMS to verify
 its downloads.
 
+## Stage46 test build (not yet device-tested)
+
+Dark waiting page, anticlockwise reader rotation, and 15-minute checkpoint
+power-off. Uses the same installation method and mathematical SD resources.
+
+- Application: 2,727,760 bytes; slot: 8,257,536 bytes.
+- SHA256: `0b7ee4708023c152c47147364083d698707ae1552df6a8844f59f83d7e25282b`.
+- Desktop checks and native image validation: `results/stage46/`.
+- Battery/USB power-off, wake gesture and unchanged screen need device confirmation.
+
 ## Limits
 
 Hardware feedback confirms the main paths on the maintainer's device, not every
 document or dictionary. EPUB compatibility is limited. Dynamic math allocations
 can exhaust memory on complex input. Ghosting may require manual Refresh screen.
-Light sleep retains SD power and is not deep sleep; current draw is unmeasured.
-Networking timeouts continue during sleep and remote connections may expire.
+Development Stage46 replaces light sleep with SD checkpoint/power-off and USB
+deep sleep. Shutdown, wake gesture, retained pixels and current draw remain
+unmeasured on hardware. Python is closed, not suspended. Public v0.1.0 still
+contains the earlier sleep behavior until a new release is published.
 Python runs with file/network access and has no script runtime timeout.
 
 Older stage reports and their pending-feature warnings remain in the development

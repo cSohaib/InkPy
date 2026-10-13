@@ -30,6 +30,9 @@ esp_err_t ink_display_frame(const uint8_t frame[48000]);
 esp_err_t ink_display_update(const uint8_t frame[48000],bool full);
 esp_err_t ink_display_sleep(void); /* Preserve physical pixels; next draw reinitializes RAM. */
 
-/* Blocks the diagnostic task in state-preserving light sleep until one Power
- * press. Future Python integration MUST quiesce VM/storage/network first. */
+/* Flush/close storage owners first. Power off on battery; deep sleep on USB. */
 esp_err_t ink_sleep(void);
+void ink_power_released(void);
+esp_err_t ink_sd_unmount(void);
+/* Seed controller OLD/NEW RAM with retained pixels, without a screen update. */
+esp_err_t ink_display_restore(const uint8_t frame[48000]);

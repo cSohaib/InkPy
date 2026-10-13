@@ -40,6 +40,16 @@ int main(int argc,char **argv)
     snprintf(path,sizeof(path),"%s/.inkpy-reader/draw",argv[2]); struct stat st; assert(stat(path,&st));
     assert(!ink_reader_open(&r,argv[1],argv[2],NULL,NULL));
     assert(r.stats.chapters==3&&r.stats.formulas==0); assert(!ink_reader_draw(&r,frame)); ink_reader_close(&r);
+    /* Power-off restore reopens the requested Markdown screen in either orientation. */
+    for(unsigned landscape=0;landscape<2;landscape++) {
+        assert(!ink_reader_resume(&r,argv[1],argv[2],NULL,NULL,landscape,0,2));
+        assert(r.page==2&&r.landscape==(bool)landscape);assert(!ink_reader_draw(&r,frame));
+        uint8_t *expected=malloc(sizeof(frame));assert(expected);memcpy(expected,frame,sizeof(frame));
+        ink_reader_close(&r);
+        assert(!ink_reader_resume(&r,argv[1],argv[2],NULL,NULL,landscape,0,2));
+        assert(!ink_reader_draw(&r,frame)&&!memcmp(frame,expected,sizeof(frame)));
+        free(expected);ink_reader_close(&r);
+    }
     snprintf(path,sizeof(path),"%s/binary.md",argv[2]); out=fopen(path,"wb"); assert(out); fputs("text",out); fputc(0,out); fclose(out);
     assert(ink_reader_open(&r,path,argv[2],NULL,NULL)); assert(!r.draw&&!r.pages&&!r.chapters);
 #ifdef INK_USE_FONTS

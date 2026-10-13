@@ -16,6 +16,8 @@ typedef struct {
     ink_keyboard keyboard;
 } ink_editor;
 int ink_editor_open(ink_editor *e,const char *path);
+/* Reopen a flushed draft without copying or changing the original. */
+int ink_editor_resume(ink_editor *e);
 int ink_editor_key(ink_editor *e,int key);
 int ink_editor_page(ink_editor *e,int direction);
 void ink_editor_cursor(ink_editor *e,unsigned row,unsigned column);

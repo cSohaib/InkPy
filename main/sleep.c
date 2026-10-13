@@ -2,68 +2,48 @@
 #include "input.h"
 #include "pins.h"
 #include "driver/gpio.h"
+#include "driver/rtc_io.h"
 #include "esp_check.h"
-#include "esp_log.h"
 #include "esp_sleep.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-static const char *TAG = "sleep";
-
-/* Consume a held press and release bounce. A wake click has no awake action. */
-static void wait_power_released(void)
+/* Consume the entering press before cutting the battery latch or arming wake. */
+void ink_power_released(void)
 {
-    int64_t released_at = esp_timer_get_time();
-    while (esp_timer_get_time() - released_at < INK_DEBOUNCE_MS * 1000) {
-        if (!gpio_get_level(PIN_POWER)) released_at = esp_timer_get_time();
+    int64_t released_at=esp_timer_get_time();
+    while(esp_timer_get_time()-released_at<INK_DEBOUNCE_MS*1000) {
+        if(!gpio_get_level(PIN_POWER))released_at=esp_timer_get_time();
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
-
+static void hold_off(int pin,int level)
+{
+    gpio_hold_dis(pin);gpio_set_level(pin,level);
+    gpio_set_direction(pin,GPIO_MODE_OUTPUT);gpio_hold_en(pin);
+}
 esp_err_t ink_sleep(void)
 {
-    /* Product caller acknowledges VM pause, flushes editor work and pauses input
-     * capture before entry. Never suspend a task that may own driver/FS locks. */
-    ESP_RETURN_ON_ERROR(ink_display_sleep(), TAG, "panel standby");
-    ESP_RETURN_ON_ERROR(ink_light_sleep(true), TAG, "light off");
-    esp_err_t e = ink_touch_enable(false);
-    if (e != ESP_OK) goto restore;
-    /* Preserve the battery keep-alive and active-low SD power enable. Do not
-     * remount: editor/reader/Python may own open streams across light sleep. */
-    gpio_sleep_sel_dis(PIN_RAIL); gpio_sleep_sel_dis(PIN_SD_ENABLE);
-    gpio_sleep_sel_dis(PIN_POWER);
-    gpio_sleep_sel_dis(PIN_SD_CLK); gpio_sleep_sel_dis(PIN_SD_CMD);
-    gpio_sleep_sel_dis(PIN_SD_D0);
-    e = gpio_hold_en(PIN_RAIL); if(e != ESP_OK) goto restore;
-    e = gpio_hold_en(PIN_SD_ENABLE); if(e != ESP_OK) goto restore;
-    /* Finish the entering press before arming an active-low wake source. */
-    wait_power_released();
-    e = esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
-    if (e != ESP_OK) goto restore;
-    e = gpio_wakeup_enable(PIN_POWER, GPIO_INTR_LOW_LEVEL);
-    if (e != ESP_OK) goto restore;
-    e = esp_sleep_enable_gpio_wakeup();
-    if (e != ESP_OK) goto restore;
-    /* Keep flash/PSRAM supply: light sleep must preserve the in-memory state. */
-    e = esp_sleep_pd_config(ESP_PD_DOMAIN_VDDSDIO, ESP_PD_OPTION_ON);
-    if (e != ESP_OK) goto restore;
-    ESP_LOGI(TAG, "light sleep; one Power press wakes, pixels remain untouched");
-    e = esp_light_sleep_start();
-    ESP_LOGI(TAG,"light sleep returned: %s wake cause=%d",esp_err_to_name(e),(int)esp_sleep_get_wakeup_cause());
-    if (e == ESP_OK) wait_power_released();
-
-restore:
-    gpio_hold_dis(PIN_RAIL); gpio_hold_dis(PIN_SD_ENABLE);
-    gpio_wakeup_disable(PIN_POWER);
-    esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
-    esp_err_t touch = ink_touch_enable(true);
-    esp_err_t light = ink_light_sleep(false);
-    if (touch != ESP_OK) ESP_LOGW(TAG, "touch resume: %s", esp_err_to_name(touch));
-    if (light != ESP_OK) ESP_LOGW(TAG, "light resume: %s", esp_err_to_name(light));
-    if (e == ESP_OK && touch != ESP_OK) e = touch;
-    if (e == ESP_OK && light != ESP_OK) e = light;
-    ESP_LOGI(TAG, "resumed without display refresh");
-    return e;
+    /* Caller has flushed its checkpoint and closed all filesystem/VM owners. */
+    ESP_RETURN_ON_ERROR(ink_display_sleep(),"power","panel standby");
+    ESP_RETURN_ON_ERROR(ink_light_sleep(true),"power","light off");
+    ESP_RETURN_ON_ERROR(ink_touch_enable(false),"power","touch off");
+    ink_power_released();
+    ESP_RETURN_ON_ERROR(esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL),"power","wake reset");
+    ESP_RETURN_ON_ERROR(esp_sleep_enable_ext0_wakeup(PIN_POWER,0),"power","power wake");
+    rtc_gpio_pullup_en(PIN_POWER);rtc_gpio_pulldown_dis(PIN_POWER);
+    /* Prevent SD signal pins from feeding the unpowered card. */
+    int sd[]={PIN_SD_CLK,PIN_SD_CMD,PIN_SD_D0};
+    for(unsigned i=0;i<sizeof(sd)/sizeof(sd[0]);i++) {
+        gpio_set_direction(sd[i],GPIO_MODE_INPUT);gpio_set_pull_mode(sd[i],GPIO_FLOATING);
+    }
+    hold_off(PIN_COOL,0);hold_off(PIN_WARM,0);
+    hold_off(PIN_SD_ENABLE,1);hold_off(PIN_TOUCH_ENABLE,1);
+    gpio_deep_sleep_hold_en();
+    /* GPIO1 is the X4 Pro keep-alive. Battery cuts here; USB may keep the
+     * chip powered, so deep sleep below supplies the same cold-start behavior. */
+    hold_off(PIN_RAIL,0);
+    esp_deep_sleep_start();
+    return ESP_FAIL; /* deep sleep never returns */
 }
-

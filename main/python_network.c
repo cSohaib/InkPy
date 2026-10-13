@@ -18,7 +18,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 static esp_netif_t *netif;
-static bool initialized,started,suspended;
+static bool initialized,started;
 static esp_http_client_handle_t client;
 static FILE *download;
 static char temporary[544];
@@ -38,13 +38,7 @@ static void http_close(void)
     if(temporary[0]) { unlink(temporary); temporary[0]=0; }
 }
 void ink_python_network_close(void)
-{ http_close(); if(started) { esp_wifi_disconnect(); esp_wifi_stop(); started=false; } suspended=false; }
-int ink_python_network_sleep(bool sleep)
-{
-    if(sleep) { suspended=started; if(started&&esp_wifi_stop()!=ESP_OK) return EIO; }
-    else if(suspended) { suspended=false; if(esp_wifi_start()!=ESP_OK||esp_wifi_connect()!=ESP_OK) return EIO; }
-    return 0;
-}
+{ http_close(); if(started) { esp_wifi_disconnect(); esp_wifi_stop(); started=false; } }
 int ink_python_wifi(const char *ssid,const char *password)
 {
     if(!ssid[0]||strlen(ssid)>32||strlen(password)>63) return EINVAL;
@@ -70,7 +64,7 @@ int ink_python_wifi(const char *ssid,const char *password)
 int ink_python_wifi_status(char ip[16])
 {
     ip[0]=0; esp_netif_ip_info_t info;
-    if(!started||suspended||esp_netif_get_ip_info(netif,&info)!=ESP_OK||!info.ip.addr) return 0;
+    if(!started||esp_netif_get_ip_info(netif,&info)!=ESP_OK||!info.ip.addr) return 0;
     wifi_ap_record_t ap; if(esp_wifi_sta_get_ap_info(&ap)!=ESP_OK) return 0;
     snprintf(ip,16,IPSTR,IP2STR(&info.ip)); return 1;
 }

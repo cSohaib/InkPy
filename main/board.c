@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include "driver/gpio.h"
+#include "driver/rtc_io.h"
 #include "driver/i2c_master.h"
 #include "driver/ledc.h"
 #include "driver/sdmmc_host.h"
@@ -163,6 +164,8 @@ static esp_err_t rtc_read(struct tm *out)
 
 esp_err_t ink_board_init(void)
 {
+    gpio_deep_sleep_hold_dis();
+    rtc_gpio_deinit(PIN_POWER);
     i2c_lock=xSemaphoreCreateMutex();
     if(!i2c_lock) return ESP_ERR_NO_MEM;
     ESP_RETURN_ON_ERROR(output(PIN_RAIL, 1), TAG, "peripheral rail");
@@ -295,6 +298,14 @@ esp_err_t ink_sd_mount(void)
         ESP_LOGW(TAG, "SD mount attempt %u: %s", attempt + 1, esp_err_to_name(e));
     }
     free(sector);
+    return e;
+}
+
+esp_err_t ink_sd_unmount(void)
+{
+    if(!card)return ESP_OK;
+    esp_err_t e=esp_vfs_fat_sdcard_unmount("/sd",card);
+    if(e==ESP_OK)card=NULL;
     return e;
 }
 

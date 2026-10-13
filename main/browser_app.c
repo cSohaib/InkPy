@@ -3,6 +3,9 @@
 #include "orientation.h"
 #include "input_capture.h"
 #include "python_worker.h"
+#include "resume.h"
+#include <stdlib.h>
+#include <unistd.h>
 #include "ink_browser.h"
 #include "ink_editor.h"
 #include "ink_power.h"
@@ -41,7 +44,8 @@ static int render_math(const char *source,int display,unsigned pixels,uint8_t *b
     *w=(unsigned)r.width; *h=(unsigned)r.height; *baseline=(unsigned)r.baseline; return status;
 }
 static uint8_t *loading_frame;
-static bool loading;
+static ink_power power_menu={.brightness=20,.warmth=50};
+static bool loading,restoring;
 static bool loading_painted;
 static void loading_pixel(uint8_t *f,unsigned x,unsigned y)
 {
@@ -52,9 +56,10 @@ static void indexing_progress(void)
 {
     uint32_t now=(uint32_t)(esp_timer_get_time()/1000);
     if(loading){ink_event event;while(ink_capture_next(&event,0))if(event.kind==INK_EVENT_HOME&&event.press==INK_PRESS_LONG)ink_epub_cancel();}
-    if(loading&&loading_frame&&!loading_painted) {
+    if(loading&&loading_frame&&!loading_painted&&!restoring) {
         memset(loading_frame,255,PANEL_BYTES);
         ink_icon_size(loading_frame,208,336,ICON_WAIT,64,loading_pixel);
+        if(power_menu.night) for(unsigned i=0;i<PANEL_BYTES;i++) loading_frame[i]^=255;
         ink_frame_rotate_180(loading_frame);
         ink_display_update(loading_frame,false);loading_painted=true;
     }
@@ -69,7 +74,6 @@ static void loading_end(void){loading=false;}
 static ink_python_worker python;
 static ink_console console;
 static bool editor_active,console_active,python_started,paused,closed,home_requested;
-static ink_power power_menu={.brightness=20,.warmth=50};
 static bool full_refresh;
 static bool dictionary_active,dictionary_input;
 static ink_keyboard lookup_keyboard;
@@ -218,7 +222,7 @@ static bool dispatch(const ink_event *event)
         if(event->x>=800||event->y>=480) return false;
         ink_panel_to_ui(event->x,event->y,&x,&y);
         if(reader_active&&!power_menu.open&&!dictionary_active&&reader.view==INK_READER_PAGE&&reader.landscape) {
-            x=event->x; y=event->y;
+            x=799-event->x; y=479-event->y;
         }
         if(event->press==INK_PRESS_LONG) {
             if(!power_menu.open&&!dictionary_active&&!editor_active&&!console_active&&!reader_active) return ink_browser_long_press(&browser,x,y);
@@ -257,6 +261,75 @@ static bool dispatch(const ink_event *event)
     }
     return false;
 }
+static ink_resume *checkpoint;
+static bool request_power_off(void)
+{
+    if(checkpoint)return true;
+    checkpoint=heap_caps_calloc(1,sizeof(*checkpoint),MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+    if(!checkpoint){notice("Cannot save power-off state");return false;}
+    checkpoint->browser=browser;checkpoint->power=power_menu;
+    checkpoint->editing=editor_active;checkpoint->reading=reader_active;checkpoint->python=console_active;
+    if(editor_active){checkpoint->editor=editor;checkpoint->editor.work=NULL;}
+    if(reader_active) {
+        checkpoint->landscape=reader.landscape;checkpoint->document=reader.document;checkpoint->page=reader.page;
+        checkpoint->reader_view=reader.view<INK_READER_DEFINITION?reader.view:INK_READER_PAGE;
+        checkpoint->chapter_first=reader.chapter_first;memcpy(checkpoint->digits,reader.digits,sizeof(reader.digits));
+    }
+    if(console_active) {
+        ink_python_worker_snapshot(&python,&checkpoint->console,&paused,&closed,UINT32_MAX);
+        ink_python_worker_close(&python);
+    }
+    return true;
+}
+static bool restore_state(uint8_t *frame)
+{
+    ink_resume *state=heap_caps_malloc(sizeof(*state),MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+    if(!state)return false;
+    if(ink_resume_load(state,frame)){free(state);return false;}
+    browser=state->browser;power_menu=state->power;bool ok=true;
+    dictionary_active=dictionary_input=false;
+    if(browser.view==INK_FILES)ink_browser_reload(&browser);
+    restoring=true;
+    if(state->editing) {
+        editor=state->editor;editor_active=ink_editor_resume(&editor)==0;ok=editor_active;
+    } else if(state->reading) {
+        reader_active=ink_reader_resume(&reader,browser.selected,browser.root,render_math,indexing_progress,
+            state->landscape,state->document,state->page)==0;
+        ok=reader_active;
+        if(ok) {
+            reader.dictionary=&dictionary;reader.view=state->reader_view;
+            reader.chapter_first=state->chapter_first;memcpy(reader.digits,state->digits,sizeof(reader.digits));
+        } else ink_reader_close(&reader);
+    } else if(state->python) {
+        console_active=python_started=ink_python_worker_start(&python)==ESP_OK;ok=console_active;
+        if(ok) {
+            console=state->console;
+            /* History is display text only. No variables, code or input wait survives. */
+            if(console.busy||console.waiting){console.used=0;console.input[0]=0;}
+            console.busy=console.waiting=console.more=false;
+            xSemaphoreTake(python.lock,portMAX_DELAY);python.console=console;xSemaphoreGive(python.lock);
+        }
+    }
+    restoring=false;free(state);
+    if(!ok){power_menu.open=false;ink_browser_root(&browser);}
+    ink_light_set(power_menu.brightness,power_menu.warmth,power_menu.on);
+    return ok;
+}
+static esp_err_t power_off(uint8_t *frame)
+{
+    if(editor_active&&(fflush(editor.work)||fsync(fileno(editor.work))))return ESP_FAIL;
+    if(ink_resume_save(checkpoint,frame))return ESP_FAIL;
+    if(reader_active){ink_reader_close(&reader);reader_active=false;}
+    if(editor_active){fclose(editor.work);editor.work=NULL;editor_active=false;} /* Keep draft, not original. */
+    ink_dict_close(&dictionary);
+    ink_python_network_close();
+    ink_capture_pause();
+    esp_err_t e=ink_sd_unmount();
+    if(e==ESP_OK)e=ink_sleep();
+    /* Only hardware/setup errors return. Restore from the just-written checkpoint. */
+    ink_sd_mount();restore_state(frame);ink_touch_enable(true);ink_capture_resume();
+    return e;
+}
 void app_main(void)
 {
     const char *tag="browser";
@@ -272,10 +345,12 @@ void app_main(void)
     uint8_t *frame=heap_caps_malloc(PANEL_BYTES,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
     if(!frame) { ESP_LOGE(tag,"frame allocation failed"); return; }
     loading_frame=frame;
+    bool resumed=restore_state(frame);
+    ink_power_released();
     e=ink_capture_start();
     if(e!=ESP_OK) { heap_caps_free(frame); ESP_LOGE(tag,"input: %s",esp_err_to_name(e)); return; }
-    draw(frame);
-    if(ink_display_frame(frame)!=ESP_OK) { heap_caps_free(frame); return; }
+    if(!resumed)draw(frame);
+    if((resumed?ink_display_restore(frame):ink_display_frame(frame))!=ESP_OK) { heap_caps_free(frame); return; }
     e=ink_boot_confirm();
     if(e!=ESP_OK) ESP_LOGE(tag,"boot confirmation: %s",esp_err_to_name(e));
     uint32_t revision=0,last_draw=milliseconds(),sleep_at=0,last_sleep=0;
@@ -286,22 +361,23 @@ void app_main(void)
         /* Capture continues while this task draws. Drain FIFO and paint once,
          * retaining repeated keys rather than polling only between refreshes. */
         unsigned batch=0;
-        while(ink_capture_next(&event,batch?0:pdMS_TO_TICKS(10))) {
+        while(!sleep_requested&&ink_capture_next(&event,batch?0:pdMS_TO_TICKS(10))) {
             if(event.kind==INK_EVENT_POWER&&event.press==INK_PRESS_LONG) {
-                sleep_requested=true; sleep_at=milliseconds();
-                if(console_active) ink_python_worker_pause(&python,true);
+                sleep_requested=request_power_off();sleep_at=milliseconds();
+                break;
             } else dirty|=dispatch(&event);
             open_requests();
             if(++batch==256) break;
         }
+        if(sleep_requested)vTaskDelay(pdMS_TO_TICKS(10));
         uint32_t now=milliseconds();
         if(console_active) {
             uint32_t next_revision=ink_python_worker_snapshot(&python,&console,&paused,&closed,revision);
             if(next_revision!=revision) { revision=next_revision; dirty=true; }
             if(closed) {
                 ink_python_worker_release(&python); python_started=false; console_active=false;
-                if(home_requested) { ink_browser_root(&browser); home_requested=false; }
-                else ink_browser_home(&browser);
+                if(!sleep_requested&&home_requested) { ink_browser_root(&browser); home_requested=false; }
+                else if(!sleep_requested)ink_browser_home(&browser);
                 dirty=true;
             }
         }
@@ -309,29 +385,18 @@ void app_main(void)
         if(lost!=dropped) {
             ESP_LOGW(tag,"input queue overflow: %u events",lost-dropped); dropped=lost;
         }
-        if(!sleep_requested&&now-ink_capture_activity()>=300000&&now-last_sleep>=300000&&!(console_active&&console.busy)) {
-            sleep_requested=true; sleep_at=now;
-            if(console_active) ink_python_worker_pause(&python,true);
+        if(!sleep_requested&&now-ink_capture_activity()>=900000&&now-last_sleep>=900000) {
+            sleep_requested=request_power_off();sleep_at=now;
         }
         if(sleep_requested) {
-            if(!console_active||paused) {
-                if(editor_active&&fflush(editor.work)) {
-                    snprintf(editor.error,sizeof(editor.error),"Cannot flush before sleep"); dirty=true;
-                } else {
-                    ink_capture_pause();
-                    int network=ink_python_network_sleep(true);
-                    e=network?ESP_FAIL:ink_sleep(); ESP_LOGI(tag,"sleep: %s",esp_err_to_name(e));
-                    if(ink_python_network_sleep(false)) ESP_LOGW(tag,"Wi-Fi resume failed");
-                    ink_capture_resume();
-                }
-                if(console_active) ink_python_worker_pause(&python,false);
-                sleep_requested=false; last_sleep=milliseconds();
-            } else if(now-sleep_at>=5000) {
-                /* Native blocking extensions must reach a safe point. Never
-                 * suspend a task that could hold filesystem/driver locks. */
-                ink_python_worker_pause(&python,false); sleep_requested=false; last_sleep=now;
-                ESP_LOGW(tag,"Python did not acknowledge sleep; staying awake");
+            if(!console_active) {
+                e=power_off(frame);ESP_LOGW(tag,"power-off failed: %s",esp_err_to_name(e));
+                free(checkpoint);checkpoint=NULL;sleep_requested=false;last_sleep=milliseconds();dirty=true;
+            } else if(now-sleep_at>=15000) {
+                /* Never delete a task in native I/O while it owns filesystem locks. */
+                ESP_LOGW(tag,"waiting for Python I/O to close before power-off");sleep_at=now;
             }
+            continue;
         }
         if(dirty&&now-last_draw>=250) {
             draw(frame);

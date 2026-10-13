@@ -14,10 +14,12 @@ prefix = r'''
 #include <stdio.h>
 #include <stdbool.h>
 typedef int esp_err_t;
-enum { ESP_OK=0, PIN_EPD_CS, PIN_EPD_DC, INK_SSD1677, INK_UC8179, INK_UC8279 };
+enum { ESP_OK=0, ESP_ERR_INVALID_STATE=-2, PIN_EPD_CS, PIN_EPD_DC, INK_SSD1677, INK_UC8179, INK_UC8279 };
 enum { PANEL_STRIDE=100, PANEL_BYTES=48000 };
 static int spi,panel,cs,calls,fail_at;
-static uint8_t transfer[4000],received[60000];
+static bool ready=true,baseline;
+static int ssd_area(void){return 0;}
+static uint8_t transfer[4000],received[120000];
 static size_t used;
 typedef struct { size_t length; const void *tx_buffer; } spi_transaction_t;
 static esp_err_t spi_device_polling_transmit(int device,const spi_transaction_t *t) {
@@ -28,7 +30,7 @@ static esp_err_t spi_device_polling_transmit(int device,const spi_transaction_t 
     return 0;
 }
 static void gpio_set_level(int pin,int value) { if(pin==PIN_EPD_CS) cs=value; }
-static int command(uint8_t c,const uint8_t *data,size_t n) { (void)c;(void)data;assert(!n);return 0; }
+static int command(uint8_t c,const uint8_t *data,size_t n) { assert(c==0x10||c==0x13||c==0x24||c==0x26);(void)data;assert(!n);return 0; }
 #define TRY(expr) do { int e=(expr); if(e) return e; } while(0)
 '''
 suffix = r'''
@@ -51,6 +53,12 @@ int main(void) {
             assert(received[y*100+x]==expected);
         }
     }
+    for(unsigned p=0;p<3;p++) {
+        panel=panels[p];used=0;calls=0;fail_at=0;baseline=false;
+        assert(!ink_display_restore(frame)&&baseline&&cs==1);
+        assert(used==(panel==INK_SSD1677?96000u:120000u));
+    }
+    ready=false;assert(ink_display_restore(frame)==ESP_ERR_INVALID_STATE);ready=true;
     used=0;calls=0;fail_at=3;
     assert(plane(0x13,frame)==-1&&cs==1&&calls==3&&used==8000);
     puts("PASS: actual display transfer byte order/padding for all panels, 12/15 batches, failure cleanup");

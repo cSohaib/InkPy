@@ -46,13 +46,13 @@ int main(int argc,char **argv)
         assert(!ink_epub_get_chapter(r.book_cache,1,&c)&&!strcmp(c.title,"Unused title"));
         ink_reader_home(&r);assert(!ink_reader_tap(&r,48,200));assert(!ink_reader_tap(&r,48,184));
         assert(r.document==2);assert(!ink_reader_draw(&r,again));assert(!strcmp(r.title,"Second chapter"));
-        ink_reader_close(&r);ink_math_shutdown();puts("PASS: missing TOC uses document titles instead of filenames");return 0;
+        ink_reader_close(&r);puts("PASS: missing TOC uses document titles instead of filenames");return 0;
     }
     if(!strcmp(argv[4],"heavy")) {
         char body[1024];snprintf(body,sizeof(body),"%s/epub-body",r.cache);assert(!stat(body,&st)&&st.st_size>100000);
         assert(r.stats.pages<10&&r.local_stats.source_bytes<4096);
         ink_reader_page(&r,1);assert(!r.error[0]);ink_reader_page(&r,-1);assert(!r.error[0]);
-        ink_reader_close(&r);ink_math_shutdown();puts("PASS: heavy chapter has no full pagination at open; cached reopen and Next/Previous work");return 0;
+        ink_reader_close(&r);puts("PASS: heavy chapter has no full pagination at open; cached reopen and Next/Previous work");return 0;
     }
     unsigned serial=0;
     while(!(r.document==r.documents&&r.eof&&r.page==r.stats.pages)) {
@@ -78,6 +78,15 @@ int main(int argc,char **argv)
     assert(!ink_reader_open(&r,argv[1],argv[2],render,progress));assert(progress_calls==before&&r.page==page&&r.local_stats.source_bytes==bytes);
     assert(!ink_reader_rotate(&r,argv[1],argv[2],render,progress)&&r.landscape);
     screen(&r,argv[2],"landscape",1);ink_reader_home(&r);
-    assert(ink_reader_tap(&r,48,260)==INK_READER_ROTATE);ink_reader_close(&r);ink_math_shutdown();
+    assert(ink_reader_tap(&r,48,260)==INK_READER_ROTATE);ink_reader_close(&r);
+    assert(!ink_reader_resume(&r,argv[1],argv[2],render,progress,true,1,2));
+    unsigned doc=r.document,resume_page=r.page;uint8_t frame[48000];assert(!ink_reader_draw(&r,frame));
+    uint8_t *expected=malloc(sizeof(frame));assert(expected);memcpy(expected,frame,sizeof(frame));
+    ink_reader_close(&r);
+    assert(!ink_reader_resume(&r,argv[1],argv[2],render,progress,true,doc,resume_page));
+    assert(r.document==doc&&r.page==resume_page&&r.landscape);
+    assert(!ink_reader_draw(&r,frame)&&!memcmp(frame,expected,sizeof(frame)));
+    free(expected);ink_reader_close(&r);
+    ink_math_shutdown();
     puts("PASS: lazy EPUB, TOC fragments/H2 exclusion, images/math/tables, Previous/Next, persistent continuation/reopen and rotation");
 }

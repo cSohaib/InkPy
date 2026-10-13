@@ -1,5 +1,59 @@
 # InkPy checkpoint
 
+## Stage 46: dark waiting page, anticlockwise reader, checkpoint power-off (2026-10-13)
+
+Waiting hourglass now follows night mode. Reader landscape is reversed by 180
+degrees relative to its former direction; physical word taps use the inverse.
+Portrait menus and the rest of the system retain their orientation.
+
+Long Power and 15 minutes without input request power-off, including during a
+script. Python receives Close and must acknowledge file/network cleanup before
+unmount; native blocking I/O may delay shutdown. VM state is discarded. No
+product light sleep or Wi-Fi suspend/reconnect path remains. Existing diagnostic
+VM pause probes are unchanged, not a product sleep path.
+
+main/resume.c stores one checksum/size/version-checked fixed-size hidden SD
+checkpoint plus the last framebuffer. No source-sized RAM buffer or live pointer
+is restored. Browser folder/page/plain-text view, reader document/page/orientation
+and simple menus, editor working draft/cursor/keyboard, console display text and
+power/light settings reopen. Editor originals are not autosaved. Dictionary
+popups and pending Python input/running code are discarded. Restore consumes the
+checkpoint before reopening so broken source/cache files cannot repeat a restore
+loop. Missing/bad checkpoints or failed reopen return to the browser. Firmware
+schema changes must bump the checkpoint magic. Filesystem/save failures leave
+the device awake; editor drafts remain available rather than losing changes.
+
+Board shutdown waits for Power release, disables touch/light/SD, floats SD
+signals, drops GPIO1 keep-alive and enters deep sleep as the USB-powered fallback.
+Boot releases pad holds and RTC button mux; Power's wake press is consumed.
+Display startup loads saved OLD/NEW planes without issuing a refresh, so it
+can retain pixels and use partial refresh on the next interaction. Battery wake
+may require the hardware's normal power-on hold rather than a short click.
+
+Hardware reference: CrossPoint HalPowerManager.cpp at
+c17b80ab7874ea5077dfccccc637493b9605eda1 identifies X4 Pro GPIO1 as keep-alive;
+its retained-latch sleep intentionally avoids cold boots. InkPy now intentionally
+releases it for power-off; no source copied. ESP-IDF v5.5.5 esp_sleep.h/rtc_io.h
+supply S3 EXT0 Power wake (GPIO3). Reference:
+https://github.com/crosspoint-reader/crosspoint-reader/blob/c17b80ab7874ea5077dfccccc637493b9605eda1/lib/hal/HalPowerManager.cpp
+
+Checks: dark-frame exact inversion, physical landscape tap/draw agreement,
+checkpoint corruption/truncation/rename recovery, draft reopen/edit/save without
+original writes; 8 MiB editor tests; Markdown/Arabic/deflated EPUB renderer and
+position restore; native Python files/JSON/clock/abort/reopen; publication and
+whitespace. Native build and application-image validation pass. Evidence:
+results/stage46/checks.txt and image.txt. App 2,727,760 bytes, slot 8,257,536;
+SHA256 0b7ee4708023c152c47147364083d698707ae1552df6a8844f59f83d7e25282b.
+
+No hardware result is claimed. Public v0.1.0 remains the tested Stage43 binary;
+Stage46 is a separate test download, with existing math SD assets. Restored
+Markdown may rebuild its index before accepting input; the retained screen is
+not repainted during that work. No new snapshot/VM architecture beyond this one
+fixed record. Unrelated prototypes/python/run.sh mode change preserved.
+Next: battery and USB shutdown/wake, editor draft, running/input() Python killed,
+reader position/rotation and first page turn after wake; measure standby drain.
+Pause here pending those device results.
+
 ## Stage 45: README wording and Dependabot maintenance (2026-10-05)
 
 Removed the requested introductory font/size phrase and Arabic feature bullet

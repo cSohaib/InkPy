@@ -22,6 +22,7 @@ typedef struct {
 } ink_reader;
 /* One owner/session; source is never written. Disposable indexes live on SD. */
 int ink_reader_open(ink_reader *r,const char *source,const char *root,ink_layout_math math,void (*progress)(void));
+int ink_reader_resume(ink_reader *r,const char *source,const char *root,ink_layout_math math,void (*progress)(void),bool landscape,unsigned document,unsigned page);
 void ink_reader_close(ink_reader *r);
 bool ink_reader_page(ink_reader *r,int direction);
 void ink_reader_home(ink_reader *r);

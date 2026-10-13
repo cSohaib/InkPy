@@ -305,6 +305,17 @@ static int open_book(ink_reader *r,const char *source,const char *root,ink_layou
 }
 int ink_reader_open(ink_reader *r,const char *source,const char *root,ink_layout_math math,void (*progress)(void))
 { return open_book(r,source,root,math,progress,false); }
+int ink_reader_resume(ink_reader *r,const char *source,const char *root,ink_layout_math math,void (*progress)(void),bool landscape,unsigned document,unsigned page)
+{
+    if(open_book(r,source,root,math,progress,landscape))return -1;
+    if(r->epub) {
+        if(!document||document>r->documents)return error(r,"Invalid resume chapter");
+        if(document!=r->document&&load_document(r,document))return -1;
+        if(page&&extend(r,page))return -1;
+    }
+    if(page&&page<=r->stats.pages)r->page=page;
+    return 0;
+}
 int ink_reader_rotate(ink_reader *r,const char *source,const char *root,ink_layout_math math,void (*progress)(void))
 {
     unsigned document=r->document;bool epub=r->epub;
@@ -526,7 +537,7 @@ static void pixel(uint8_t *f,unsigned x,unsigned y)
 {
     bool landscape=drawing&&drawing->view==INK_READER_PAGE&&drawing->landscape;
     if(x>=(landscape?800u:480u)||y>=(landscape?480u:800u)) return;
-    unsigned dx=landscape?799-x:799-y,dy=landscape?479-y:x;
+    unsigned dx=landscape?x:799-y,dy=landscape?y:x;
     f[dy*100+dx/8]&=(uint8_t)~(0x80>>(dx%8));
 }
 static void text(uint8_t *f,unsigned x,unsigned y,const char *s,unsigned cell,unsigned height,unsigned style)

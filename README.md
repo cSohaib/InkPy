@@ -68,8 +68,11 @@ Side buttons turn pages. Touch swipes are not used.
 Home opens the current app's menu. In the editor, this is where you save or discard.
 **Long Home discards changes, stops Python, and returns home.** Short Power opens
 brightness, warmth, dictionary, refresh, and contrast controls. Double Power toggles
-the light; long Power sleeps. Short Power wakes. Sleep preserves app state and
-pauses Python; closing the console ends its running process. Scripts have no fixed
+the light; long Power saves state and powers off. After 15 minutes without input,
+InkPy does the same automatically, including while Python is running. Power-on
+restores reading position, editor drafts, console text, and display/light settings;
+Python processes and variables are discarded. The e-ink image stays unchanged.
+Closing the console also ends its running process. Scripts have no fixed
 runtime timeout, but short scripts suit this device best.
 
 ### Dictionaries

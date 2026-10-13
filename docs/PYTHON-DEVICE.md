@@ -17,8 +17,7 @@ firmware caches are excluded. os/uos: getcwd/chdir/listdir/mkdir/rmdir/remove/re
 stat. FatFs rename does not overwrite. Binary files can be opened in Python.
 io/json/sys/gc/math/core builtins are present; time has sleep(seconds)/ticks_ms().
 Built-in input(prompt) waits for a complete keyboard line and returns a string
-on Enter (including an empty string). Stop/Close interrupt the wait; manual sleep
-preserves the pending line. No script arguments are supplied.
+on Enter (including an empty string). Stop/Close and power-off interrupt the wait. No script arguments are supplied.
 This custom port does not supply socket, machine or threading bindings.
 The standard json.load/loads/dump/dumps API is reserved: SD json.py/json/ cannot
 override it.
@@ -49,10 +48,11 @@ HTTPS checks hostname/certificates against IDF's bundled roots; set current time
 in Power first. No insecure bypass, Wi-Fi settings UI, cloud/sync/NTP/transfer server.
 Credentials stay in RAM; scripts may store their own on SD.
 
-Polls for Stop/Close/sleep occur between native calls; socket timeouts are 500ms.
-SDK DNS/handshake timing can delay a safe point. Sleep stops Wi-Fi after VM pause,
-wake reconnects before resume. Remote deadlines continue during pause, so requests
-may fail; catch OSError and retry when appropriate.
+Polls for Stop/Close occur between native calls; socket timeouts are 500ms.
+SDK DNS/handshake timing can delay shutdown until a safe point. Long Power and
+15 minutes without input close Python and Wi-Fi before power-off. Power-on starts
+a fresh interpreter with retained console text; variables, running code, unfinished
+input() and network connections do not survive.
 
 Host check: bash scripts/test-python-native.sh reuses device-generated headers.
 Files/imports/JSON/Unicode and abort/reopen cleanup are tested; network is deliberately
@@ -67,7 +67,7 @@ connect with inkpy.wifi. Device testing of input and JSON correction is pending.
 
 Close completes VM/files/network cleanup, then the UI releases the worker task,
 heap and mutex. Opening Python starts a fresh worker. Stop still resets the VM
-inside the active console; sleep retains it. Snapshot polling copies console
+inside the active console; power-off closes it. Snapshot polling copies console
 content only when its revision changes. Repeated Close/reopen and sleep after
 this change require physical retesting. Stage 32 AI script is confirmed working
 on-device by the user before this resource-lifetime change.

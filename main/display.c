@@ -229,6 +229,17 @@ static esp_err_t plane(uint8_t c, const uint8_t *frame)
     return e;
 }
 
+esp_err_t ink_display_restore(const uint8_t frame[PANEL_BYTES])
+{
+    if(!ready)return ESP_ERR_INVALID_STATE;
+    /* No refresh command: the retained physical image stays untouched. */
+    if(panel==INK_SSD1677) {
+        TRY(ssd_area());TRY(plane(0x24,frame));TRY(plane(0x26,frame));
+    } else {TRY(plane(0x13,frame));TRY(plane(0x10,frame));}
+    baseline=true;
+    return ESP_OK;
+}
+
 esp_err_t ink_display_update(const uint8_t frame[PANEL_BYTES], bool full)
 {
     if (!ready) return ESP_ERR_INVALID_STATE;

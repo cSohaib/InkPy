@@ -31,7 +31,7 @@ if(INKPY_BROWSER)
     list(APPEND extra_requires ink_reader ink_math)
     set(app_source "browser_app.c")
     list(APPEND extra_sources "../components/ink_browser/ink_browser.c" "../components/ink_browser/browser_draw.c" "../components/ink_browser/ink_text.c" "../components/ink_browser/ink_keyboard.c")
-    list(APPEND extra_sources "../components/ink_browser/ink_editor.c" "../components/ink_browser/ink_power.c" "boot.c" "input_events.c" "input_capture.c")
+    list(APPEND extra_sources "../components/ink_browser/ink_editor.c" "../components/ink_browser/ink_power.c" "boot.c" "input_events.c" "input_capture.c" "resume.c")
 endif()
 idf_component_register(SRCS ${app_source} "board.c" "display.c" "input.c" "sleep.c" ${extra_sources}
     INCLUDE_DIRS "." "../components/ink_browser"

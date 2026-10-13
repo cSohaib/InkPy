@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 enum { GAP=4096 };
 static int error(ink_editor *e,const char *message)
 { snprintf(e->error,sizeof(e->error),"%s",message); return -1; }
@@ -135,6 +136,20 @@ int ink_editor_open(ink_editor *e,const char *path)
     if(!bad && (fflush(e->work) || ftruncate(fd,(off_t)(e->size+GAP)))) bad=true;
     if(bad) { ink_editor_discard(e); return error(e,"Invalid text or copy failed"); }
     if(layout(e,0)) { ink_editor_discard(e); return -1; }
+    return 0;
+}
+int ink_editor_resume(ink_editor *e)
+{
+    e->work=NULL;
+    if(!memchr(e->path,0,sizeof(e->path))||!memchr(e->temporary,0,sizeof(e->temporary))||
+        e->gap_start>e->size||e->gap_end<e->gap_start||e->offset>e->size)
+        return error(e,"Invalid editor checkpoint");
+    e->work=fopen(e->temporary,"r+b");
+    if(!e->work)return error(e,"Cannot restore draft");
+    struct stat st;
+    if(fstat(fileno(e->work),&st)||(uint64_t)st.st_size!=e->size+e->gap_end-e->gap_start||layout(e,e->offset)) {
+        fclose(e->work);e->work=NULL;return error(e,"Invalid draft");
+    }
     return 0;
 }
 void ink_editor_cursor(ink_editor *e,unsigned row,unsigned column)

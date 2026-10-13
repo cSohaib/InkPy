@@ -76,24 +76,31 @@ Console history needs SD-backed paging or an explicit retention policy, not unli
 Proposed: page numbers are one-based and belong to the current font/orientation layout. Before the first H2, or in documents without H2, leave the chapter title blank. The current chapter is the last H2 at or before the page's reading-position source offset; retain duplicate titles as separate entries. Keep reading position by source offset when reflowing. If no dictionary is selected or found, still show the lookup popup and Change dictionary control. Modal Home/back behaviour should dismiss the topmost popup first.
 
 ## Sleep and power
-- Auto-sleep after five minutes of inactivity, except while a Python script is running.
+- Auto power-off after 15 minutes without input, including while Python runs.
 - Sleep preserves whatever is currently visible. No sleep screen, clearing, clock overlay, or page replacement.
-- Long-press Power while awake sleeps; a single short Power press while asleep wakes (subject to hardware verification). From the user's perspective, waking re-enables touch and restores interaction.
+- Long Power saves state and powers off. Power-on restores the checkpoint without repainting the retained e-ink image; battery wake gesture depends on the hardware latch. USB deep sleep arms a single Power press.
 - Double-press Power toggles the light on/off.
 - Short-press Power opens a compact panel:
   - Header: time/date at top left, battery at top right with percentage inside.
   - First row: minus / bulb and brightness / plus. The center toggles light;
     rays indicate on. No separate light button.
   - Second row: minus / thermometer and warmth / plus.
-  - Third row: three square tiles for Aa/font, refresh and half-filled-circle contrast.
+  - Third row: three square tiles for AZ/dictionary, refresh and half-filled-circle contrast.
   - No clock settings, close or orientation control. Power or Home dismisses it.
 - Time/date/battery appear only here. Python inkpy.set_time is the only clock-setting
   interface; there is no time-settings screen.
 
-Proposed: disable touch and side-button interaction while asleep; consume the waking Power press so it does not also open the power menu, toggle light or put the device back to sleep. Turn the frontlight off for sleep and restore its prior state on wake; this changes illumination, not screen content. Night mode means inverted rendering within the fixed theme. Time is set through Python, without a firmware network time service.
-Sleep suspends Python execution and waking resumes it; it must not kill or restart the script. The existing automatic-sleep exception while a script runs remains in effect. Manual Power sleep can suspend a running script.
-Implementation note: preserve the VM, stack and local variables, but wall-clock time still passes. Network connections and external I/O may time out across a long sleep; suspension does not freeze the outside world.
-Implementation must distinguish idle power saving, state-preserving sleep and deep sleep. An unchanged e-ink image does not imply that the processor is already sleeping.
+Touch, SD and light are powered down. On battery GPIO1 releases the keep-alive;
+while USB supplies power, ESP32-S3 deep sleep supplies cold-start behavior instead.
+No light sleep or VM suspension. A checksum-protected fixed-size SD checkpoint
+stores browser state, reader position/orientation, editor draft metadata, console
+text and light/night settings, plus the last framebuffer. Existing editor working
+files are reused; originals are never autosaved. Python is cooperatively closed
+before storage unmount; native I/O may delay shutdown until its safe point.
+Dictionary popups are discarded. Missing/invalid checkpoints or unavailable source
+files fall back to the browser. Restoration consumes the checkpoint first, avoiding
+repeated failed restores. Display controller RAM is seeded without a refresh;
+actual battery shutdown, wake gesture, unchanged pixels and drain need device tests.
 
 ## Stage 23 source status
 Device `.md` opening now connects the shared reader/layout/math path. H2 headings

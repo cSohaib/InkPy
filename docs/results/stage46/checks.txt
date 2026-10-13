@@ -1,0 +1,14 @@
+Stage46 desktop/build checks (2026-10-13)
+PASS: test-power-ui.py: actual dark hourglass pixels, restore suppression, anticlockwise drawing/tap inverse.
+PASS: test-resume.py: checkpoint/frame round-trip, editor draft cursor/menu/key/save, original unchanged, corrupted/truncated rejection, FatFs rename recovery.
+PASS: test-display-transfer.py: three panel transfer formats, controller RAM reseed without refresh commands, failure cleanup.
+PASS: browser editor probes: 8 MiB file edit, tail preserved, gap growth, paging, Tab, host and device save branches.
+PASS: reader-font: Markdown renderer/navigation and power-off page reopen in both orientations.
+PASS: reader-arabic: shaping, mixed layout, logical word tap, both orientations.
+PASS: reader-epub: deflated EPUB3, lazy chapters/images/math/tables, persistent cache and power-off page/document/orientation reopen.
+PASS: test-python-native.sh: files/imports/Unicode/JSON/clock, abort cleanup and reopen.
+PASS: publication checks and git diff --check.
+PASS: pinned ESP-IDF ESP32-S3 build, slot fit, esptool checksum and validation hash.
+NOT TESTED: physical battery latch shutdown, power-on gesture, USB wake, screen retention/first partial refresh, sleep current or 15-minute physical idle.
+Application bytes: 2727760
+SHA256: 0b7ee4708023c152c47147364083d698707ae1552df6a8844f59f83d7e25282b
